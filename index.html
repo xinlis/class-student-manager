@@ -927,6 +927,23 @@
       </div>
     </div>
   </div>
+  <div class="modal hidden" id="studentEditModal">
+    <div class="modal-box">
+      <h3>编辑学生信息</h3>
+      <div class="sub">修改姓名会同步迁移该学生的每日记录、单科成绩和沟通事件。</div>
+      <div class="mentor-grid">
+        <label>姓名 <input id="editStudentNameInput" type="text"></label>
+        <label>性别 <input id="editStudentGenderInput" type="text"></label>
+        <label>学校 <input id="editStudentSchoolInput" type="text"></label>
+        <label>电话 <input id="editStudentPhoneInput" type="text"></label>
+        <label>来源班级 <input id="editStudentSourceInput" type="text" placeholder="例如：VIP1"></label>
+      </div>
+      <div class="actions" style="margin-top:12px">
+        <button id="saveStudentEditBtn" class="primary">保存修改</button>
+        <button id="closeStudentEditBtn">取消</button>
+      </div>
+    </div>
+  </div>
   <script src="./class_data.js"></script>
   <script>
     const STORE_KEY = "vip2_classroom_manager_v1";
@@ -949,6 +966,7 @@
     let activeView = "entryView";
     let selectedStudent = state.students[0]?.name || "";
     let editingEventId = "";
+    let editingStudentIndex = -1;
     let currentAiPrompt = "";
 
     const $ = (id) => document.getElementById(id);
@@ -2412,7 +2430,7 @@
         const name = String(row.name || "").trim();
         if (!name) return;
         const phone = String(row.phone || "").replace(/\s+/g, "").trim();
-        const exists = state.students.some(student => student.name === name && (!phone || student.phone === phone));
+        const exists = state.students.some(student => student.name === name || (phone && student.phone === phone));
         if (exists) return;
         state.students.push({
           name,
@@ -2456,6 +2474,84 @@
       showToast(`已删除 ${student.name}`);
     }
 
+    function startEditStudent(index) {
+      const student = state.students[index];
+      if (!student) return;
+      editingStudentIndex = index;
+      $("editStudentNameInput").value = student.name || "";
+      $("editStudentGenderInput").value = student.gender || "";
+      $("editStudentSchoolInput").value = student.school || "";
+      $("editStudentPhoneInput").value = student.phone || "";
+      $("editStudentSourceInput").value = student.source_class || "";
+      $("studentEditModal").classList.remove("hidden");
+      $("editStudentNameInput").focus();
+      $("editStudentNameInput").select();
+    }
+
+    function closeStudentEditModal() {
+      editingStudentIndex = -1;
+      $("studentEditModal").classList.add("hidden");
+    }
+
+    function saveStudentEdit() {
+      const student = state.students[editingStudentIndex];
+      if (!student) {
+        closeStudentEditModal();
+        return;
+      }
+      const oldName = student.name;
+      const nextName = $("editStudentNameInput").value.trim();
+      if (!nextName) {
+        showToast("学生姓名不能为空");
+        return;
+      }
+      const nextPhone = $("editStudentPhoneInput").value.replace(/\s+/g, "").trim();
+      const duplicate = state.students.some((item, index) => {
+        if (index === editingStudentIndex) return false;
+        return item.name === nextName || (nextPhone && item.phone === nextPhone);
+      });
+      if (duplicate) {
+        showToast("名单中已存在同名或同手机号学生");
+        return;
+      }
+      student.name = nextName;
+      student.gender = $("editStudentGenderInput").value.trim();
+      student.school = $("editStudentSchoolInput").value.trim();
+      student.phone = nextPhone;
+      student.source_class = $("editStudentSourceInput").value.trim();
+      normalizeStudent(student);
+      if (oldName !== nextName) migrateStudentName(oldName, nextName);
+      if (selectedStudent === oldName) selectedStudent = nextName;
+      saveState();
+      closeStudentEditModal();
+      render();
+      showToast("学生信息已更新");
+    }
+
+    function migrateStudentName(oldName, nextName) {
+      Object.entries({ ...(state.records || {}) }).forEach(([key, record]) => {
+        if (record.name !== oldName) return;
+        record.name = nextName;
+        const nextKey = keyFor(record.date, nextName);
+        if (nextKey !== key) {
+          state.records[nextKey] = record;
+          delete state.records[key];
+        }
+      });
+      Object.entries({ ...(state.subjectTests || {}) }).forEach(([key, test]) => {
+        if (test.name !== oldName) return;
+        test.name = nextName;
+        const nextKey = subjectKeyFor(test.date, test.subject, nextName);
+        if (nextKey !== key) {
+          state.subjectTests[nextKey] = test;
+          delete state.subjectTests[key];
+        }
+      });
+      (state.events || []).forEach(event => {
+        if (event.name === oldName) event.name = nextName;
+      });
+    }
+
     function renderRoster() {
       $("rosterStats").innerHTML = [
         statHtml("学生总数", state.students.length),
@@ -2470,9 +2566,15 @@
           <td>${escapeHtml(student.school || "")}</td>
           <td>${escapeHtml(student.phone || "")}</td>
           <td>${escapeHtml(student.source_class || "")}</td>
-          <td><button class="small danger roster-delete-btn" data-index="${index}">删除</button></td>
+          <td>
+            <button class="small roster-edit-btn" data-index="${index}">编辑</button>
+            <button class="small danger roster-delete-btn" data-index="${index}">删除</button>
+          </td>
         </tr>
       `).join("") || `<tr><td colspan="7" class="empty">暂无学生，请先导入名单。</td></tr>`;
+      document.querySelectorAll(".roster-edit-btn").forEach(btn => {
+        btn.addEventListener("click", () => startEditStudent(Number(btn.dataset.index)));
+      });
       document.querySelectorAll(".roster-delete-btn").forEach(btn => {
         btn.addEventListener("click", () => deleteStudentFromRoster(Number(btn.dataset.index)));
       });
@@ -2964,6 +3066,11 @@
     if ($("closeBackupModalBtn")) $("closeBackupModalBtn").addEventListener("click", closeBackupModal);
     if ($("backupModal")) $("backupModal").addEventListener("click", event => {
       if (event.target.id === "backupModal") closeBackupModal();
+    });
+    if ($("saveStudentEditBtn")) $("saveStudentEditBtn").addEventListener("click", saveStudentEdit);
+    if ($("closeStudentEditBtn")) $("closeStudentEditBtn").addEventListener("click", closeStudentEditModal);
+    if ($("studentEditModal")) $("studentEditModal").addEventListener("click", event => {
+      if (event.target.id === "studentEditModal") closeStudentEditModal();
     });
     $("importBtn").addEventListener("click", () => $("importFile").click());
     $("importFile").addEventListener("change", event => {
