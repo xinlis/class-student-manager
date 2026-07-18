@@ -507,6 +507,50 @@
       display: block;
       margin-bottom: 4px;
     }
+    .sync-status {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 10px 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .sync-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #9ca3af;
+      flex: 0 0 auto;
+    }
+    .sync-dot.ok { background: var(--green); }
+    .sync-dot.warn { background: var(--amber); }
+    .sync-dot.bad { background: var(--red); }
+    .sync-help {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcff;
+      padding: 10px;
+      margin-top: 10px;
+      line-height: 1.7;
+      color: #344054;
+      font-size: 12px;
+    }
+    .sync-help code {
+      display: block;
+      white-space: pre-wrap;
+      overflow: auto;
+      background: #111827;
+      color: #f8fafc;
+      border-radius: 6px;
+      padding: 10px;
+      margin-top: 6px;
+    }
+    .sync-modal-box {
+      width: min(720px, 100%);
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+    }
     .toast {
       position: fixed;
       right: 18px;
@@ -565,6 +609,7 @@
       </div>
       <div class="actions">
         <button id="classNameBtn">班级名称</button>
+        <button id="cloudSyncBtn">云同步</button>
         <button id="exportJsonBtn">备份</button>
         <button id="exportWorkbookBtn">导出数据</button>
         <button id="importBtn">导入备份</button>
@@ -927,6 +972,66 @@
       </div>
     </div>
   </div>
+  <div class="modal hidden" id="cloudSyncModal">
+    <div class="modal-box sync-modal-box">
+      <h3>云同步设置</h3>
+      <div class="sub">试用版：用 Supabase 保存一份云端数据。手机和电脑填同一组配置后即可互相同步。</div>
+      <div class="sync-status">
+        <span class="sync-dot" id="cloudSyncDot"></span>
+        <span id="cloudSyncStatus">未配置</span>
+      </div>
+      <div class="mentor-grid">
+        <label>Supabase 项目 URL
+          <input id="supabaseUrlInput" type="url" placeholder="https://xxxx.supabase.co">
+        </label>
+        <label>Supabase anon public key
+          <input id="supabaseKeyInput" type="password" placeholder="eyJhbGciOi...">
+        </label>
+        <label>同步码
+          <input id="syncIdInput" type="text" placeholder="例如 vip2-2026-private">
+        </label>
+        <label>
+          <span>自动上传</span>
+          <select id="autoSyncInput">
+            <option value="off">关闭</option>
+            <option value="on">本机修改后自动上传</option>
+          </select>
+        </label>
+      </div>
+      <div class="actions" style="margin-top:12px">
+        <button id="saveCloudConfigBtn" class="primary">保存配置</button>
+        <button id="uploadCloudBtn">上传本机到云端</button>
+        <button id="downloadCloudBtn">从云端读取</button>
+        <button id="closeCloudSyncBtn">关闭</button>
+      </div>
+      <div class="sync-help">
+        第一次使用 Supabase 时，在 SQL Editor 执行下面这段建表语句。这个试用版靠“同步码”区分班级，请不要把同步码公开给别人。
+        <code>create table if not exists public.classroom_sync (
+  id text primary key,
+  payload jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.classroom_sync enable row level security;
+
+create policy "classroom_sync_trial_select"
+on public.classroom_sync for select
+to anon
+using (id = current_setting('request.headers', true)::json ->> 'x-sync-id');
+
+create policy "classroom_sync_trial_insert"
+on public.classroom_sync for insert
+to anon
+with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id');
+
+create policy "classroom_sync_trial_update"
+on public.classroom_sync for update
+to anon
+using (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
+with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id');</code>
+      </div>
+    </div>
+  </div>
   <div class="modal hidden" id="studentEditModal">
     <div class="modal-box">
       <h3>编辑学生信息</h3>
@@ -948,6 +1053,8 @@
   <script>
     const STORE_KEY = "vip2_classroom_manager_v1";
     const BACKUP_KEY = "vip2_classroom_manager_v1_snapshots";
+    const CLOUD_CONFIG_KEY = "vip2_classroom_manager_cloud_config";
+    const CLOUD_TABLE = "classroom_sync";
     const MAX_SNAPSHOTS = 30;
     const STATUS_OPTIONS = [
       { key: "late", label: "迟到" },
@@ -968,6 +1075,8 @@
     let editingEventId = "";
     let editingStudentIndex = -1;
     let currentAiPrompt = "";
+    let cloudSaveTimer = null;
+    let cloudBusy = false;
 
     const $ = (id) => document.getElementById(id);
     const today = () => new Date().toISOString().slice(0, 10);
@@ -1014,7 +1123,8 @@
         events: seed.events || [],
         homeworkNames: [...DEFAULT_HOMEWORK_NAMES],
         className: DEFAULT_CLASS_NAME,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
     }
 
@@ -1026,12 +1136,14 @@
         events: Array.isArray(parsed.events) ? parsed.events : (seed.events || []),
         homeworkNames: Array.isArray(parsed.homeworkNames) ? parsed.homeworkNames : [...DEFAULT_HOMEWORK_NAMES],
         className: parsed.className || DEFAULT_CLASS_NAME,
-        createdAt: parsed.createdAt || new Date().toISOString()
+        createdAt: parsed.createdAt || new Date().toISOString(),
+        updatedAt: parsed.updatedAt || parsed.exportedAt || new Date().toISOString()
       };
     }
 
     function normalizeState(target) {
       target.className = String(target.className || DEFAULT_CLASS_NAME).trim() || DEFAULT_CLASS_NAME;
+      target.updatedAt = target.updatedAt || new Date().toISOString();
       target.students = Array.isArray(target.students) ? target.students : [];
       target.students.forEach(normalizeStudent);
       normalizeHomeworkNames(target);
@@ -1135,10 +1247,12 @@
 
     function saveState() {
       persistState(state);
+      queueAutoCloudUpload();
     }
 
     function persistState(target) {
       normalizeState(target);
+      target.updatedAt = new Date().toISOString();
       const payload = JSON.stringify(target);
       localStorage.setItem(STORE_KEY, payload);
       writeSnapshot(payload, target);
@@ -1314,6 +1428,187 @@
       toast.classList.add("show");
       clearTimeout(showToast.timer);
       showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    function loadCloudConfig() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY) || "{}");
+        return {
+          supabaseUrl: String(parsed.supabaseUrl || "").trim().replace(/\/+$/, ""),
+          supabaseKey: String(parsed.supabaseKey || "").trim(),
+          syncId: String(parsed.syncId || "").trim(),
+          autoSync: parsed.autoSync === true
+        };
+      } catch {
+        return { supabaseUrl: "", supabaseKey: "", syncId: "", autoSync: false };
+      }
+    }
+
+    function saveCloudConfig(config) {
+      localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(config));
+    }
+
+    function getCloudConfigFromInputs() {
+      return {
+        supabaseUrl: $("supabaseUrlInput").value.trim().replace(/\/+$/, ""),
+        supabaseKey: $("supabaseKeyInput").value.trim(),
+        syncId: $("syncIdInput").value.trim(),
+        autoSync: $("autoSyncInput").value === "on"
+      };
+    }
+
+    function isCloudConfigured(config = loadCloudConfig()) {
+      return Boolean(config.supabaseUrl && config.supabaseKey && config.syncId);
+    }
+
+    function setCloudStatus(text, type = "") {
+      if ($("cloudSyncStatus")) $("cloudSyncStatus").textContent = text;
+      if ($("cloudSyncDot")) {
+        $("cloudSyncDot").className = `sync-dot ${type}`.trim();
+      }
+    }
+
+    function openCloudSyncModal() {
+      const config = loadCloudConfig();
+      $("supabaseUrlInput").value = config.supabaseUrl;
+      $("supabaseKeyInput").value = config.supabaseKey;
+      $("syncIdInput").value = config.syncId;
+      $("autoSyncInput").value = config.autoSync ? "on" : "off";
+      setCloudStatus(isCloudConfigured(config) ? `已配置：${config.syncId}` : "未配置", isCloudConfigured(config) ? "ok" : "warn");
+      $("cloudSyncModal").classList.remove("hidden");
+    }
+
+    function closeCloudSyncModal() {
+      $("cloudSyncModal").classList.add("hidden");
+    }
+
+    function persistCloudConfigFromModal() {
+      const config = getCloudConfigFromInputs();
+      if (!isCloudConfigured(config)) {
+        showToast("请填写 Supabase URL、Key 和同步码");
+        setCloudStatus("配置不完整", "bad");
+        return null;
+      }
+      saveCloudConfig(config);
+      setCloudStatus(`配置已保存：${config.syncId}`, "ok");
+      showToast("云同步配置已保存");
+      return config;
+    }
+
+    function cloudHeaders(config, extra = {}) {
+      return {
+        apikey: config.supabaseKey,
+        Authorization: `Bearer ${config.supabaseKey}`,
+        "x-sync-id": config.syncId,
+        "Content-Type": "application/json",
+        ...extra
+      };
+    }
+
+    async function cloudRequest(config, path, options = {}) {
+      const response = await fetch(`${config.supabaseUrl}/rest/v1/${path}`, {
+        ...options,
+        headers: cloudHeaders(config, options.headers || {})
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `云端请求失败：${response.status}`);
+      }
+      if (response.status === 204) return null;
+      const text = await response.text();
+      return text ? JSON.parse(text) : null;
+    }
+
+    async function fetchCloudRow(config = loadCloudConfig()) {
+      const query = `${CLOUD_TABLE}?id=eq.${encodeURIComponent(config.syncId)}&select=id,payload,updated_at`;
+      const rows = await cloudRequest(config, query, { method: "GET" });
+      return Array.isArray(rows) ? rows[0] : null;
+    }
+
+    function newerThan(a, b) {
+      const aTime = new Date(a || 0).getTime();
+      const bTime = new Date(b || 0).getTime();
+      return Number.isFinite(aTime) && Number.isFinite(bTime) && aTime > bTime;
+    }
+
+    async function uploadCloudState(manual = false) {
+      const config = manual ? persistCloudConfigFromModal() : loadCloudConfig();
+      if (!config || !isCloudConfigured(config) || cloudBusy) return;
+      cloudBusy = true;
+      setCloudStatus("正在上传本机数据...", "warn");
+      try {
+        const cloudRow = await fetchCloudRow(config);
+        const cloudUpdatedAt = cloudRow?.payload?.updatedAt || cloudRow?.updated_at;
+        if (manual && cloudUpdatedAt && newerThan(cloudUpdatedAt, state.updatedAt)) {
+          const ok = confirm(`云端数据更新于 ${formatDateTime(cloudUpdatedAt)}，比本机更新。确定用本机数据覆盖云端吗？`);
+          if (!ok) {
+            setCloudStatus("已取消上传", "warn");
+            return;
+          }
+        }
+        normalizeState(state);
+        const updatedAt = new Date().toISOString();
+        state.updatedAt = updatedAt;
+        const payload = JSON.parse(JSON.stringify(state));
+        await cloudRequest(config, CLOUD_TABLE, {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+          body: JSON.stringify({ id: config.syncId, payload, updated_at: updatedAt })
+        });
+        persistState(state);
+        setCloudStatus(`已上传：${formatDateTime(updatedAt)}`, "ok");
+        if (manual) showToast("本机数据已上传云端");
+      } catch (error) {
+        setCloudStatus("上传失败，请检查 Supabase 配置和建表权限", "bad");
+        if (manual) alert(`上传失败：${error.message}`);
+      } finally {
+        cloudBusy = false;
+      }
+    }
+
+    async function downloadCloudState() {
+      const config = persistCloudConfigFromModal();
+      if (!config) return;
+      cloudBusy = true;
+      setCloudStatus("正在读取云端数据...", "warn");
+      try {
+        const cloudRow = await fetchCloudRow(config);
+        if (!cloudRow?.payload) {
+          setCloudStatus("云端暂无数据，可先上传本机数据", "warn");
+          showToast("云端暂无数据");
+          return;
+        }
+        const cloudState = cloudRow.payload;
+        const cloudUpdatedAt = cloudState.updatedAt || cloudRow.updated_at;
+        if (state.updatedAt && newerThan(state.updatedAt, cloudUpdatedAt)) {
+          const ok = confirm(`本机数据更新于 ${formatDateTime(state.updatedAt)}，比云端更新。确定用云端数据覆盖本机吗？`);
+          if (!ok) {
+            setCloudStatus("已取消读取", "warn");
+            return;
+          }
+        }
+        writeSnapshot(JSON.stringify(state), state);
+        const seed = window.CLASSROOM_SEED_DATA || { students: [], records: {}, subjectTests: {}, events: [] };
+        state = mergeWithSeed(cloudState, seed);
+        normalizeState(state);
+        persistState(state);
+        selectedStudent = state.students[0]?.name || "";
+        render();
+        setCloudStatus(`已读取：${formatDateTime(cloudUpdatedAt)}`, "ok");
+        showToast("云端数据已读取到本机");
+      } catch (error) {
+        setCloudStatus("读取失败，请检查 Supabase 配置和建表权限", "bad");
+        alert(`读取失败：${error.message}`);
+      } finally {
+        cloudBusy = false;
+      }
+    }
+
+    function queueAutoCloudUpload() {
+      const config = loadCloudConfig();
+      if (!config.autoSync || !isCloudConfigured(config)) return;
+      clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = setTimeout(() => uploadCloudState(false), 2500);
     }
 
     function setView(viewId) {
@@ -3058,6 +3353,7 @@
       }
     });
     $("classNameBtn").addEventListener("click", editClassName);
+    $("cloudSyncBtn").addEventListener("click", openCloudSyncModal);
     $("exportJsonBtn").addEventListener("click", exportJson);
     if ($("exportCsvBtn")) $("exportCsvBtn").addEventListener("click", exportCsv);
     $("exportWorkbookBtn").addEventListener("click", exportWorkbook);
@@ -3066,6 +3362,13 @@
     if ($("closeBackupModalBtn")) $("closeBackupModalBtn").addEventListener("click", closeBackupModal);
     if ($("backupModal")) $("backupModal").addEventListener("click", event => {
       if (event.target.id === "backupModal") closeBackupModal();
+    });
+    $("saveCloudConfigBtn").addEventListener("click", persistCloudConfigFromModal);
+    $("uploadCloudBtn").addEventListener("click", () => uploadCloudState(true));
+    $("downloadCloudBtn").addEventListener("click", downloadCloudState);
+    $("closeCloudSyncBtn").addEventListener("click", closeCloudSyncModal);
+    $("cloudSyncModal").addEventListener("click", event => {
+      if (event.target.id === "cloudSyncModal") closeCloudSyncModal();
     });
     if ($("saveStudentEditBtn")) $("saveStudentEditBtn").addEventListener("click", saveStudentEdit);
     if ($("closeStudentEditBtn")) $("closeStudentEditBtn").addEventListener("click", closeStudentEditModal);
