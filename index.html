@@ -2988,6 +2988,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function exportWorkbook() {
       const sheets = [
+        ["单科成绩总表", subjectScoreboardRowsForExport()],
         ["学生名单", studentRowsForExport()],
         ["每日录入明细", dailyRowsForExport()],
         ["每日异常汇总", abnormalRowsForExport()],
@@ -2997,6 +2998,63 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       ];
       const workbook = buildExcelXml(sheets);
       download(`${safeFileClassName()}班级管理分表-${today()}.xls`, workbook, "application/vnd.ms-excel;charset=utf-8");
+    }
+
+    function subjectScoreboardRowsForExport() {
+      const subjects = SUBJECTS.filter(subject => subject !== "其他");
+      const header = ["姓名", ...subjects.flatMap(subject => [`${subject}单科`, "排名"])];
+      const subjectDates = Object.fromEntries(subjects.map(subject => [subject, latestSubjectDate(subject)]));
+      const rankMaps = Object.fromEntries(subjects.map(subject => {
+        const date = subjectDates[subject];
+        return [subject, date ? rankMapForSubjectDate(subject, date) : new Map()];
+      }));
+      const rows = state.students.map(student => {
+        const cells = subjects.flatMap(subject => {
+          const date = subjectDates[subject];
+          const test = date ? state.subjectTests?.[subjectKeyFor(date, subject, student.name)] : null;
+          const score = parseScore(test?.score);
+          if (score === null) return ["未测试", "未排名"];
+          return [score, rankMaps[subject].get(student.name) || "未排名"];
+        });
+        return [student.name, ...cells];
+      });
+      const averageRow = ["平均分", ...subjects.flatMap(subject => {
+        const date = subjectDates[subject];
+        if (!date) return ["", ""];
+        const scores = state.students
+          .map(student => parseScore(state.subjectTests?.[subjectKeyFor(date, subject, student.name)]?.score))
+          .filter(score => score !== null);
+        return [averageText(scores), ""];
+      })];
+      return [header, ...rows, averageRow];
+    }
+
+    function latestSubjectDate(subject) {
+      return Object.values(state.subjectTests || {})
+        .filter(test => test.subject === subject)
+        .filter(test => parseScore(test.score) !== null)
+        .map(test => test.date)
+        .sort()
+        .pop() || "";
+    }
+
+    function rankMapForSubjectDate(subject, date) {
+      const scored = state.students
+        .map(student => {
+          const test = state.subjectTests?.[subjectKeyFor(date, subject, student.name)];
+          return { name: student.name, score: parseScore(test?.score) };
+        })
+        .filter(item => item.score !== null)
+        .sort((a, b) => b.score - a.score);
+      const ranks = new Map();
+      let previousScore = null;
+      let currentRank = 0;
+      scored.forEach((item, index) => {
+        if (item.score !== previousScore) currentRank = index + 1;
+        ranks.set(item.name, currentRank);
+        previousScore = item.score;
+      });
+      return ranks;
     }
 
     function studentRowsForExport() {
@@ -3257,11 +3315,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function columnWidthFor(header) {
       const text = String(header || "");
       if (["序号", "排名", "#"].includes(text)) return 46;
-      if (["姓名", "性别", "科目", "类型", "状态"].includes(text)) return 78;
+      if (text === "姓名") return 68;
+      if (text === "排名") return 52;
+      if (["性别", "科目", "类型", "状态"].includes(text)) return 78;
       if (text.includes("日期") || text.includes("时间")) return 112;
       if (text.includes("学校")) return 150;
       if (text.includes("手机") || text.includes("电话")) return 120;
       if (text.includes("备注") || text.includes("内容") || text.includes("动作") || text.includes("性格") || text.includes("问题") || text.includes("沟通") || text.includes("策略") || text.includes("家校")) return 220;
+      if (text.includes("单科")) return 82;
       if (text.includes("次数") || text.includes("平均") || text.includes("分数")) return 92;
       return 96;
     }
@@ -3269,7 +3330,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function styleForColumn(header) {
       const text = String(header || "");
       if (text.includes("备注") || text.includes("内容") || text.includes("动作") || text.includes("性格") || text.includes("问题") || text.includes("沟通") || text.includes("策略") || text.includes("家校") || text.includes("标签")) return "Wrap";
-      if (["序号", "排名", "分数", "日测分数", "日测次数", "日测平均分", "单科考试次数", "单科均分"].includes(text) || text.includes("次数")) return "Center";
+      if (["姓名", "序号", "排名", "分数", "日测分数", "日测次数", "日测平均分", "单科考试次数", "单科均分"].includes(text) || text.includes("单科") || text.includes("次数")) return "Center";
       return "";
     }
 
