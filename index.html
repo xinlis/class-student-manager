@@ -2988,6 +2988,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function exportWorkbook() {
       const sheets = [
+        ["每日一测总表", dailyScoreboardRowsForExport()],
+        ["单科成绩总表", subjectScoreboardRowsForExport()],
         ["学生名单", studentRowsForExport()],
         ["每日录入明细", dailyRowsForExport()],
         ["每日异常汇总", abnormalRowsForExport()],
@@ -2997,6 +2999,98 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       ];
       const workbook = buildExcelXml(sheets);
       download(`${safeFileClassName()}班级管理分表-${today()}.xls`, workbook, "application/vnd.ms-excel;charset=utf-8");
+    }
+
+    function dailyScoreboardRowsForExport() {
+      const dates = dailyScoreDates();
+      const header = ["姓名", ...dates.map(formatShortDate)];
+      const rows = state.students.map(student => [
+        student.name,
+        ...dates.map(date => {
+          const score = parseScore(state.records?.[keyFor(date, student.name)]?.score);
+          return score === null ? "未测试" : score;
+        })
+      ]);
+      const averageRow = ["平均分", ...dates.map(date => {
+        const scores = state.students
+          .map(student => parseScore(state.records?.[keyFor(date, student.name)]?.score))
+          .filter(score => score !== null);
+        return averageText(scores);
+      })];
+      return [header, ...rows, averageRow];
+    }
+
+    function dailyScoreDates() {
+      return [...new Set(Object.values(state.records || {})
+        .filter(record => parseScore(record.score) !== null)
+        .map(record => record.date)
+        .filter(Boolean))]
+        .sort();
+    }
+
+    function formatShortDate(dateText) {
+      const parts = String(dateText || "").split("-");
+      if (parts.length === 3) {
+        return `${Number(parts[1])}月${Number(parts[2])}日`;
+      }
+      return dateText;
+    }
+
+    function subjectScoreboardRowsForExport() {
+      const subjects = SUBJECTS.filter(subject => subject !== "其他");
+      const header = ["姓名", ...subjects.flatMap(subject => [`${subject}单科`, "排名"])];
+      const subjectDates = Object.fromEntries(subjects.map(subject => [subject, latestSubjectDate(subject)]));
+      const rankMaps = Object.fromEntries(subjects.map(subject => {
+        const date = subjectDates[subject];
+        return [subject, date ? rankMapForSubjectDate(subject, date) : new Map()];
+      }));
+      const rows = state.students.map(student => {
+        const cells = subjects.flatMap(subject => {
+          const date = subjectDates[subject];
+          const test = date ? state.subjectTests?.[subjectKeyFor(date, subject, student.name)] : null;
+          const score = parseScore(test?.score);
+          if (score === null) return ["未测试", "未排名"];
+          return [score, rankMaps[subject].get(student.name) || "未排名"];
+        });
+        return [student.name, ...cells];
+      });
+      const averageRow = ["平均分", ...subjects.flatMap(subject => {
+        const date = subjectDates[subject];
+        if (!date) return ["", ""];
+        const scores = state.students
+          .map(student => parseScore(state.subjectTests?.[subjectKeyFor(date, subject, student.name)]?.score))
+          .filter(score => score !== null);
+        return [averageText(scores), ""];
+      })];
+      return [header, ...rows, averageRow];
+    }
+
+    function latestSubjectDate(subject) {
+      return Object.values(state.subjectTests || {})
+        .filter(test => test.subject === subject)
+        .filter(test => parseScore(test.score) !== null)
+        .map(test => test.date)
+        .sort()
+        .pop() || "";
+    }
+
+    function rankMapForSubjectDate(subject, date) {
+      const scored = state.students
+        .map(student => {
+          const test = state.subjectTests?.[subjectKeyFor(date, subject, student.name)];
+          return { name: student.name, score: parseScore(test?.score) };
+        })
+        .filter(item => item.score !== null)
+        .sort((a, b) => b.score - a.score);
+      const ranks = new Map();
+      let previousScore = null;
+      let currentRank = 0;
+      scored.forEach((item, index) => {
+        if (item.score !== previousScore) currentRank = index + 1;
+        ranks.set(item.name, currentRank);
+        previousScore = item.score;
+      });
+      return ranks;
     }
 
     function studentRowsForExport() {
@@ -3173,15 +3267,42 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function buildExcelXml(sheets) {
-      const worksheets = sheets.map(([name, rows]) => `
+      const exportedAt = formatDateTime(new Date().toISOString());
+      const worksheets = sheets.map(([name, rows]) => {
+        const header = rows[0] || [];
+        const columnCount = Math.max(1, header.length);
+        const dataRows = rows.slice(1);
+        const columns = header.map(title => `<Column ss:Width="${columnWidthFor(title)}"/>`).join("");
+        const title = `${classNameText()}${name}`;
+        const meta = `导出时间：${exportedAt}　学生人数：${state.students.length}`;
+        return `
         <Worksheet ss:Name="${xmlAttr(name)}">
-          <Table>
-            ${rows.map(row => `
-              <Row>${row.map(cell => excelCellXml(cell)).join("")}</Row>
+          <Table ss:ExpandedColumnCount="${columnCount}" ss:ExpandedRowCount="${dataRows.length + 4}" x:FullColumns="1" x:FullRows="1">
+            ${columns}
+            <Row ss:Height="28">
+              <Cell ss:StyleID="Title" ss:MergeAcross="${Math.max(0, columnCount - 1)}"><Data ss:Type="String">${xmlText(title)}</Data></Cell>
+            </Row>
+            <Row ss:Height="22">
+              <Cell ss:StyleID="Meta" ss:MergeAcross="${Math.max(0, columnCount - 1)}"><Data ss:Type="String">${xmlText(meta)}</Data></Cell>
+            </Row>
+            <Row ss:Height="8"></Row>
+            <Row ss:Height="24">${header.map(cell => excelCellXml(cell, "Header")).join("")}</Row>
+            ${dataRows.map(row => `
+              <Row>${row.map((cell, index) => excelCellXml(cell, styleForColumn(header[index]))).join("")}</Row>
             `).join("")}
           </Table>
+          <AutoFilter x:Range="R4C1:R${dataRows.length + 4}C${columnCount}" xmlns="urn:schemas-microsoft-com:office:excel"></AutoFilter>
+          <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+            <FreezePanes/>
+            <FrozenNoSplit/>
+            <SplitHorizontal>4</SplitHorizontal>
+            <TopRowBottomPane>4</TopRowBottomPane>
+            <ActivePane>2</ActivePane>
+            <Panes><Pane><Number>3</Number></Pane><Pane><Number>2</Number><ActiveRow>4</ActiveRow></Pane></Panes>
+          </WorksheetOptions>
         </Worksheet>
-      `).join("");
+      `;
+      }).join("");
       return `<?xml version="1.0"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
@@ -3190,16 +3311,71 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
  xmlns:html="http://www.w3.org/TR/REC-html40">
  <Styles>
-  <Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="Default" ss:Name="Normal">
+    <Alignment ss:Vertical="Center"/>
+    <Borders>
+      <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+    </Borders>
+    <Font ss:FontName="Microsoft YaHei" x:CharSet="134" ss:Size="10" ss:Color="#1D2430"/>
+  </Style>
+  <Style ss:ID="Title">
+    <Alignment ss:Vertical="Center"/>
+    <Font ss:FontName="Microsoft YaHei" x:CharSet="134" ss:Size="16" ss:Bold="1" ss:Color="#111827"/>
+  </Style>
+  <Style ss:ID="Meta">
+    <Alignment ss:Vertical="Center"/>
+    <Font ss:FontName="Microsoft YaHei" x:CharSet="134" ss:Size="9" ss:Color="#6B7280"/>
+  </Style>
+  <Style ss:ID="Header">
+    <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+    <Borders>
+      <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+      <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+      <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+      <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+    </Borders>
+    <Font ss:FontName="Microsoft YaHei" x:CharSet="134" ss:Size="10" ss:Bold="1" ss:Color="#111827"/>
+    <Interior ss:Color="#EEF2FF" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="Center">
+    <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="Wrap">
+    <Alignment ss:Vertical="Top" ss:WrapText="1"/>
+  </Style>
  </Styles>
  ${worksheets}
 </Workbook>`;
     }
 
-    function excelCellXml(value) {
+    function columnWidthFor(header) {
+      const text = String(header || "");
+      if (["序号", "排名", "#"].includes(text)) return 46;
+      if (text === "姓名") return 68;
+      if (text === "排名") return 52;
+      if (/^\d{1,2}月\d{1,2}日$/.test(text)) return 64;
+      if (["性别", "科目", "类型", "状态"].includes(text)) return 78;
+      if (text.includes("日期") || text.includes("时间")) return 112;
+      if (text.includes("学校")) return 150;
+      if (text.includes("手机") || text.includes("电话")) return 120;
+      if (text.includes("备注") || text.includes("内容") || text.includes("动作") || text.includes("性格") || text.includes("问题") || text.includes("沟通") || text.includes("策略") || text.includes("家校")) return 220;
+      if (text.includes("单科")) return 82;
+      if (text.includes("次数") || text.includes("平均") || text.includes("分数")) return 92;
+      return 96;
+    }
+
+    function styleForColumn(header) {
+      const text = String(header || "");
+      if (text.includes("备注") || text.includes("内容") || text.includes("动作") || text.includes("性格") || text.includes("问题") || text.includes("沟通") || text.includes("策略") || text.includes("家校") || text.includes("标签")) return "Wrap";
+      if (["姓名", "序号", "排名", "分数", "日测分数", "日测次数", "日测平均分", "单科考试次数", "单科均分"].includes(text) || /^\d{1,2}月\d{1,2}日$/.test(text) || text.includes("单科") || text.includes("次数")) return "Center";
+      return "";
+    }
+
+    function excelCellXml(value, styleId = "") {
       const isNumber = typeof value === "number" && Number.isFinite(value);
       const type = isNumber ? "Number" : "String";
-      return `<Cell><Data ss:Type="${type}">${xmlText(value)}</Data></Cell>`;
+      const style = styleId ? ` ss:StyleID="${styleId}"` : "";
+      return `<Cell${style}><Data ss:Type="${type}">${xmlText(value)}</Data></Cell>`;
     }
 
     function xmlText(value) {
