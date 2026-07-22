@@ -3173,15 +3173,42 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function buildExcelXml(sheets) {
-      const worksheets = sheets.map(([name, rows]) => `
+      const exportedAt = formatDateTime(new Date().toISOString());
+      const worksheets = sheets.map(([name, rows]) => {
+        const header = rows[0] || [];
+        const columnCount = Math.max(1, header.length);
+        const dataRows = rows.slice(1);
+        const columns = header.map(title => `<Column ss:Width="${columnWidthFor(title)}"/>`).join("");
+        const title = `${classNameText()}${name}`;
+        const meta = `导出时间：${exportedAt}　学生人数：${state.students.length}`;
+        return `
         <Worksheet ss:Name="${xmlAttr(name)}">
-          <Table>
-            ${rows.map(row => `
-              <Row>${row.map(cell => excelCellXml(cell)).join("")}</Row>
+          <Table ss:ExpandedColumnCount="${columnCount}" ss:ExpandedRowCount="${dataRows.length + 4}" x:FullColumns="1" x:FullRows="1">
+            ${columns}
+            <Row ss:Height="28">
+              <Cell ss:StyleID="Title" ss:MergeAcross="${Math.max(0, columnCount - 1)}"><Data ss:Type="String">${xmlText(title)}</Data></Cell>
+            </Row>
+            <Row ss:Height="22">
+              <Cell ss:StyleID="Meta" ss:MergeAcross="${Math.max(0, columnCount - 1)}"><Data ss:Type="String">${xmlText(meta)}</Data></Cell>
+            </Row>
+            <Row ss:Height="8"></Row>
+            <Row ss:Height="24">${header.map(cell => excelCellXml(cell, "Header")).join("")}</Row>
+            ${dataRows.map(row => `
+              <Row>${row.map((cell, index) => excelCellXml(cell, styleForColumn(header[index]))).join("")}</Row>
             `).join("")}
           </Table>
+          <AutoFilter x:Range="R4C1:R${dataRows.length + 4}C${columnCount}" xmlns="urn:schemas-microsoft-com:office:excel"></AutoFilter>
+          <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+            <FreezePanes/>
+            <FrozenNoSplit/>
+            <SplitHorizontal>4</SplitHorizontal>
+            <TopRowBottomPane>4</TopRowBottomPane>
+            <ActivePane>2</ActivePane>
+            <Panes><Pane><Number>3</Number></Pane><Pane><Number>2</Number><ActiveRow>4</ActiveRow></Pane></Panes>
+          </WorksheetOptions>
         </Worksheet>
-      `).join("");
+      `;
+      }).join("");
       return `<?xml version="1.0"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
@@ -3190,16 +3217,67 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
  xmlns:html="http://www.w3.org/TR/REC-html40">
  <Styles>
-  <Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="Default" ss:Name="Normal">
+    <Alignment ss:Vertical="Center"/>
+    <Borders>
+      <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+    </Borders>
+    <Font ss:FontName="Microsoft YaHei" x:CharSet="134" ss:Size="10" ss:Color="#1D2430"/>
+  </Style>
+  <Style ss:ID="Title">
+    <Alignment ss:Vertical="Center"/>
+    <Font ss:FontName="Microsoft YaHei" x:CharSet="134" ss:Size="16" ss:Bold="1" ss:Color="#111827"/>
+  </Style>
+  <Style ss:ID="Meta">
+    <Alignment ss:Vertical="Center"/>
+    <Font ss:FontName="Microsoft YaHei" x:CharSet="134" ss:Size="9" ss:Color="#6B7280"/>
+  </Style>
+  <Style ss:ID="Header">
+    <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+    <Borders>
+      <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+      <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+      <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+      <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+    </Borders>
+    <Font ss:FontName="Microsoft YaHei" x:CharSet="134" ss:Size="10" ss:Bold="1" ss:Color="#111827"/>
+    <Interior ss:Color="#EEF2FF" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="Center">
+    <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="Wrap">
+    <Alignment ss:Vertical="Top" ss:WrapText="1"/>
+  </Style>
  </Styles>
  ${worksheets}
 </Workbook>`;
     }
 
-    function excelCellXml(value) {
+    function columnWidthFor(header) {
+      const text = String(header || "");
+      if (["序号", "排名", "#"].includes(text)) return 46;
+      if (["姓名", "性别", "科目", "类型", "状态"].includes(text)) return 78;
+      if (text.includes("日期") || text.includes("时间")) return 112;
+      if (text.includes("学校")) return 150;
+      if (text.includes("手机") || text.includes("电话")) return 120;
+      if (text.includes("备注") || text.includes("内容") || text.includes("动作") || text.includes("性格") || text.includes("问题") || text.includes("沟通") || text.includes("策略") || text.includes("家校")) return 220;
+      if (text.includes("次数") || text.includes("平均") || text.includes("分数")) return 92;
+      return 96;
+    }
+
+    function styleForColumn(header) {
+      const text = String(header || "");
+      if (text.includes("备注") || text.includes("内容") || text.includes("动作") || text.includes("性格") || text.includes("问题") || text.includes("沟通") || text.includes("策略") || text.includes("家校") || text.includes("标签")) return "Wrap";
+      if (["序号", "排名", "分数", "日测分数", "日测次数", "日测平均分", "单科考试次数", "单科均分"].includes(text) || text.includes("次数")) return "Center";
+      return "";
+    }
+
+    function excelCellXml(value, styleId = "") {
       const isNumber = typeof value === "number" && Number.isFinite(value);
       const type = isNumber ? "Number" : "String";
-      return `<Cell><Data ss:Type="${type}">${xmlText(value)}</Data></Cell>`;
+      const style = styleId ? ` ss:StyleID="${styleId}"` : "";
+      return `<Cell${style}><Data ss:Type="${type}">${xmlText(value)}</Data></Cell>`;
     }
 
     function xmlText(value) {
