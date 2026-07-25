@@ -770,6 +770,7 @@
             </label>
             <label>满分 <input id="subjectMaxInput" class="subject-input" type="number" min="1" value="100"></label>
             <label>搜索 <input id="subjectSearch" type="search" placeholder="序号 / 姓名 / 学校"></label>
+            <button id="renameSubjectBtn">更改科目</button>
             <button id="copySubjectRankBtn" class="primary">复制排名</button>
           </div>
         </div>
@@ -2015,6 +2016,58 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       test[field] = value;
       if (field === "score") calculateSubjectRanks(date, subject);
       saveState();
+    }
+
+    function changeCurrentSubjectName() {
+      const date = $("subjectDateInput").value || today();
+      const fromSubject = $("subjectSelect").value || "电路";
+      const options = SUBJECTS.join("、");
+      const targetInput = prompt(`当前是 ${date} ${fromSubject}。请输入正确科目：\n${options}`, fromSubject);
+      if (targetInput === null) return;
+      const toSubject = targetInput.trim();
+      if (!toSubject) {
+        showToast("科目名称不能为空");
+        return;
+      }
+      if (!SUBJECTS.includes(toSubject)) {
+        showToast("请输入列表里的科目名称");
+        return;
+      }
+      if (toSubject === fromSubject) {
+        showToast("科目没有变化");
+        return;
+      }
+
+      const oldTests = state.students
+        .map(student => state.subjectTests?.[subjectKeyFor(date, fromSubject, student.name)])
+        .filter(test => test && isMeaningfulSubjectTest(test));
+      if (!oldTests.length) {
+        showToast("当前日期和科目没有可迁移的成绩");
+        return;
+      }
+
+      const targetExisting = state.students
+        .map(student => state.subjectTests?.[subjectKeyFor(date, toSubject, student.name)])
+        .filter(test => test && isMeaningfulSubjectTest(test));
+      if (targetExisting.length) {
+        const ok = confirm(`${date} ${toSubject} 已有 ${targetExisting.length} 条记录。确定用 ${fromSubject} 的记录覆盖它们吗？`);
+        if (!ok) return;
+      }
+
+      oldTests.forEach(test => {
+        const oldKey = subjectKeyFor(date, fromSubject, test.name);
+        const nextKey = subjectKeyFor(date, toSubject, test.name);
+        state.subjectTests[nextKey] = {
+          ...test,
+          subject: toSubject
+        };
+        delete state.subjectTests[oldKey];
+      });
+      calculateSubjectRanks(date, toSubject);
+      $("subjectSelect").value = toSubject;
+      saveState();
+      renderSubjectTests();
+      showToast(`已将 ${fromSubject} 改为 ${toSubject}`);
     }
 
     function subjectRankText(date, subject) {
@@ -3498,6 +3551,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("subjectMaxInput").addEventListener("input", renderSubjectTests);
     $("entrySearch").addEventListener("input", render);
     $("subjectSearch").addEventListener("input", renderSubjectTests);
+    $("renameSubjectBtn").addEventListener("click", changeCurrentSubjectName);
     $("eventSearch").addEventListener("input", renderEvents);
     $("addEventBtn").addEventListener("click", addEvent);
     $("cancelEventEditBtn").addEventListener("click", resetEventForm);
