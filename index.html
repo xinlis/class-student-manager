@@ -714,7 +714,7 @@
           <div class="toolbar">
             <label>日期 <input id="dateInput" type="date"></label>
             <label><input id="hasHomeworkInput" type="checkbox" checked> 今日有作业</label>
-            <label>搜索 <input id="entrySearch" type="search" placeholder="序号 / 姓名 / 学校"></label>
+            <label>搜索 <input id="entrySearch" type="search" placeholder="序号 / 姓名首字母 / 学校"></label>
             <button id="resetDefaultsBtn">补齐默认记录</button>
           </div>
         </div>
@@ -769,7 +769,7 @@
               </select>
             </label>
             <label>满分 <input id="subjectMaxInput" class="subject-input" type="number" min="1" value="100"></label>
-            <label>搜索 <input id="subjectSearch" type="search" placeholder="序号 / 姓名 / 学校"></label>
+            <label>搜索 <input id="subjectSearch" type="search" placeholder="序号 / 姓名首字母 / 学校"></label>
             <button id="renameSubjectBtn">更改科目</button>
             <button id="copySubjectRankBtn" class="primary">复制排名</button>
           </div>
@@ -802,7 +802,7 @@
           </div>
           <div class="toolbar">
             <label>事件日期 <input id="eventDateInput" type="date"></label>
-            <label>筛选 <input id="eventSearch" type="search" placeholder="序号 / 姓名 / 类型"></label>
+            <label>筛选 <input id="eventSearch" type="search" placeholder="序号 / 姓名首字母 / 类型"></label>
           </div>
         </div>
         <div class="detail-panel">
@@ -895,7 +895,7 @@
       <div class="profile-layout">
         <aside class="side">
           <div class="profile-controls">
-            <input id="profileSearch" type="search" placeholder="序号 / 姓名 / 学校">
+            <input id="profileSearch" type="search" placeholder="序号 / 姓名首字母 / 学校">
             <label>来源
               <select id="profileSourceFilter">
                 <option value="">全部</option>
@@ -1671,20 +1671,107 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return index >= 0 ? index + 1 : "";
     }
 
+    const PINYIN_BOUNDARIES = [
+      ["a", "阿"], ["b", "八"], ["c", "嚓"], ["d", "咑"], ["e", "妸"], ["f", "发"], ["g", "旮"], ["h", "哈"],
+      ["j", "讥"], ["k", "咔"], ["l", "垃"], ["m", "妈"], ["n", "拿"], ["o", "噢"], ["p", "啪"], ["q", "期"],
+      ["r", "然"], ["s", "撒"], ["t", "塌"], ["w", "挖"], ["x", "昔"], ["y", "压"], ["z", "匝"]
+    ];
+
+    const PINYIN_INITIAL_OVERRIDES = {
+      "行": "x",
+      "重": "c"
+    };
+
+    const PINYIN_INITIAL_GROUPS = {
+      a: "安昂奥",
+      b: "白柏百包宝保贝北奔斌彬冰兵博波炳碧标",
+      c: "曹蔡才彩灿仓晨辰陈成程崔聪春超长常楚初冲",
+      d: "丁邓杜段电东丹达迪栋大德定",
+      e: "恩尔",
+      f: "方冯范发飞芳峰锋凤福富",
+      g: "高郭国贵光广冠甘龚谷耿工",
+      h: "黄浩皓华花海航韩何胡侯洪宏辉慧惠贺恒衡",
+      j: "贾杰佳嘉家静景敬晶钧军君俊峻金锦继季健建江姜蒋焦洁捷疆",
+      k: "康柯孔宽坤奎凯",
+      l: "刘李梁林丽莉磊蕾雷乐黎立力龙玲琳灵良亮伦兰岚",
+      m: "马毛梅孟明铭敏萌木美梦",
+      n: "南倪宁娜妮楠农",
+      o: "欧",
+      p: "潘彭鹏佩培平萍品",
+      q: "秦钱乔齐启琦琪强庆青清秋倩千谦",
+      r: "任冉荣瑞睿然仁",
+      s: "沈石少思司孙宋邵申生胜盛珊帅双舒书帅",
+      t: "田唐陶谭彤桐婷涛同童天",
+      w: "王汪吴伟炜维闻文雯婉万武伍威",
+      x: "许徐肖萧谢希熙西鑫新欣星翔轩璇瑄雪学祥向晓小夏修旭秀行",
+      y: "易宇雨玉钰阳洋杨姚叶一奕义艺毅怡燕艳岩业英颖永勇",
+      z: "郑张赵周朱章志梓子紫宗泽钊哲珍振震洲州卓"
+    };
+
+    Object.entries(PINYIN_INITIAL_GROUPS).forEach(([initial, chars]) => {
+      Array.from(chars).forEach(char => {
+        if (!PINYIN_INITIAL_OVERRIDES[char]) PINYIN_INITIAL_OVERRIDES[char] = initial;
+      });
+    });
+
+    function normalizeSearchText(value) {
+      return String(value ?? "").trim().toLowerCase().replace(/\s+/g, "");
+    }
+
+    function pinyinInitial(char) {
+      if (/^[a-z0-9]$/i.test(char)) return char.toLowerCase();
+      if (PINYIN_INITIAL_OVERRIDES[char]) return PINYIN_INITIAL_OVERRIDES[char];
+      if (!/[\u4e00-\u9fff]/.test(char)) return "";
+      for (let i = PINYIN_BOUNDARIES.length - 1; i >= 0; i -= 1) {
+        if (char.localeCompare(PINYIN_BOUNDARIES[i][1], "zh-Hans-CN") >= 0) {
+          return PINYIN_BOUNDARIES[i][0];
+        }
+      }
+      return "";
+    }
+
+    function pinyinInitials(value) {
+      return Array.from(String(value ?? "")).map(pinyinInitial).join("");
+    }
+
+    function fuzzySearchMatch(value, query) {
+      const target = normalizeSearchText(value);
+      const text = normalizeSearchText(query);
+      if (!text) return true;
+      if (target.includes(text)) return true;
+      let textIndex = 0;
+      for (const char of target) {
+        if (char === text[textIndex]) textIndex += 1;
+        if (textIndex >= text.length) return true;
+      }
+      return false;
+    }
+
+    function matchesSearchValues(values, query) {
+      const terms = String(query ?? "").trim().split(/\s+/).filter(Boolean);
+      if (!terms.length) return true;
+      const variants = values.flatMap(value => [value, pinyinInitials(value)]);
+      return terms.every(term => variants.some(value => fuzzySearchMatch(value, term)));
+    }
+
     function matchesStudentSearch(student, index, query) {
-      const text = query.trim();
+      const text = String(query ?? "").trim();
       if (!text) return true;
       const numberText = text.replace(/^#/, "");
       if (/^\d+$/.test(numberText)) return Number(numberText) === index + 1;
       const note = student.mentor_note || {};
-      return student.name.includes(text)
-        || student.school.includes(text)
-        || student.phone.includes(text)
-        || student.source_class?.includes(text)
-        || note.tags?.includes(text)
-        || note.personality?.includes(text)
-        || note.issues?.includes(text)
-        || note.communication?.includes(text);
+      return matchesSearchValues([
+        index + 1,
+        student.name,
+        student.school,
+        student.phone,
+        student.source_class,
+        student.gender,
+        note.tags,
+        note.personality,
+        note.issues,
+        note.communication
+      ], text);
     }
 
     function renderEntry(date) {
@@ -1921,11 +2008,16 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function matchesEventSearch(event, query) {
-      const text = query.trim();
+      const text = String(query ?? "").trim();
       if (!text) return true;
       const student = state.students.find(item => item.name === event.name);
       if (student && matchesStudentSearch(student, studentNumber(event.name) - 1, text)) return true;
-      return String(event.type || "").includes(text) || String(event.content || "").includes(text) || String(event.followUp || "").includes(text) || String(event.status || "").includes(text);
+      return matchesSearchValues([
+        event.type,
+        event.content,
+        event.followUp,
+        event.status
+      ], text);
     }
 
     function addEvent() {
