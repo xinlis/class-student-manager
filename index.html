@@ -3142,8 +3142,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         ["沟通事件", eventRowsForExport()],
         ["学生汇总", studentSummaryRowsForExport()]
       ];
-      const workbook = buildExcelXml(sheets);
-      download(`${safeFileClassName()}班级管理分表-${today()}.xls`, workbook, "application/vnd.ms-excel;charset=utf-8");
+      const workbook = buildXlsxWorkbook(sheets);
+      download(`${safeFileClassName()}班级管理分表-${today()}.xlsx`, workbook, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     }
 
     function dailyScoreboardRowsForExport() {
@@ -3410,6 +3410,264 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function statusText(statuses) {
       return (statuses || []).map(status => STATUS_LABELS[status] || status).join("、");
     }
+
+    function buildXlsxWorkbook(sheets) {
+      const safeSheets = uniqueSheetNames(sheets);
+      const files = {
+        "[Content_Types].xml": xlsxContentTypesXml(safeSheets),
+        "_rels/.rels": xlsxRootRelsXml(),
+        "xl/workbook.xml": xlsxWorkbookXml(safeSheets),
+        "xl/_rels/workbook.xml.rels": xlsxWorkbookRelsXml(safeSheets),
+        "xl/styles.xml": xlsxStylesXml()
+      };
+      safeSheets.forEach((sheet, index) => {
+        files[`xl/worksheets/sheet${index + 1}.xml`] = xlsxWorksheetXml(sheet.name, sheet.rows);
+      });
+      return zipFiles(files);
+    }
+
+    function uniqueSheetNames(sheets) {
+      const used = new Set();
+      return sheets.map(([name, rows]) => {
+        const base = String(name || "Sheet")
+          .replace(/[\\/?*:[\]]/g, "")
+          .slice(0, 31) || "Sheet";
+        let safeName = base;
+        let suffix = 2;
+        while (used.has(safeName)) {
+          const tail = `_${suffix}`;
+          safeName = `${base.slice(0, 31 - tail.length)}${tail}`;
+          suffix += 1;
+        }
+        used.add(safeName);
+        return { name: safeName, rows };
+      });
+    }
+
+    function xlsxContentTypesXml(sheets) {
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+  ${sheets.map((_, index) => `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("\n  ")}
+</Types>`;
+    }
+
+    function xlsxRootRelsXml() {
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+    }
+
+    function xlsxWorkbookXml(sheets) {
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    ${sheets.map((sheet, index) => `<sheet name="${xmlAttr(sheet.name)}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`).join("\n    ")}
+  </sheets>
+</workbook>`;
+    }
+
+    function xlsxWorkbookRelsXml(sheets) {
+      const worksheetRels = sheets.map((_, index) =>
+        `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`
+      ).join("\n  ");
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  ${worksheetRels}
+  <Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+    }
+
+    function xlsxStylesXml() {
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="4">
+    <font><sz val="10"/><color rgb="FF1D2430"/><name val="Microsoft YaHei"/></font>
+    <font><b/><sz val="16"/><color rgb="FF111827"/><name val="Microsoft YaHei"/></font>
+    <font><sz val="9"/><color rgb="FF6B7280"/><name val="Microsoft YaHei"/></font>
+    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Microsoft YaHei"/></font>
+  </fonts>
+  <fills count="3">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEEF2FF"/><bgColor indexed="64"/></patternFill></fill>
+  </fills>
+  <borders count="2">
+    <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border>
+      <left style="thin"><color rgb="FFE5E7EB"/></left>
+      <right style="thin"><color rgb="FFE5E7EB"/></right>
+      <top style="thin"><color rgb="FFE5E7EB"/></top>
+      <bottom style="thin"><color rgb="FFE5E7EB"/></bottom>
+      <diagonal/>
+    </border>
+  </borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="6">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="top" wrapText="1"/></xf>
+  </cellXfs>
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+    }
+
+    function xlsxWorksheetXml(name, rows) {
+      const exportedAt = formatDateTime(new Date().toISOString());
+      const header = rows[0] || [];
+      const dataRows = rows.slice(1);
+      const columnCount = Math.max(1, header.length);
+      const allRows = [
+        [{ value: `${classNameText()}${name}`, style: 1 }],
+        [{ value: `导出时间：${exportedAt}　学生人数：${state.students.length}`, style: 2 }],
+        [],
+        header.map(value => ({ value, style: 3 })),
+        ...dataRows.map(row => row.map((value, index) => ({ value, style: xlsxStyleForColumn(header[index]) })))
+      ];
+      const lastColumn = columnName(columnCount);
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetViews><sheetView workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+  <cols>${header.map((title, index) => `<col min="${index + 1}" max="${index + 1}" width="${Math.max(6, Math.round(columnWidthFor(title) / 7))}" customWidth="1"/>`).join("")}</cols>
+  <sheetData>
+    ${allRows.map((row, rowIndex) => xlsxRowXml(row, rowIndex + 1)).join("\n    ")}
+  </sheetData>
+  <mergeCells count="2">
+    <mergeCell ref="A1:${lastColumn}1"/>
+    <mergeCell ref="A2:${lastColumn}2"/>
+  </mergeCells>
+  <autoFilter ref="A4:${lastColumn}${Math.max(4, allRows.length)}"/>
+</worksheet>`;
+    }
+
+    function xlsxStyleForColumn(header) {
+      const style = styleForColumn(header);
+      if (style === "Wrap") return 5;
+      if (style === "Center") return 4;
+      return 0;
+    }
+
+    function xlsxRowXml(row, rowNumber) {
+      const height = rowNumber === 1 ? ` ht="28" customHeight="1"` : rowNumber === 2 || rowNumber === 4 ? ` ht="24" customHeight="1"` : "";
+      const cells = row.map((cell, index) => xlsxCellXml(cell.value, rowNumber, index + 1, cell.style)).join("");
+      return `<row r="${rowNumber}"${height}>${cells}</row>`;
+    }
+
+    function xlsxCellXml(value, rowNumber, columnNumber, style = 0) {
+      const ref = `${columnName(columnNumber)}${rowNumber}`;
+      const normalized = value ?? "";
+      const isNumber = typeof normalized === "number" && Number.isFinite(normalized);
+      const styleAttr = style ? ` s="${style}"` : "";
+      if (isNumber) return `<c r="${ref}"${styleAttr}><v>${normalized}</v></c>`;
+      return `<c r="${ref}"${styleAttr} t="inlineStr"><is><t>${xmlText(normalized)}</t></is></c>`;
+    }
+
+    function columnName(number) {
+      let name = "";
+      let current = number;
+      while (current > 0) {
+        const remainder = (current - 1) % 26;
+        name = String.fromCharCode(65 + remainder) + name;
+        current = Math.floor((current - 1) / 26);
+      }
+      return name || "A";
+    }
+
+    function zipFiles(files) {
+      const encoder = new TextEncoder();
+      const chunks = [];
+      const central = [];
+      let offset = 0;
+      Object.entries(files).forEach(([name, content]) => {
+        const nameBytes = encoder.encode(name);
+        const dataBytes = content instanceof Uint8Array ? content : encoder.encode(content);
+        const crc = crc32(dataBytes);
+        const localHeader = new Uint8Array(30 + nameBytes.length);
+        const localView = new DataView(localHeader.buffer);
+        localView.setUint32(0, 0x04034b50, true);
+        localView.setUint16(4, 20, true);
+        localView.setUint16(6, 0, true);
+        localView.setUint16(8, 0, true);
+        localView.setUint16(10, 0, true);
+        localView.setUint16(12, 0, true);
+        localView.setUint32(14, crc, true);
+        localView.setUint32(18, dataBytes.length, true);
+        localView.setUint32(22, dataBytes.length, true);
+        localView.setUint16(26, nameBytes.length, true);
+        localHeader.set(nameBytes, 30);
+        chunks.push(localHeader, dataBytes);
+        central.push({ nameBytes, crc, size: dataBytes.length, offset });
+        offset += localHeader.length + dataBytes.length;
+      });
+      const centralOffset = offset;
+      central.forEach(file => {
+        const header = new Uint8Array(46 + file.nameBytes.length);
+        const view = new DataView(header.buffer);
+        view.setUint32(0, 0x02014b50, true);
+        view.setUint16(4, 20, true);
+        view.setUint16(6, 20, true);
+        view.setUint16(8, 0, true);
+        view.setUint16(10, 0, true);
+        view.setUint16(12, 0, true);
+        view.setUint16(14, 0, true);
+        view.setUint32(16, file.crc, true);
+        view.setUint32(20, file.size, true);
+        view.setUint32(24, file.size, true);
+        view.setUint16(28, file.nameBytes.length, true);
+        view.setUint32(42, file.offset, true);
+        header.set(file.nameBytes, 46);
+        chunks.push(header);
+        offset += header.length;
+      });
+      const centralSize = offset - centralOffset;
+      const end = new Uint8Array(22);
+      const endView = new DataView(end.buffer);
+      endView.setUint32(0, 0x06054b50, true);
+      endView.setUint16(8, central.length, true);
+      endView.setUint16(10, central.length, true);
+      endView.setUint32(12, centralSize, true);
+      endView.setUint32(16, centralOffset, true);
+      chunks.push(end);
+      return concatUint8Arrays(chunks);
+    }
+
+    function concatUint8Arrays(chunks) {
+      const length = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+      const result = new Uint8Array(length);
+      let offset = 0;
+      chunks.forEach(chunk => {
+        result.set(chunk, offset);
+        offset += chunk.length;
+      });
+      return result;
+    }
+
+    function crc32(bytes) {
+      let crc = 0xffffffff;
+      for (let i = 0; i < bytes.length; i += 1) {
+        crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ bytes[i]) & 0xff];
+      }
+      return (crc ^ 0xffffffff) >>> 0;
+    }
+
+    const CRC_TABLE = (() => {
+      const table = new Uint32Array(256);
+      for (let i = 0; i < 256; i += 1) {
+        let c = i;
+        for (let k = 0; k < 8; k += 1) {
+          c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+        }
+        table[i] = c >>> 0;
+      }
+      return table;
+    })();
 
     function buildExcelXml(sheets) {
       const exportedAt = formatDateTime(new Date().toISOString());
