@@ -754,6 +754,7 @@
                 <th>姓名</th>
                 <th>学校</th>
                 <th>日测分数</th>
+                <th>日测纠错</th>
                 <th id="homeworkHeader0">讲义</th>
                 <th id="homeworkHeader1">宝典</th>
                 <th>上课异常</th>
@@ -942,6 +943,7 @@
                   <tr>
                     <th>日期</th>
                     <th>日测分数</th>
+                    <th>日测纠错</th>
                     <th>作业</th>
                     <th>上课异常</th>
                     <th>备注</th>
@@ -1096,6 +1098,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const STATUS_LABELS = Object.fromEntries(STATUS_OPTIONS.map(item => [item.key, item.label]));
     const HOMEWORK_GRADES = ["A+", "A", "B", "C", "D", "未交"];
     const NO_HOMEWORK = "无作业";
+    const DAILY_CORRECTION_OPTIONS = ["未检查", "已纠错", "未纠错"];
     const DEFAULT_HOMEWORK_NAMES = ["讲义", "宝典"];
     const DEFAULT_CLASS_NAME = "VIP2 班";
     const SUBJECTS = ["电路", "电机", "稳态", "暂态", "继保", "高电压", "发电厂", "行测", "其他"];
@@ -1181,6 +1184,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       Object.values(target.records || {}).forEach(record => {
         if (record.homework === "A-") record.homework = "A";
         if (!record.homework) record.homework = "A";
+        if (!DAILY_CORRECTION_OPTIONS.includes(record.correction)) record.correction = "未检查";
         normalizeRecordHomework(record, target.homeworkNames);
       });
       migrateSubjectTestDate(target, "2026-07-14", "2026-07-12", "电路");
@@ -1339,10 +1343,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           score: "",
           homework: "讲义:A / 宝典:A",
           homeworks: homeworkNames().map(() => "A"),
+          correction: "未检查",
           status: [],
           note: ""
         };
       }
+      if (!DAILY_CORRECTION_OPTIONS.includes(state.records[key].correction)) state.records[key].correction = "未检查";
       normalizeRecordHomework(state.records[key]);
       return state.records[key];
     }
@@ -1404,6 +1410,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const current = getHomeworkGrade(record, index);
       const grades = current === NO_HOMEWORK ? [NO_HOMEWORK, ...HOMEWORK_GRADES] : HOMEWORK_GRADES;
       return grades.map(grade => `<option value="${grade}" ${current === grade ? "selected" : ""}>${grade}</option>`).join("");
+    }
+
+    function dailyCorrectionOptionsFor(record) {
+      const current = DAILY_CORRECTION_OPTIONS.includes(record.correction) ? record.correction : "未检查";
+      return DAILY_CORRECTION_OPTIONS.map(value => `<option value="${value}" ${current === value ? "selected" : ""}>${value}</option>`).join("");
     }
 
     function isHomeworkGradeIssue(grade) {
@@ -1818,6 +1829,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <td><span class="name">${student.name}</span><span class="student-meta">${[student.source_class, student.gender, student.phone].filter(Boolean).join(" ")}</span></td>
           <td class="muted">${student.school}</td>
           <td><input class="score-input" data-name="${student.name}" type="number" min="0" max="150" inputmode="decimal" value="${escapeHtml(record.score)}"></td>
+          <td>
+            <select class="daily-correction-select" data-name="${student.name}">
+              ${dailyCorrectionOptionsFor(record)}
+            </select>
+          </td>
           ${names.map((_, homeworkIndex) => `
             <td>
               <select class="homework-select" data-name="${student.name}" data-homework-index="${homeworkIndex}">
@@ -1856,6 +1872,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       });
       document.querySelectorAll(".homework-select").forEach(select => {
         select.addEventListener("change", () => updateHomeworkField(date, select.dataset.name, Number(select.dataset.homeworkIndex), select.value));
+      });
+      document.querySelectorAll(".daily-correction-select").forEach(select => {
+        select.addEventListener("change", () => updateRecordField(date, select.dataset.name, "correction", select.value));
       });
       document.querySelectorAll(".note-input").forEach(input => {
         input.addEventListener("input", () => {
@@ -2433,11 +2452,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         .join("<br>");
       const homeworkDays = records.filter(r => homeworkNames().some((_, index) => getHomeworkGrade(r, index) !== NO_HOMEWORK)).length;
       const napCount = records.filter(r => r.status?.includes("sleep")).length;
+      const correctionStats = dailyCorrectionStats(records);
       $("profileKpis").innerHTML = [
         statHtml("记录天数", records.length),
         statHtml("平均分", avg),
         statHtml("最近分数", latest),
         statHtml("打盹次数", napCount),
+        statHtml("未纠错", correctionStats.uncorrected),
         statHtml("单科考试次数", subjectTests.filter(test => parseScore(test.score) !== null).length),
         statHtml("单科均分", subjectAvg),
         statHtml("沟通事件", events.length)
@@ -2449,11 +2470,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         <tr>
           <td>${record.date}</td>
           <td>${escapeHtml(record.score)}</td>
+          <td><span class="badge ${record.correction === "已纠错" ? "ok" : record.correction === "未纠错" ? "warn" : "neutral"}">${escapeHtml(record.correction || "未检查")}</span></td>
           <td>${homeworkBadgesHtml(record)}</td>
           <td>${record.status?.length ? record.status.map(key => `<span class="badge bad">${STATUS_LABELS[key]}</span>`).join(" ") : "<span class='muted'>正常</span>"}</td>
           <td>${escapeHtml(record.note || "")} ${noteBadgeHtml(record.note)}</td>
         </tr>
-      `).join("") || `<tr><td colspan="5" class="empty">暂无记录</td></tr>`;
+      `).join("") || `<tr><td colspan="6" class="empty">暂无记录</td></tr>`;
     }
 
     function renderAiAnalysis(student, records, subjectTests, events) {
@@ -2503,6 +2525,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const subjectStats = subjectWeaknessStats(subjectTests);
       const homeworkStats = homeworkWeaknessStats(records);
       const statusStats = statusWeaknessStats(records);
+      const correctionStats = dailyCorrectionStats(records);
       const noteStats = noteKeywordStats(records, subjectTests, events);
       const eventFollowCount = events.filter(event => event.status === "需跟进").length;
 
@@ -2527,6 +2550,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
       const habits = [];
       homeworkStats.issues.forEach(item => habits.push(`${item.name} 出现 ${item.count} 次 B/C/D/未交，作业质量需要盯紧。`));
+      if (correctionStats.uncorrected) habits.push(`日测未纠错 ${correctionStats.uncorrected} 次，错题闭环需要重点盯。`);
+      if (correctionStats.unchecked) habits.push(`日测纠错未检查 ${correctionStats.unchecked} 次，建议补查错题订正。`);
       Object.entries(statusStats).forEach(([label, count]) => {
         if (count) habits.push(`${label} ${count} 次，课堂状态需要关注。`);
       });
@@ -2538,6 +2563,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
       const actions = [];
       if (subjectStats.weakSubjects[0]) actions.push(`优先安排 ${subjectStats.weakSubjects[0].subject} 的错题回看和小题专项。`);
+      if (correctionStats.uncorrected || correctionStats.unchecked) actions.push("把日测错题纠错作为当天闭环动作，低分当天优先检查订正质量。");
       if (homeworkStats.issues[0]) actions.push(`连续 3 天查看 ${homeworkStats.issues[0].name}，重点看订正是否完整。`);
       if (statusStats["打盹"] || statusStats["走神"]) actions.push("课堂上安排前排提醒或课间短沟通，确认睡眠、身体状态和听课卡点。");
       if (mentorNote.sprint) actions.push(`冲刺策略参考：${mentorNote.sprint}`);
@@ -2603,6 +2629,15 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       ]));
     }
 
+    function dailyCorrectionStats(records) {
+      const scored = records.filter(record => parseScore(record.score) !== null);
+      return {
+        checked: scored.filter(record => record.correction === "已纠错").length,
+        unchecked: scored.filter(record => !record.correction || record.correction === "未检查").length,
+        uncorrected: scored.filter(record => record.correction === "未纠错").length
+      };
+    }
+
     function noteKeywordStats(records, subjectTests, events) {
       const text = [
         ...records.map(record => record.note || ""),
@@ -2628,7 +2663,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function buildAiPrompt(student, records, subjectTests, events, analysis) {
-      const dailyLines = records.map(record => `${record.date} 日测:${record.score || "未填"} 作业:${homeworkSummaryText(record)} 状态:${statusText(record.status) || "正常"} 备注:${record.note || "无"}`);
+      const dailyLines = records.map(record => `${record.date} 日测:${record.score || "未填"} 纠错:${record.correction || "未检查"} 作业:${homeworkSummaryText(record)} 状态:${statusText(record.status) || "正常"} 备注:${record.note || "无"}`);
       const subjectLines = subjectTests.map(test => `${test.date} ${test.subject} 分数:${test.score || "未填"} 排名:${test.rank || "无"} 纠错:${test.correction || "无"} 备注:${test.note || "无"}`);
       const eventLines = events.map(event => `${event.date} ${event.type} ${event.content || ""} 后续:${event.followUp || "无"} 状态:${event.status || "已记录"}`);
       const mentorLines = mentorNoteText(student);
@@ -3129,6 +3164,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function exportWorkbook() {
       const sheets = [
+        ["家长群发送版", parentShareRowsForExport()],
         ["每日一测总表", dailyScoreboardRowsForExport()],
         ["单科成绩总表", subjectScoreboardRowsForExport()],
         ["学生名单", studentRowsForExport()],
@@ -3159,6 +3195,42 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         return averageText(scores);
       })];
       return [header, ...rows, averageRow];
+    }
+
+    function parentShareRowsForExport() {
+      const names = homeworkNames();
+      const dates = parentShareDates();
+      const header = ["姓名", ...dates.flatMap(date => [
+        `${formatShortDate(date)}每日一测`,
+        ...names.map(name => `${formatShortDate(date)}${name}`)
+      ])];
+      const rows = state.students.map(student => [
+        maskStudentName(student.name),
+        ...dates.flatMap(date => {
+          const record = state.records?.[keyFor(date, student.name)];
+          const score = parseScore(record?.score);
+          return [
+            score === null ? "未测试" : score,
+            ...names.map((_, index) => record ? getHomeworkGrade(record, index) : "")
+          ];
+        })
+      ]);
+      return [header, ...rows];
+    }
+
+    function parentShareDates() {
+      return [...new Set(Object.values(state.records || {})
+        .filter(record => parseScore(record.score) !== null || homeworkNames().some((_, index) => getHomeworkGrade(record, index) !== NO_HOMEWORK))
+        .map(record => record.date)
+        .filter(Boolean))]
+        .sort();
+    }
+
+    function maskStudentName(name) {
+      const chars = Array.from(String(name || ""));
+      if (chars.length <= 1) return name || "";
+      if (chars.length === 2) return `${chars[0]}*`;
+      return `${chars[0]}*${chars.slice(2).join("")}`;
     }
 
     function dailyScoreDates() {
@@ -3257,7 +3329,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function dailyRowsForExport() {
       const names = homeworkNames();
       return [
-        ["日期", "序号", "姓名", "日测分数", ...names, "上课异常", "备注分析", "备注"],
+        ["日期", "序号", "姓名", "日测分数", "日测纠错", ...names, "上课异常", "备注分析", "备注"],
         ...Object.values(state.records)
           .sort(compareRecordsByDateAndStudent)
           .map(record => [
@@ -3265,6 +3337,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             studentNumber(record.name),
             record.name,
             record.score,
+            record.correction || "未检查",
             ...names.map((_, index) => getHomeworkGrade(record, index)),
             statusText(record.status),
             record.note ? analyzeNote(record.note).label : "",
