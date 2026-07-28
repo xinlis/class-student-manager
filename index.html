@@ -422,6 +422,27 @@
       border-radius: 8px;
       background: #fff;
     }
+    .history-fold {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .history-fold summary {
+      cursor: pointer;
+      padding: 10px 12px;
+      font-weight: 750;
+      color: var(--ink);
+      background: #f9fafb;
+      list-style-position: inside;
+    }
+    .history-fold .history-table {
+      margin-top: 0;
+      border: 0;
+      border-top: 1px solid var(--line);
+      border-radius: 0;
+    }
     .history-table {
       margin-top: 12px;
       max-height: 260px;
@@ -610,9 +631,9 @@
       <div class="actions">
         <button id="classNameBtn">班级名称</button>
         <button id="cloudSyncBtn">云同步</button>
-        <button id="exportJsonBtn">备份</button>
-        <button id="exportWorkbookBtn">导出数据</button>
-        <button id="importBtn">导入备份</button>
+        <button id="exportJsonBtn">备份JSON</button>
+        <button id="exportWorkbookBtn">导出Excel</button>
+        <button id="importBtn">恢复JSON</button>
         <input class="file-input" id="importFile" type="file" accept=".json,application/json">
       </div>
     </div>
@@ -913,49 +934,58 @@
           <div class="mentor-panel" id="mentorNotePanel"></div>
           <div class="ai-panel" id="aiAnalysisPanel"></div>
           <canvas id="scoreChart" width="900" height="300"></canvas>
-          <div class="history-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>日期</th>
-                  <th>日测分数</th>
-                  <th>作业</th>
-                  <th>上课异常</th>
-                  <th>备注</th>
-                </tr>
-              </thead>
-              <tbody id="historyBody"></tbody>
-            </table>
-          </div>
-          <div class="history-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>考试日期</th>
-                  <th>科目</th>
-                  <th>分数</th>
-                  <th>排名</th>
-                  <th>纠错情况</th>
-                  <th>备注</th>
-                </tr>
-              </thead>
-              <tbody id="subjectHistoryBody"></tbody>
-            </table>
-          </div>
-          <div class="history-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>日期</th>
-                  <th>类型</th>
-                  <th>内容</th>
-                  <th>后续动作</th>
-                  <th>状态</th>
-                </tr>
-              </thead>
-              <tbody id="eventHistoryBody"></tbody>
-            </table>
-          </div>
+          <details class="history-fold" open>
+            <summary>每日记录</summary>
+            <div class="history-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>日期</th>
+                    <th>日测分数</th>
+                    <th>作业</th>
+                    <th>上课异常</th>
+                    <th>备注</th>
+                  </tr>
+                </thead>
+                <tbody id="historyBody"></tbody>
+              </table>
+            </div>
+          </details>
+          <details class="history-fold">
+            <summary>单科记录</summary>
+            <div class="history-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>考试日期</th>
+                    <th>科目</th>
+                    <th>分数</th>
+                    <th>排名</th>
+                    <th>纠错情况</th>
+                    <th>备注</th>
+                  </tr>
+                </thead>
+                <tbody id="subjectHistoryBody"></tbody>
+              </table>
+            </div>
+          </details>
+          <details class="history-fold">
+            <summary>沟通记录</summary>
+            <div class="history-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>日期</th>
+                    <th>类型</th>
+                    <th>内容</th>
+                    <th>后续动作</th>
+                    <th>状态</th>
+                  </tr>
+                </thead>
+                <tbody id="eventHistoryBody"></tbody>
+              </table>
+            </div>
+          </details>
         </div>
       </div>
     </section>
@@ -3097,40 +3127,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       download(`${safeFileClassName()}每日管理备份-${today()}.json`, JSON.stringify(exportPayload, null, 2), "application/json");
     }
 
-    function exportCsv() {
-      const names = homeworkNames();
-      const headers = ["type", "date", "subject", "name", "score", "rank", ...names.map(name => `homework_${name}`), "status", "correction", "note"];
-      const dailyRows = Object.values(state.records)
-        .sort(compareRecordsByDateAndStudent)
-        .map(record => [
-          "每日",
-          record.date,
-          "",
-          record.name,
-          record.score,
-          "",
-          ...names.map((_, index) => getHomeworkGrade(record, index)),
-          (record.status || []).map(s => STATUS_LABELS[s] || s).join("|"),
-          "",
-          record.note
-        ].map(csvCell).join(","));
-      const subjectRows = Object.values(state.subjectTests || {})
-        .sort(compareSubjectTestsForExport)
-        .map(test => [
-          "单科",
-          test.date,
-          test.subject,
-          test.name,
-          test.score,
-          test.rank,
-          ...names.map(() => ""),
-          "",
-          test.correction,
-          test.note
-        ].map(csvCell).join(","));
-      download(`${safeFileClassName()}每日与单科记录-${today()}.csv`, [headers.join(","), ...dailyRows, ...subjectRows].join("\n"), "text/csv;charset=utf-8");
-    }
-
     function exportWorkbook() {
       const sheets = [
         ["每日一测总表", dailyScoreboardRowsForExport()],
@@ -3142,8 +3138,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         ["沟通事件", eventRowsForExport()],
         ["学生汇总", studentSummaryRowsForExport()]
       ];
-      const workbook = buildExcelXml(sheets);
-      download(`${safeFileClassName()}班级管理分表-${today()}.xls`, workbook, "application/vnd.ms-excel;charset=utf-8");
+      const workbook = buildXlsxWorkbook(sheets);
+      download(`${safeFileClassName()}班级管理分表-${today()}.xlsx`, workbook, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     }
 
     function dailyScoreboardRowsForExport() {
@@ -3411,87 +3407,263 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return (statuses || []).map(status => STATUS_LABELS[status] || status).join("、");
     }
 
-    function buildExcelXml(sheets) {
-      const exportedAt = formatDateTime(new Date().toISOString());
-      const worksheets = sheets.map(([name, rows]) => {
-        const header = rows[0] || [];
-        const columnCount = Math.max(1, header.length);
-        const dataRows = rows.slice(1);
-        const columns = header.map(title => `<Column ss:Width="${columnWidthFor(title)}"/>`).join("");
-        const title = `${classNameText()}${name}`;
-        const meta = `导出时间：${exportedAt}　学生人数：${state.students.length}`;
-        return `
-        <Worksheet ss:Name="${xmlAttr(name)}">
-          <Table ss:ExpandedColumnCount="${columnCount}" ss:ExpandedRowCount="${dataRows.length + 4}" x:FullColumns="1" x:FullRows="1">
-            ${columns}
-            <Row ss:Height="28">
-              <Cell ss:StyleID="Title" ss:MergeAcross="${Math.max(0, columnCount - 1)}"><Data ss:Type="String">${xmlText(title)}</Data></Cell>
-            </Row>
-            <Row ss:Height="22">
-              <Cell ss:StyleID="Meta" ss:MergeAcross="${Math.max(0, columnCount - 1)}"><Data ss:Type="String">${xmlText(meta)}</Data></Cell>
-            </Row>
-            <Row ss:Height="8"></Row>
-            <Row ss:Height="24">${header.map(cell => excelCellXml(cell, "Header")).join("")}</Row>
-            ${dataRows.map(row => `
-              <Row>${row.map((cell, index) => excelCellXml(cell, styleForColumn(header[index]))).join("")}</Row>
-            `).join("")}
-          </Table>
-          <AutoFilter x:Range="R4C1:R${dataRows.length + 4}C${columnCount}" xmlns="urn:schemas-microsoft-com:office:excel"></AutoFilter>
-          <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
-            <FreezePanes/>
-            <FrozenNoSplit/>
-            <SplitHorizontal>4</SplitHorizontal>
-            <TopRowBottomPane>4</TopRowBottomPane>
-            <ActivePane>2</ActivePane>
-            <Panes><Pane><Number>3</Number></Pane><Pane><Number>2</Number><ActiveRow>4</ActiveRow></Pane></Panes>
-          </WorksheetOptions>
-        </Worksheet>
-      `;
-      }).join("");
-      return `<?xml version="1.0"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:o="urn:schemas-microsoft-com:office:office"
- xmlns:x="urn:schemas-microsoft-com:office:excel"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:html="http://www.w3.org/TR/REC-html40">
- <Styles>
-  <Style ss:ID="Default" ss:Name="Normal">
-    <Alignment ss:Vertical="Center"/>
-    <Borders>
-      <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
-    </Borders>
-    <Font ss:FontName="Microsoft YaHei" x:CharSet="134" ss:Size="10" ss:Color="#1D2430"/>
-  </Style>
-  <Style ss:ID="Title">
-    <Alignment ss:Vertical="Center"/>
-    <Font ss:FontName="Microsoft YaHei" x:CharSet="134" ss:Size="16" ss:Bold="1" ss:Color="#111827"/>
-  </Style>
-  <Style ss:ID="Meta">
-    <Alignment ss:Vertical="Center"/>
-    <Font ss:FontName="Microsoft YaHei" x:CharSet="134" ss:Size="9" ss:Color="#6B7280"/>
-  </Style>
-  <Style ss:ID="Header">
-    <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
-    <Borders>
-      <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
-      <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
-      <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
-      <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
-    </Borders>
-    <Font ss:FontName="Microsoft YaHei" x:CharSet="134" ss:Size="10" ss:Bold="1" ss:Color="#111827"/>
-    <Interior ss:Color="#EEF2FF" ss:Pattern="Solid"/>
-  </Style>
-  <Style ss:ID="Center">
-    <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
-  </Style>
-  <Style ss:ID="Wrap">
-    <Alignment ss:Vertical="Top" ss:WrapText="1"/>
-  </Style>
- </Styles>
- ${worksheets}
-</Workbook>`;
+    function buildXlsxWorkbook(sheets) {
+      const safeSheets = uniqueSheetNames(sheets);
+      const files = {
+        "[Content_Types].xml": xlsxContentTypesXml(safeSheets),
+        "_rels/.rels": xlsxRootRelsXml(),
+        "xl/workbook.xml": xlsxWorkbookXml(safeSheets),
+        "xl/_rels/workbook.xml.rels": xlsxWorkbookRelsXml(safeSheets),
+        "xl/styles.xml": xlsxStylesXml()
+      };
+      safeSheets.forEach((sheet, index) => {
+        files[`xl/worksheets/sheet${index + 1}.xml`] = xlsxWorksheetXml(sheet.name, sheet.rows);
+      });
+      return zipFiles(files);
     }
+
+    function uniqueSheetNames(sheets) {
+      const used = new Set();
+      return sheets.map(([name, rows]) => {
+        const base = String(name || "Sheet")
+          .replace(/[\\/?*:[\]]/g, "")
+          .slice(0, 31) || "Sheet";
+        let safeName = base;
+        let suffix = 2;
+        while (used.has(safeName)) {
+          const tail = `_${suffix}`;
+          safeName = `${base.slice(0, 31 - tail.length)}${tail}`;
+          suffix += 1;
+        }
+        used.add(safeName);
+        return { name: safeName, rows };
+      });
+    }
+
+    function xlsxContentTypesXml(sheets) {
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+  ${sheets.map((_, index) => `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("\n  ")}
+</Types>`;
+    }
+
+    function xlsxRootRelsXml() {
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+    }
+
+    function xlsxWorkbookXml(sheets) {
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    ${sheets.map((sheet, index) => `<sheet name="${xmlAttr(sheet.name)}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`).join("\n    ")}
+  </sheets>
+</workbook>`;
+    }
+
+    function xlsxWorkbookRelsXml(sheets) {
+      const worksheetRels = sheets.map((_, index) =>
+        `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`
+      ).join("\n  ");
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  ${worksheetRels}
+  <Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+    }
+
+    function xlsxStylesXml() {
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="4">
+    <font><sz val="10"/><color rgb="FF1D2430"/><name val="Microsoft YaHei"/></font>
+    <font><b/><sz val="16"/><color rgb="FF111827"/><name val="Microsoft YaHei"/></font>
+    <font><sz val="9"/><color rgb="FF6B7280"/><name val="Microsoft YaHei"/></font>
+    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Microsoft YaHei"/></font>
+  </fonts>
+  <fills count="3">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEEF2FF"/><bgColor indexed="64"/></patternFill></fill>
+  </fills>
+  <borders count="2">
+    <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border>
+      <left style="thin"><color rgb="FFE5E7EB"/></left>
+      <right style="thin"><color rgb="FFE5E7EB"/></right>
+      <top style="thin"><color rgb="FFE5E7EB"/></top>
+      <bottom style="thin"><color rgb="FFE5E7EB"/></bottom>
+      <diagonal/>
+    </border>
+  </borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="6">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="top" wrapText="1"/></xf>
+  </cellXfs>
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+    }
+
+    function xlsxWorksheetXml(name, rows) {
+      const exportedAt = formatDateTime(new Date().toISOString());
+      const header = rows[0] || [];
+      const dataRows = rows.slice(1);
+      const columnCount = Math.max(1, header.length);
+      const allRows = [
+        [{ value: `${classNameText()}${name}`, style: 1 }],
+        [{ value: `导出时间：${exportedAt}　学生人数：${state.students.length}`, style: 2 }],
+        [],
+        header.map(value => ({ value, style: 3 })),
+        ...dataRows.map(row => row.map((value, index) => ({ value, style: xlsxStyleForColumn(header[index]) })))
+      ];
+      const lastColumn = columnName(columnCount);
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetViews><sheetView workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+  <cols>${header.map((title, index) => `<col min="${index + 1}" max="${index + 1}" width="${Math.max(6, Math.round(columnWidthFor(title) / 7))}" customWidth="1"/>`).join("")}</cols>
+  <sheetData>
+    ${allRows.map((row, rowIndex) => xlsxRowXml(row, rowIndex + 1)).join("\n    ")}
+  </sheetData>
+  <mergeCells count="2">
+    <mergeCell ref="A1:${lastColumn}1"/>
+    <mergeCell ref="A2:${lastColumn}2"/>
+  </mergeCells>
+  <autoFilter ref="A4:${lastColumn}${Math.max(4, allRows.length)}"/>
+</worksheet>`;
+    }
+
+    function xlsxStyleForColumn(header) {
+      const style = styleForColumn(header);
+      if (style === "Wrap") return 5;
+      if (style === "Center") return 4;
+      return 0;
+    }
+
+    function xlsxRowXml(row, rowNumber) {
+      const height = rowNumber === 1 ? ` ht="28" customHeight="1"` : rowNumber === 2 || rowNumber === 4 ? ` ht="24" customHeight="1"` : "";
+      const cells = row.map((cell, index) => xlsxCellXml(cell.value, rowNumber, index + 1, cell.style)).join("");
+      return `<row r="${rowNumber}"${height}>${cells}</row>`;
+    }
+
+    function xlsxCellXml(value, rowNumber, columnNumber, style = 0) {
+      const ref = `${columnName(columnNumber)}${rowNumber}`;
+      const normalized = value ?? "";
+      const isNumber = typeof normalized === "number" && Number.isFinite(normalized);
+      const styleAttr = style ? ` s="${style}"` : "";
+      if (isNumber) return `<c r="${ref}"${styleAttr}><v>${normalized}</v></c>`;
+      return `<c r="${ref}"${styleAttr} t="inlineStr"><is><t>${xmlText(normalized)}</t></is></c>`;
+    }
+
+    function columnName(number) {
+      let name = "";
+      let current = number;
+      while (current > 0) {
+        const remainder = (current - 1) % 26;
+        name = String.fromCharCode(65 + remainder) + name;
+        current = Math.floor((current - 1) / 26);
+      }
+      return name || "A";
+    }
+
+    function zipFiles(files) {
+      const encoder = new TextEncoder();
+      const chunks = [];
+      const central = [];
+      let offset = 0;
+      Object.entries(files).forEach(([name, content]) => {
+        const nameBytes = encoder.encode(name);
+        const dataBytes = content instanceof Uint8Array ? content : encoder.encode(content);
+        const crc = crc32(dataBytes);
+        const localHeader = new Uint8Array(30 + nameBytes.length);
+        const localView = new DataView(localHeader.buffer);
+        localView.setUint32(0, 0x04034b50, true);
+        localView.setUint16(4, 20, true);
+        localView.setUint16(6, 0, true);
+        localView.setUint16(8, 0, true);
+        localView.setUint16(10, 0, true);
+        localView.setUint16(12, 0, true);
+        localView.setUint32(14, crc, true);
+        localView.setUint32(18, dataBytes.length, true);
+        localView.setUint32(22, dataBytes.length, true);
+        localView.setUint16(26, nameBytes.length, true);
+        localHeader.set(nameBytes, 30);
+        chunks.push(localHeader, dataBytes);
+        central.push({ nameBytes, crc, size: dataBytes.length, offset });
+        offset += localHeader.length + dataBytes.length;
+      });
+      const centralOffset = offset;
+      central.forEach(file => {
+        const header = new Uint8Array(46 + file.nameBytes.length);
+        const view = new DataView(header.buffer);
+        view.setUint32(0, 0x02014b50, true);
+        view.setUint16(4, 20, true);
+        view.setUint16(6, 20, true);
+        view.setUint16(8, 0, true);
+        view.setUint16(10, 0, true);
+        view.setUint16(12, 0, true);
+        view.setUint16(14, 0, true);
+        view.setUint32(16, file.crc, true);
+        view.setUint32(20, file.size, true);
+        view.setUint32(24, file.size, true);
+        view.setUint16(28, file.nameBytes.length, true);
+        view.setUint32(42, file.offset, true);
+        header.set(file.nameBytes, 46);
+        chunks.push(header);
+        offset += header.length;
+      });
+      const centralSize = offset - centralOffset;
+      const end = new Uint8Array(22);
+      const endView = new DataView(end.buffer);
+      endView.setUint32(0, 0x06054b50, true);
+      endView.setUint16(8, central.length, true);
+      endView.setUint16(10, central.length, true);
+      endView.setUint32(12, centralSize, true);
+      endView.setUint32(16, centralOffset, true);
+      chunks.push(end);
+      return concatUint8Arrays(chunks);
+    }
+
+    function concatUint8Arrays(chunks) {
+      const length = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+      const result = new Uint8Array(length);
+      let offset = 0;
+      chunks.forEach(chunk => {
+        result.set(chunk, offset);
+        offset += chunk.length;
+      });
+      return result;
+    }
+
+    function crc32(bytes) {
+      let crc = 0xffffffff;
+      for (let i = 0; i < bytes.length; i += 1) {
+        crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ bytes[i]) & 0xff];
+      }
+      return (crc ^ 0xffffffff) >>> 0;
+    }
+
+    const CRC_TABLE = (() => {
+      const table = new Uint32Array(256);
+      for (let i = 0; i < 256; i += 1) {
+        let c = i;
+        for (let k = 0; k < 8; k += 1) {
+          c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+        }
+        table[i] = c >>> 0;
+      }
+      return table;
+    })();
 
     function columnWidthFor(header) {
       const text = String(header || "");
@@ -3516,13 +3688,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return "";
     }
 
-    function excelCellXml(value, styleId = "") {
-      const isNumber = typeof value === "number" && Number.isFinite(value);
-      const type = isNumber ? "Number" : "String";
-      const style = styleId ? ` ss:StyleID="${styleId}"` : "";
-      return `<Cell${style}><Data ss:Type="${type}">${xmlText(value)}</Data></Cell>`;
-    }
-
     function xmlText(value) {
       return String(value ?? "")
         .replaceAll("&", "&amp;")
@@ -3532,11 +3697,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function xmlAttr(value) {
       return xmlText(value).replaceAll('"', "&quot;");
-    }
-
-    function csvCell(value) {
-      const text = String(value ?? "");
-      return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
     }
 
     function download(filename, content, type) {
@@ -3677,7 +3837,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("classNameBtn").addEventListener("click", editClassName);
     $("cloudSyncBtn").addEventListener("click", openCloudSyncModal);
     $("exportJsonBtn").addEventListener("click", exportJson);
-    if ($("exportCsvBtn")) $("exportCsvBtn").addEventListener("click", exportCsv);
     $("exportWorkbookBtn").addEventListener("click", exportWorkbook);
     if ($("restoreBackupBtn")) $("restoreBackupBtn").addEventListener("click", openBackupModal);
     if ($("restoreSelectedBackupBtn")) $("restoreSelectedBackupBtn").addEventListener("click", restoreSelectedBackup);
