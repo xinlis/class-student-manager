@@ -643,7 +643,7 @@
     <div class="tabs">
       <button class="tab active" data-view="entryView">每日录入</button>
       <button class="tab" data-view="subjectView">单科测试</button>
-      <button class="tab" data-view="eventView">沟通事件</button>
+      <button class="tab" data-view="eventView">正式沟通</button>
       <button class="tab" data-view="summaryView">今日异常</button>
       <button class="tab" data-view="profileView">学生画像</button>
       <button class="tab" data-view="rosterView">学生名单</button>
@@ -696,7 +696,7 @@
               </div>
               <div class="roster-help-item">
                 <strong>清空重建</strong>
-                会清空旧名单、每日记录、单科成绩和沟通事件，适合开新班。
+                会清空旧名单、每日记录、单科成绩和正式沟通记录，适合开新班。
               </div>
               <div class="roster-help-item">
                 <strong>合班建议</strong>
@@ -758,7 +758,7 @@
                 <th id="homeworkHeader0">讲义</th>
                 <th id="homeworkHeader1">宝典</th>
                 <th>上课异常</th>
-                <th>备注</th>
+                <th>当天备注</th>
               </tr>
             </thead>
             <tbody id="entryBody"></tbody>
@@ -819,8 +819,8 @@
       <div class="panel">
         <div class="panel-head">
           <div>
-            <h2 class="panel-title">每日沟通事件</h2>
-            <div class="sub">记录请假、家长沟通、学生谈话、后续跟进等正式事件；它区别于每日录入里的临时备注。</div>
+            <h2 class="panel-title">正式沟通记录</h2>
+            <div class="sub">只记录和学生、家长发生过的正式沟通；每日录入备注只写当天现象，避免重复记录。</div>
           </div>
           <div class="toolbar">
             <label>事件日期 <input id="eventDateInput" type="date"></label>
@@ -852,9 +852,9 @@
             </label>
           </div>
           <div class="toolbar" style="margin-top:10px; align-items:flex-start">
-            <textarea id="eventContentInput" class="event-content-input" placeholder="事件内容，例如：家长来电请假，上午身体不适；已提醒补看回放。"></textarea>
-            <input id="eventFollowInput" class="event-follow-input" placeholder="后续动作，可选">
-            <button id="addEventBtn" class="primary">添加事件</button>
+            <textarea id="eventContentInput" class="event-content-input" placeholder="正式沟通内容，例如：电话沟通母亲，反馈近期上课犯困和日测低分；家长表示晚上会收手机。"></textarea>
+            <input id="eventFollowInput" class="event-follow-input" placeholder="跟进动作，可选，例如：3 天后看午休和纠错">
+            <button id="addEventBtn" class="primary">添加沟通</button>
             <button id="cancelEventEditBtn" class="hidden">取消编辑</button>
           </div>
         </div>
@@ -866,7 +866,7 @@
                 <th>序号</th>
                 <th>姓名</th>
                 <th>类型</th>
-                <th>内容</th>
+                <th>沟通内容</th>
                 <th>后续动作</th>
                 <th>状态</th>
                 <th>操作</th>
@@ -901,8 +901,8 @@
                   <th>日测分数</th>
                   <th>作业</th>
                   <th>上课异常</th>
-                  <th>备注分析</th>
-                  <th>备注</th>
+                  <th>当天备注分析</th>
+                  <th>当天备注</th>
                   <th>操作</th>
                 </tr>
               </thead>
@@ -933,6 +933,7 @@
           <div class="sub" id="profileSub"></div>
           <div class="profile-kpis" id="profileKpis"></div>
           <div class="mentor-panel" id="mentorNotePanel"></div>
+          <div class="ai-panel" id="recentEventPanel"></div>
           <div class="ai-panel" id="aiAnalysisPanel"></div>
           <canvas id="scoreChart" width="900" height="300"></canvas>
           <details class="history-fold" open>
@@ -946,7 +947,7 @@
                     <th>日测纠错</th>
                     <th>作业</th>
                     <th>上课异常</th>
-                    <th>备注</th>
+                    <th>当天备注</th>
                   </tr>
                 </thead>
                 <tbody id="historyBody"></tbody>
@@ -1068,7 +1069,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
   <div class="modal hidden" id="studentEditModal">
     <div class="modal-box">
       <h3>编辑学生信息</h3>
-      <div class="sub">修改姓名会同步迁移该学生的每日记录、单科成绩和沟通事件。</div>
+      <div class="sub">修改姓名会同步迁移该学生的每日记录、单科成绩和正式沟通记录。</div>
       <div class="mentor-grid">
         <label>姓名 <input id="editStudentNameInput" type="text"></label>
         <label>性别 <input id="editStudentGenderInput" type="text"></label>
@@ -1850,7 +1851,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           </td>
           <td>
             <div class="note-cell">
-              <input class="note-input" data-name="${student.name}" value="${escapeHtml(record.note || "")}" placeholder="可选">
+              <input class="note-input" data-name="${student.name}" value="${escapeHtml(record.note || "")}" placeholder="当天现象，可选">
               ${noteBadgeHtml(record.note)}
             </div>
           </td>
@@ -2033,7 +2034,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             <button class="small danger event-delete-btn" data-id="${escapeHtml(event.id)}">删除</button>
           </td>
         </tr>
-      `).join("") || `<tr><td colspan="8" class="empty">暂无沟通事件</td></tr>`;
+      `).join("") || `<tr><td colspan="8" class="empty">暂无正式沟通记录</td></tr>`;
       document.querySelectorAll(".event-edit-btn").forEach(btn => {
         btn.addEventListener("click", () => startEditEvent(btn.dataset.id));
       });
@@ -2107,7 +2108,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const wasEditing = Boolean(editingEventId);
       resetEventForm();
       renderEvents();
-      showToast(wasEditing ? "沟通事件已修改" : "沟通事件已记录");
+      showToast(wasEditing ? "沟通记录已修改" : "沟通记录已保存");
     }
 
     function startEditEvent(id) {
@@ -2133,12 +2134,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function deleteEvent(id) {
       const event = (state.events || []).find(item => item.id === id);
       if (!event) return;
-      if (!confirm("确定删除这条沟通事件吗？删除后可通过之前的备份找回。")) return;
+      if (!confirm("确定删除这条沟通记录吗？删除后可通过之前的备份找回。")) return;
       state.events = (state.events || []).filter(item => item.id !== id);
       saveState();
       if (editingEventId === id) resetEventForm();
       renderEvents();
-      showToast("沟通事件已删除");
+      showToast("沟通记录已删除");
     }
 
     function resetEventForm() {
@@ -2146,7 +2147,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("eventContentInput").value = "";
       $("eventFollowInput").value = "";
       $("eventStatusSelect").value = "已记录";
-      $("addEventBtn").textContent = "添加事件";
+      $("addEventBtn").textContent = "添加沟通";
       $("cancelEventEditBtn").classList.add("hidden");
     }
 
@@ -2223,14 +2224,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function renderSummary(date) {
       const records = getDateRecords(date);
-      $("summaryDateLabel").textContent = `${date}，显示作业、上课状态、备注分析中的异常学生。`;
+      $("summaryDateLabel").textContent = `${date}，显示作业、上课状态、当天备注分析中的异常学生。`;
       const buckets = [
         ["作业未达 A", records.filter(isHomeworkIssue).map(r => `${r.name}：${homeworkIssueText(r)}`)],
         ["迟到", records.filter(r => r.status?.includes("late")).map(r => r.name)],
         ["走神", records.filter(r => r.status?.includes("distracted")).map(r => r.name)],
         ["打盹/睡觉", records.filter(r => r.status?.includes("sleep")).map(r => r.name)],
         ["请假", records.filter(r => r.status?.includes("absent")).map(r => r.name)],
-        ["备注", records.filter(r => r.note?.trim()).map(r => {
+        ["当天备注", records.filter(r => r.note?.trim()).map(r => {
           const analysis = analyzeNote(r.note);
           return `${r.name}：${r.note.trim()}（${analysis.label}）`;
         })]
@@ -2239,7 +2240,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         <div class="summary-box">
           <h3>${title} <span class="muted">(${list.length})</span></h3>
           <div class="summary-list">
-            ${list.length ? list.map(item => `<span class="badge ${title === "备注" ? "" : "warn"}">${escapeHtml(item)}</span>`).join("") : `<span class="empty">暂无</span>`}
+            ${list.length ? list.map(item => `<span class="badge ${title === "当天备注" ? "" : "warn"}">${escapeHtml(item)}</span>`).join("") : `<span class="empty">暂无</span>`}
           </div>
         </div>
       `).join("");
@@ -2277,7 +2278,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         "走神": records.filter(r => r.status?.includes("distracted")).map(r => r.name),
         "打盹/睡觉": records.filter(r => r.status?.includes("sleep")).map(r => r.name),
         "请假": records.filter(r => r.status?.includes("absent")).map(r => r.name),
-        "备注": records.filter(r => r.note?.trim()).map(r => {
+        "当天备注": records.filter(r => r.note?.trim()).map(r => {
           const analysis = analyzeNote(r.note);
           return `${r.name}：${r.note.trim()}（${analysis.label}）`;
         })
@@ -2301,6 +2302,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("profileSub").textContent = `${student.gender || "未知性别"} · ${student.school || "未填写学校"} · ${student.phone || "未填写电话"}${student.source_class ? ` · 来源：${student.source_class}` : ""}`;
       renderProfileKpis(records, subjectTests, events);
       renderMentorNote(student);
+      renderRecentEvents(events);
       renderAiAnalysis(student, records, subjectTests, events);
       drawChart(records);
       renderHistory(records);
@@ -2461,8 +2463,38 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         statHtml("未纠错", correctionStats.uncorrected),
         statHtml("单科考试次数", subjectTests.filter(test => parseScore(test.score) !== null).length),
         statHtml("单科均分", subjectAvg),
-        statHtml("沟通事件", events.length)
+        statHtml("正式沟通", events.length)
       ].join("") + `<div class="stat" style="grid-column:1/-1"><div class="label">作业累计（仅统计有作业日期，共 ${homeworkDays} 天）</div><div style="margin-top:6px;font-weight:700">${gradeCounts}</div></div>`;
+    }
+
+    function renderRecentEvents(events) {
+      const recent = [...events]
+        .sort((a, b) => `${b.date}${b.createdAt || ""}`.localeCompare(`${a.date}${a.createdAt || ""}`))
+        .slice(0, 3);
+      $("recentEventPanel").innerHTML = `
+        <div class="ai-panel-head">
+          <div>
+            <h3 class="ai-panel-title">最近沟通</h3>
+            <div class="sub">自动汇总正式沟通记录；日常小现象仍放在每日录入备注里。</div>
+          </div>
+          <button id="jumpEventBtn" class="small">去记录沟通</button>
+        </div>
+        <div class="summary-list">
+          ${recent.length ? recent.map(event => `
+            <span class="badge ${event.status === "需跟进" ? "warn" : event.status === "已完成" ? "ok" : "neutral"}">
+              ${escapeHtml(event.date)} · ${escapeHtml(event.type)} · ${escapeHtml(shortText(event.content, 34))}
+              ${event.followUp ? ` · 跟进：${escapeHtml(shortText(event.followUp, 18))}` : ""}
+            </span>
+          `).join("") : `<span class="empty">暂无正式沟通记录</span>`}
+        </div>
+      `;
+      $("jumpEventBtn").addEventListener("click", () => setView("eventView"));
+    }
+
+    function shortText(text, maxLength = 32) {
+      const chars = Array.from(String(text || "").trim());
+      if (chars.length <= maxLength) return chars.join("");
+      return `${chars.slice(0, maxLength).join("")}...`;
     }
 
     function renderHistory(records) {
@@ -2485,7 +2517,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         <div class="ai-panel-head">
           <div>
             <h3 class="ai-panel-title">智能分析</h3>
-            <div class="sub">基于当前日期范围内的日测、单科、作业、课堂状态和沟通记录生成。</div>
+            <div class="sub">基于当前日期范围内的日测、单科、作业、课堂状态、当天备注和正式沟通生成。</div>
           </div>
           <button id="copyAiPromptBtn" class="small primary">复制给 AI 深度分析</button>
         </div>
@@ -2528,6 +2560,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const correctionStats = dailyCorrectionStats(records);
       const noteStats = noteKeywordStats(records, subjectTests, events);
       const eventFollowCount = events.filter(event => event.status === "需跟进").length;
+      const recentEvent = [...events].sort((a, b) => `${b.date}${b.createdAt || ""}`.localeCompare(`${a.date}${a.createdAt || ""}`))[0];
 
       const judgements = [];
       if (scores.length) {
@@ -2541,7 +2574,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }
       if (student.source_class) judgements.push(`该生来源班级为 ${student.source_class}，合班后建议先按来源班级建立熟悉度。`);
       if (mentorText) judgements.push("已填写班主任长期备注，沟通和冲刺安排应优先参考该备注。");
-      if (eventFollowCount) judgements.push(`有 ${eventFollowCount} 条沟通事件仍需跟进。`);
+      if (eventFollowCount) judgements.push(`有 ${eventFollowCount} 条正式沟通记录仍需跟进。`);
+      if (recentEvent) judgements.push(`最近一次正式沟通：${recentEvent.date} ${recentEvent.type}，状态为${recentEvent.status || "已记录"}。`);
 
       const weaknesses = [];
       if (lowDailyCount) weaknesses.push(`日测低于 70 分共 ${lowDailyCount} 次，需要关注基础掌握和当日消化情况。`);
@@ -2569,7 +2603,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (mentorNote.sprint) actions.push(`冲刺策略参考：${mentorNote.sprint}`);
       if (mentorNote.family) actions.push(`家校沟通参考：${mentorNote.family}`);
       if (lowDailyCount || scoreTrend.includes("下降")) actions.push("建议和学生做一次 5 分钟复盘：低分题型、失分原因、当天补救动作。");
-      if (eventFollowCount) actions.push("先处理待跟进沟通事件，避免问题记录后没有闭环。");
+      if (eventFollowCount) actions.push("先处理待跟进正式沟通记录，避免问题记录后没有闭环。");
       if (!actions.length) actions.push("保持当前记录节奏，每周复盘一次成绩波动和作业质量即可。");
 
       return {
@@ -2663,7 +2697,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function buildAiPrompt(student, records, subjectTests, events, analysis) {
-      const dailyLines = records.map(record => `${record.date} 日测:${record.score || "未填"} 纠错:${record.correction || "未检查"} 作业:${homeworkSummaryText(record)} 状态:${statusText(record.status) || "正常"} 备注:${record.note || "无"}`);
+      const dailyLines = records.map(record => `${record.date} 日测:${record.score || "未填"} 纠错:${record.correction || "未检查"} 作业:${homeworkSummaryText(record)} 状态:${statusText(record.status) || "正常"} 当天备注:${record.note || "无"}`);
       const subjectLines = subjectTests.map(test => `${test.date} ${test.subject} 分数:${test.score || "未填"} 排名:${test.rank || "无"} 纠错:${test.correction || "无"} 备注:${test.note || "无"}`);
       const eventLines = events.map(event => `${event.date} ${event.type} ${event.content || ""} 后续:${event.followUp || "无"} 状态:${event.status || "已记录"}`);
       const mentorLines = mentorNoteText(student);
@@ -2684,7 +2718,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         `单科测试：`,
         subjectLines.length ? subjectLines.join("\n") : "暂无",
         ``,
-        `沟通事件：`,
+        `正式沟通记录：`,
         eventLines.length ? eventLines.join("\n") : "暂无"
       ].join("\n");
     }
@@ -2747,7 +2781,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <td>${escapeHtml(event.followUp || "")}</td>
           <td><span class="badge ${event.status === "需跟进" ? "warn" : event.status === "已完成" ? "ok" : "neutral"}">${escapeHtml(event.status)}</span></td>
         </tr>
-      `).join("") || `<tr><td colspan="5" class="empty">暂无沟通事件</td></tr>`;
+      `).join("") || `<tr><td colspan="5" class="empty">暂无正式沟通记录</td></tr>`;
     }
 
     function splitRosterLine(line) {
@@ -2924,7 +2958,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function importRosterRows(rows, mode) {
       if (!rows.length) return 0;
       if (mode === "replace") {
-        if (state.students.length && !confirm("清空当前名单后重建会同时清空每日记录、单科成绩和沟通事件，确认继续？")) return -1;
+        if (state.students.length && !confirm("清空当前名单后重建会同时清空每日记录、单科成绩和正式沟通记录，确认继续？")) return -1;
         state.students = [];
         state.records = {};
         state.subjectTests = {};
@@ -2963,7 +2997,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function deleteStudentFromRoster(index) {
       const student = state.students[index];
       if (!student) return;
-      const message = `确定删除 ${student.name} 吗？这会同时删除该学生的每日记录、单科成绩和沟通事件。`;
+      const message = `确定删除 ${student.name} 吗？这会同时删除该学生的每日记录、单科成绩和正式沟通记录。`;
       if (!confirm(message)) return;
       state.students.splice(index, 1);
       Object.keys(state.records || {}).forEach(key => {
@@ -3171,7 +3205,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         ["每日录入明细", dailyRowsForExport()],
         ["每日异常汇总", abnormalRowsForExport()],
         ["单科测试", subjectRowsForExport()],
-        ["沟通事件", eventRowsForExport()],
+        ["正式沟通记录", eventRowsForExport()],
         ["学生汇总", studentSummaryRowsForExport()]
       ];
       const workbook = buildXlsxWorkbook(sheets);
@@ -3329,7 +3363,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function dailyRowsForExport() {
       const names = homeworkNames();
       return [
-        ["日期", "序号", "姓名", "日测分数", "日测纠错", ...names, "上课异常", "备注分析", "备注"],
+        ["日期", "序号", "姓名", "日测分数", "日测纠错", ...names, "上课异常", "当天备注分析", "当天备注"],
         ...Object.values(state.records)
           .sort(compareRecordsByDateAndStudent)
           .map(record => [
@@ -3347,7 +3381,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function abnormalRowsForExport() {
-      const rows = [["日期", "序号", "姓名", "异常类型", "具体内容", "备注分析", "备注"]];
+      const rows = [["日期", "序号", "姓名", "异常类型", "具体内容", "当天备注分析", "当天备注"]];
       Object.values(state.records)
         .sort(compareRecordsByDateAndStudent)
         .forEach(record => {
@@ -3359,7 +3393,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             rows.push([record.date, studentNumber(record.name), record.name, "上课异常", STATUS_LABELS[status] || status, noteAnalysis, record.note]);
           });
           if (analyzeNote(record.note).type === "bad") {
-            rows.push([record.date, studentNumber(record.name), record.name, "备注", "需关注", noteAnalysis, record.note]);
+            rows.push([record.date, studentNumber(record.name), record.name, "当天备注", "需关注", noteAnalysis, record.note]);
           }
         });
       return rows;
@@ -3434,7 +3468,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const header = [
         "序号", "姓名", "来源班级", "标签", "日测次数", "日测平均分", "单科考试次数", "单科均分",
         ...homeworkHeaders,
-        "迟到次数", "走神次数", "打盹次数", "请假次数", "需关注备注次数", "沟通事件次数", "待跟进事件"
+        "迟到次数", "走神次数", "打盹次数", "请假次数", "需关注当天备注次数", "正式沟通次数", "待跟进沟通"
       ];
       const rows = state.students.map((student, index) => {
         const daily = Object.values(state.records).filter(record => record.name === student.name);
