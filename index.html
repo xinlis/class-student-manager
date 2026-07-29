@@ -899,7 +899,7 @@
         <div class="panel-head">
           <div>
             <h2 class="panel-title">随手记</h2>
-            <div class="sub">随时记录学生现场状态；需要家校或学生谈话时，可转为沟通跟进。</div>
+            <div class="sub">只管写发生了什么；系统会自动识别迟到、纪律、作业、情绪、表扬和沟通等类型。</div>
           </div>
           <div class="toolbar">
             <label>日期 <input id="eventDateInput" type="date"></label>
@@ -919,28 +919,10 @@
               <label>学生
                 <select id="inlineQuickStudentSelect"></select>
               </label>
-              <label>类型
-                <select id="inlineQuickTypeSelect">
-                  <option value="迟到">迟到</option>
-                  <option value="说话">说话</option>
-                  <option value="打盹">打盹</option>
-                  <option value="走神">走神</option>
-                  <option value="作业">作业</option>
-                  <option value="情绪">情绪</option>
-                  <option value="表扬">表扬</option>
-                  <option value="其他">其他</option>
-                </select>
-              </label>
-              <label>程度
-                <select id="inlineQuickLevelSelect">
-                  <option value="普通">普通</option>
-                  <option value="需关注">需关注</option>
-                </select>
-              </label>
               <label>时间 <input id="inlineQuickTimeInput" type="time"></label>
             </div>
             <div class="toolbar" style="margin-top:10px; align-items:flex-start">
-              <textarea id="inlineQuickContentInput" placeholder="一句话即可，例如：第 2 节说话，提醒后收敛；或电话沟通家长，反馈近期犯困。"></textarea>
+              <textarea id="inlineQuickContentInput" placeholder="直接写即可，例如：第 2 节说话提醒后收敛；上午迟到；电话沟通家长反馈近期犯困。"></textarea>
               <input id="eventFollowInput" class="event-follow-input hidden" placeholder="跟进动作，可选，例如：3 天后看午休和纠错">
               <label id="inlineEventStatusLabel" class="hidden">状态
                 <select id="inlineEventStatusSelect">
@@ -1102,24 +1084,6 @@
         <label>学生
           <select id="quickNoteStudentSelect"></select>
         </label>
-        <label>类型
-          <select id="quickNoteTypeSelect">
-            <option value="迟到">迟到</option>
-            <option value="说话">说话</option>
-            <option value="打盹">打盹</option>
-            <option value="走神">走神</option>
-            <option value="作业">作业</option>
-            <option value="情绪">情绪</option>
-            <option value="表扬">表扬</option>
-            <option value="其他">其他</option>
-          </select>
-        </label>
-        <label>重要程度
-          <select id="quickNoteLevelSelect">
-            <option value="普通">普通</option>
-            <option value="需关注">需关注</option>
-          </select>
-        </label>
       </div>
       <div class="quick-note-grid" style="grid-template-columns: 1fr 130px 120px">
         <label>内容
@@ -1246,7 +1210,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const DAILY_FULL_SCORE = 100;
     const DAILY_CORRECTION_OPTIONS = ["已纠错", "未纠错"];
     const DAILY_NO_CORRECTION = "不需纠错";
-    const QUICK_NOTE_TYPES = ["迟到", "说话", "打盹", "走神", "作业", "情绪", "表扬", "其他"];
+    const QUICK_NOTE_TYPES = ["家校沟通", "迟到", "睡眠状态", "课堂纪律", "作业纠错", "学习状态", "情绪状态", "表扬鼓励", "日常记录", "沟通跟进", "其他"];
     const QUICK_NOTE_LEVELS = ["普通", "需关注"];
     const DEFAULT_HOMEWORK_NAMES = ["讲义", "宝典"];
     const DEFAULT_CLASS_NAME = "VIP2 班";
@@ -2341,9 +2305,28 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const isEvent = $("inlineRecordModeSelect")?.value === "event";
       $("eventFollowInput")?.classList.toggle("hidden", !isEvent);
       $("inlineEventStatusLabel")?.classList.toggle("hidden", !isEvent);
-      $("inlineQuickLevelSelect")?.closest("label")?.classList.toggle("hidden", isEvent);
       $("inlineQuickTimeInput")?.closest("label")?.classList.toggle("hidden", isEvent);
       if ($("addInlineQuickNoteBtn")) $("addInlineQuickNoteBtn").textContent = isEvent ? "保存沟通" : "保存随手记";
+    }
+
+    function classifyRecordContent(content, mode = "quick") {
+      const text = String(content || "");
+      const rules = [
+        ["家校沟通", ["家长", "妈妈", "母亲", "爸爸", "父亲", "电话", "微信", "沟通", "反馈", "联系", "请假"]],
+        ["迟到", ["迟到", "晚到", "到班晚", "没按时", "踩点"]],
+        ["睡眠状态", ["打盹", "睡觉", "犯困", "困", "午休", "睡过", "睡不醒", "趴"]],
+        ["课堂纪律", ["说话", "讲话", "聊天", "纪律", "扰乱", "插话", "玩", "手机", "平板", "走神", "发呆", "不专注"]],
+        ["作业纠错", ["作业", "未交", "没交", "补交", "讲义", "宝典", "纠错", "错题", "订正"]],
+        ["学习状态", ["低分", "退步", "不会", "听不懂", "卡点", "薄弱", "测试", "成绩", "分数"]],
+        ["情绪状态", ["情绪", "哭", "焦虑", "烦", "压力", "低落", "崩", "不想学", "心态"]],
+        ["表扬鼓励", ["表扬", "进步", "主动", "认真", "积极", "优秀", "满分", "状态好", "很棒"]]
+      ];
+      const match = rules.find(([, words]) => words.some(word => text.includes(word)));
+      const type = match ? match[0] : (mode === "event" ? "沟通跟进" : "日常记录");
+      const attentionWords = ["需关注", "严重", "多次", "连续", "反复", "家长", "电话", "请假", "哭", "焦虑", "睡觉", "未交", "低分", "退步", "手机", "扰乱"];
+      const positiveWords = ["表扬", "进步", "主动", "认真", "积极", "优秀", "满分", "状态好", "很棒"];
+      const level = attentionWords.some(word => text.includes(word)) && !positiveWords.some(word => text.includes(word)) ? "需关注" : "普通";
+      return { type, level };
     }
 
     function getCommunicationTimeline(query) {
@@ -2375,10 +2358,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         showToast("请先填写事件内容");
         return;
       }
+      const classified = classifyRecordContent(content, "event");
       const eventData = {
         date: $("eventDateInput").value || today(),
         name: $("inlineQuickStudentSelect").value,
-        type: eventTypeFromQuickType($("inlineQuickTypeSelect").value),
+        type: classified.type,
         content,
         followUp: $("eventFollowInput").value.trim(),
         status: $("inlineEventStatusSelect").value,
@@ -2410,14 +2394,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       showToast(wasEditing ? "沟通记录已修改" : "沟通记录已保存");
     }
 
-    function eventTypeFromQuickType(type) {
-      if (type === "表扬") return "表扬鼓励";
-      if (type === "作业") return "学习反馈";
-      if (["迟到", "说话", "打盹", "走神"].includes(type)) return "纪律提醒";
-      if (type === "情绪") return "学生谈话";
-      return "其他";
-    }
-
     function addInlineQuickNote() {
       if ($("inlineRecordModeSelect").value === "event" || editingEventId) {
         addEvent();
@@ -2433,13 +2409,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         showToast("请写一句随手记内容");
         return;
       }
+      const classified = classifyRecordContent(content, "quick");
       state.quickNotes = [{
         id: `quick-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         date: $("eventDateInput").value || today(),
         time: $("inlineQuickTimeInput").value || currentTimeText(),
         name,
-        type: $("inlineQuickTypeSelect").value || "其他",
-        level: $("inlineQuickLevelSelect").value || "普通",
+        type: classified.type,
+        level: classified.level,
         content,
         createdAt: new Date().toISOString()
       }, ...(state.quickNotes || [])];
@@ -2461,7 +2438,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("inlineRecordModeSelect").value = "event";
       renderInlineQuickStudentOptions();
       $("inlineQuickStudentSelect").value = note.name || "";
-      $("inlineQuickTypeSelect").value = note.type || "其他";
       $("inlineQuickContentInput").value = `${note.time || ""} ${note.type || "随手记"}：${note.content || ""}`.trim();
       $("eventFollowInput").value = note.level === "需关注" ? "结合后续表现跟进" : "";
       $("inlineEventStatusSelect").value = note.level === "需关注" ? "需跟进" : "已记录";
@@ -2483,7 +2459,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("inlineRecordModeSelect").value = "event";
       renderInlineQuickStudentOptions();
       $("inlineQuickStudentSelect").value = event.name || "";
-      $("inlineQuickTypeSelect").value = quickTypeFromEventType(event.type || "其他");
       $("inlineQuickContentInput").value = event.content || "";
       $("eventFollowInput").value = event.followUp || "";
       $("inlineEventStatusSelect").value = event.status || "已记录";
@@ -2492,14 +2467,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       updateInlineRecordMode();
       $("inlineQuickContentInput").focus();
       showToast("已进入编辑，可修改后保存");
-    }
-
-    function quickTypeFromEventType(type) {
-      if (type === "表扬鼓励") return "表扬";
-      if (type === "学习反馈") return "作业";
-      if (type === "纪律提醒") return "说话";
-      if (type === "学生谈话") return "情绪";
-      return "其他";
     }
 
     function deleteEvent(id) {
@@ -2529,8 +2496,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("quickNoteStudentSelect").value = name || selectedStudent || state.students[0]?.name || "";
       $("quickNoteDateInput").value = $("dateInput").value || today();
       $("quickNoteTimeInput").value = currentTimeText();
-      $("quickNoteTypeSelect").value = "其他";
-      $("quickNoteLevelSelect").value = "普通";
       $("quickNoteContentInput").value = "";
       $("quickNoteModal").classList.remove("hidden");
       renderQuickNoteList();
@@ -2560,13 +2525,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         showToast("请写一句随手记内容");
         return;
       }
+      const classified = classifyRecordContent(content, "quick");
       state.quickNotes = [{
         id: `quick-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         date: $("quickNoteDateInput").value || today(),
         time: $("quickNoteTimeInput").value || currentTimeText(),
         name,
-        type: $("quickNoteTypeSelect").value || "其他",
-        level: $("quickNoteLevelSelect").value || "普通",
+        type: classified.type,
+        level: classified.level,
         content,
         createdAt: new Date().toISOString()
       }, ...(state.quickNotes || [])];
