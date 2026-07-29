@@ -235,7 +235,7 @@
       gap: 6px;
       align-items: center;
       flex-wrap: wrap;
-      min-width: 260px;
+      min-width: 150px;
     }
     .quick-note-cell {
       display: flex;
@@ -1162,6 +1162,18 @@
         <button id="closeQuickNoteModalBtn">关闭</button>
       </div>
       <div class="quick-note-list" id="quickNoteList"></div>
+    </div>
+  </div>
+  <div class="modal hidden" id="dailyNoteModal">
+    <div class="modal-box">
+      <h3 id="dailyNoteTitle">当天备注</h3>
+      <div class="sub">只写当天整体补充；具体小事优先用随手记。</div>
+      <textarea id="dailyNoteInput" placeholder="例如：今天整体状态低迷，已提醒午休和作息。"></textarea>
+      <div class="actions" style="margin-top:10px">
+        <button id="saveDailyNoteBtn" class="primary">保存备注</button>
+        <button id="clearDailyNoteBtn" class="danger">清空</button>
+        <button id="closeDailyNoteBtn">关闭</button>
+      </div>
     </div>
   </div>
   <div class="modal hidden" id="backupModal">
@@ -2109,7 +2121,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           </td>
           <td>
             <div class="note-cell">
-              <input class="note-input" data-name="${student.name}" value="${escapeHtml(record.note || "")}" placeholder="当天现象，可选">
+              <button class="small daily-note-btn" data-name="${student.name}">${record.note?.trim() ? "已备注" : "补充"}</button>
               ${noteBadgeHtml(record.note)}
             </div>
           </td>
@@ -2143,14 +2155,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       document.querySelectorAll(".daily-correction-select").forEach(select => {
         select.addEventListener("change", () => updateRecordField(date, select.dataset.name, "correction", select.value));
       });
-      document.querySelectorAll(".note-input").forEach(input => {
-        input.addEventListener("input", () => {
-          updateRecordField(date, input.dataset.name, "note", input.value);
-          const cell = input.closest(".note-cell");
-          const oldBadge = cell?.querySelector(".note-analysis");
-          if (oldBadge) oldBadge.remove();
-          input.insertAdjacentHTML("afterend", noteBadgeHtml(input.value));
-        });
+      document.querySelectorAll(".daily-note-btn").forEach(btn => {
+        btn.addEventListener("click", () => openDailyNoteModal(btn.dataset.name));
       });
       document.querySelectorAll(".tag").forEach(btn => {
         btn.addEventListener("click", () => toggleStatus(date, btn.dataset.name, btn.dataset.status));
@@ -2552,6 +2558,45 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function closeQuickNoteModal() {
       $("quickNoteModal").classList.add("hidden");
+    }
+
+    function openDailyNoteModal(name) {
+      const date = $("dateInput").value || today();
+      const student = state.students.find(item => item.name === name);
+      if (!student) {
+        showToast("没有找到该学生");
+        return;
+      }
+      const record = ensureRecord(date, student);
+      $("dailyNoteModal").dataset.name = name;
+      $("dailyNoteTitle").textContent = `${name} 的当天备注`;
+      $("dailyNoteInput").value = record.note || "";
+      $("dailyNoteModal").classList.remove("hidden");
+      $("dailyNoteInput").focus();
+    }
+
+    function closeDailyNoteModal() {
+      $("dailyNoteModal").classList.add("hidden");
+      $("dailyNoteModal").dataset.name = "";
+    }
+
+    function saveDailyNote() {
+      const name = $("dailyNoteModal").dataset.name;
+      if (!name) return;
+      updateRecordField($("dateInput").value || today(), name, "note", $("dailyNoteInput").value.trim());
+      closeDailyNoteModal();
+      render();
+      showToast("当天备注已保存");
+    }
+
+    function clearDailyNote() {
+      const name = $("dailyNoteModal").dataset.name;
+      if (!name) return;
+      updateRecordField($("dateInput").value || today(), name, "note", "");
+      $("dailyNoteInput").value = "";
+      closeDailyNoteModal();
+      render();
+      showToast("当天备注已清空");
     }
 
     function renderQuickNoteStudentOptions() {
@@ -4501,6 +4546,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("openQuickNoteBtn").addEventListener("click", () => openQuickNoteModal(selectedStudent || state.students[0]?.name || ""));
     $("saveQuickNoteBtn").addEventListener("click", saveQuickNote);
     $("closeQuickNoteModalBtn").addEventListener("click", closeQuickNoteModal);
+    $("saveDailyNoteBtn").addEventListener("click", saveDailyNote);
+    $("clearDailyNoteBtn").addEventListener("click", clearDailyNote);
+    $("closeDailyNoteBtn").addEventListener("click", closeDailyNoteModal);
     ["quickNoteStudentSelect", "quickNoteDateInput"].forEach(id => {
       $(id).addEventListener("change", renderQuickNoteList);
     });
@@ -4549,6 +4597,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     });
     $("quickNoteModal").addEventListener("click", event => {
       if (event.target.id === "quickNoteModal") closeQuickNoteModal();
+    });
+    $("dailyNoteModal").addEventListener("click", event => {
+      if (event.target.id === "dailyNoteModal") closeDailyNoteModal();
     });
     $("saveCloudConfigBtn").addEventListener("click", persistCloudConfigFromModal);
     $("uploadCloudBtn").addEventListener("click", () => uploadCloudState(true));
