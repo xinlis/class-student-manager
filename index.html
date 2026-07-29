@@ -126,6 +126,20 @@
     }
     .stat .num { font-size: 24px; font-weight: 780; }
     .stat .label { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .stat-select {
+      width: 100%;
+      max-width: 150px;
+      min-height: 38px;
+      padding: 4px 8px;
+      font-size: 24px;
+      font-weight: 780;
+      border-color: transparent;
+      background: transparent;
+    }
+    .stat-select:focus {
+      border-color: var(--blue);
+      background: #fff;
+    }
     .panel {
       background: var(--panel);
       border: 1px solid var(--line);
@@ -211,6 +225,7 @@
       min-width: 120px;
     }
     .subject-input { width: 86px; text-align: center; }
+    .compact-date { width: 132px; min-width: 132px; }
     .rank-cell { font-weight: 750; color: var(--blue); }
     .tag-row {
       display: flex;
@@ -828,20 +843,7 @@
             <div class="sub">上方可切换科目查看历史总览；下方表格只负责按当前日期登记成绩。</div>
           </div>
           <div class="toolbar">
-            <label>查看科目
-              <select id="overviewSubjectSelect">
-                <option value="电路">电路</option>
-                <option value="电机">电机</option>
-                <option value="稳态">稳态</option>
-                <option value="暂态">暂态</option>
-                <option value="继保">继保</option>
-                <option value="高电压">高电压</option>
-                <option value="发电厂">发电厂</option>
-                <option value="行测">行测</option>
-                <option value="其他">其他</option>
-              </select>
-            </label>
-            <label>日期 <input id="subjectDateInput" type="date"></label>
+            <label>日期 <input id="subjectDateInput" class="compact-date" type="date"></label>
             <label>登记科目
               <select id="entrySubjectSelect">
                 <option value="电路">电路</option>
@@ -1869,6 +1871,17 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return `<div class="stat ${action ? "clickable" : ""}" ${action ? `data-action="${action}" title="${title}"` : ""}><div class="num">${num}</div><div class="label">${label}</div></div>`;
     }
 
+    function subjectOverviewSelectHtml(subject) {
+      const options = SUBJECTS
+        .map(item => `<option value="${item}" ${item === subject ? "selected" : ""}>${item}</option>`)
+        .join("");
+      return `<div class="stat"><select id="overviewSubjectSelect" class="stat-select" aria-label="查看科目">${options}</select><div class="label">科目</div></div>`;
+    }
+
+    function currentOverviewSubject(fallback = "电路") {
+      return $("overviewSubjectSelect")?.value || fallback;
+    }
+
     function isAbnormalRecord(record) {
       return isHomeworkIssue(record) || Boolean(record.status?.length) || analyzeNote(record.note).type === "bad";
     }
@@ -2159,7 +2172,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const date = $("subjectDateInput").value || today();
       const subject = $("entrySubjectSelect").value || "电路";
       calculateSubjectRanks(date, subject);
-      renderSubjectStats(date, $("overviewSubjectSelect").value || subject);
+      renderSubjectStats(date, currentOverviewSubject(subject));
       const query = $("subjectSearch").value.trim();
       const rows = state.students
         .map((student, idx) => ({ student, idx, test: ensureSubjectTest(date, subject, student) }))
@@ -2185,7 +2198,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           updateSubjectField(date, subject, input.dataset.name, "score", input.value);
           calculateSubjectRanks(date, subject);
           saveState();
-          renderSubjectStats(date, $("overviewSubjectSelect").value || subject);
+          renderSubjectStats(date, currentOverviewSubject(subject));
           document.querySelectorAll(".subject-score-input").forEach((scoreInput, idx) => {
             const row = scoreInput.closest("tr");
             const rankCell = row?.querySelector(".rank-cell");
@@ -2218,13 +2231,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const maxScore = Number($("subjectMaxInput").value) || 100;
       const overview = subjectOverviewStats(subject, maxScore);
       $("subjectStats").innerHTML = [
-        statHtml("科目", subject),
+        subjectOverviewSelectHtml(subject),
         statHtml("已测人数", `${overview.studentCount}/${state.students.length}`),
         statHtml("考试次数", overview.examCount),
         statHtml("最近均分", overview.latestAvg),
         statHtml("最高分", overview.maxScore),
         statHtml("85%+累计", overview.excellentCount)
       ].join("");
+      $("overviewSubjectSelect").addEventListener("change", () => renderSubjectStats($("subjectDateInput").value || today(), $("overviewSubjectSelect").value || "电路"));
     }
 
     function subjectOverviewStats(subject, maxScore = 100) {
@@ -2520,7 +2534,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       });
       calculateSubjectRanks(date, toSubject);
       $("entrySubjectSelect").value = toSubject;
-      if ($("overviewSubjectSelect").value === fromSubject) $("overviewSubjectSelect").value = toSubject;
+      if ($("overviewSubjectSelect")?.value === fromSubject) $("overviewSubjectSelect").value = toSubject;
       saveState();
       renderSubjectTests();
       showToast(`已将 ${fromSubject} 改为 ${toSubject}`);
@@ -4324,9 +4338,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       showToast($("hasHomeworkInput").checked ? "当天作业已恢复为默认 A" : "当天已标记为无作业");
     });
     $("subjectDateInput").addEventListener("change", renderSubjectTests);
-    $("overviewSubjectSelect").addEventListener("change", () => renderSubjectStats($("subjectDateInput").value || today(), $("overviewSubjectSelect").value || "电路"));
     $("entrySubjectSelect").addEventListener("change", renderSubjectTests);
-    $("subjectMaxInput").addEventListener("input", () => renderSubjectStats($("subjectDateInput").value || today(), $("overviewSubjectSelect").value || $("entrySubjectSelect").value || "电路"));
+    $("subjectMaxInput").addEventListener("input", () => renderSubjectStats($("subjectDateInput").value || today(), currentOverviewSubject($("entrySubjectSelect").value || "电路")));
     $("entrySearch").addEventListener("input", render);
     $("subjectSearch").addEventListener("input", renderSubjectTests);
     $("renameSubjectBtn").addEventListener("click", changeCurrentSubjectName);
