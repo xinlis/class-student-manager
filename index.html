@@ -195,7 +195,7 @@
     .event-follow-input { width: min(360px, 100%); }
     .communication-grid {
       display: grid;
-      grid-template-columns: minmax(280px, .9fr) minmax(360px, 1.3fr);
+      grid-template-columns: 1fr;
       gap: 12px;
       align-items: start;
     }
@@ -230,13 +230,6 @@
       font-size: 12px;
     }
     .homework-name-input { width: 116px; }
-    .note-cell {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      flex-wrap: wrap;
-      min-width: 150px;
-    }
     .quick-note-cell {
       display: flex;
       gap: 6px;
@@ -845,7 +838,6 @@
                 <th id="homeworkHeader1">宝典</th>
                 <th>上课异常</th>
                 <th>随手记</th>
-                <th>当天备注</th>
               </tr>
             </thead>
             <tbody id="entryBody"></tbody>
@@ -916,8 +908,14 @@
         </div>
         <div class="detail-panel communication-grid">
           <div class="communication-box">
-            <h3>随手记快录</h3>
+            <h3>记一条</h3>
             <div class="toolbar">
+              <label>记录方式
+                <select id="inlineRecordModeSelect">
+                  <option value="quick">随手记</option>
+                  <option value="event">沟通跟进</option>
+                </select>
+              </label>
               <label>学生
                 <select id="inlineQuickStudentSelect"></select>
               </label>
@@ -942,41 +940,21 @@
               <label>时间 <input id="inlineQuickTimeInput" type="time"></label>
             </div>
             <div class="toolbar" style="margin-top:10px; align-items:flex-start">
-              <textarea id="inlineQuickContentInput" placeholder="一句话即可，例如：第 2 节说话，提醒后收敛。"></textarea>
-              <button id="addInlineQuickNoteBtn" class="primary">保存随手记</button>
-            </div>
-          </div>
-          <div class="communication-box">
-            <h3>沟通跟进</h3>
-            <div class="toolbar">
-              <label>学生
-                <select id="eventStudentSelect"></select>
-              </label>
-              <label>类型
-                <select id="eventTypeSelect">
-                  <option value="家长请假">家长请假</option>
-                  <option value="家长沟通">家长沟通</option>
-                  <option value="学生谈话">学生谈话</option>
-                  <option value="学习反馈">学习反馈</option>
-                  <option value="纪律提醒">纪律提醒</option>
-                  <option value="表扬鼓励">表扬鼓励</option>
-                  <option value="其他">其他</option>
-                </select>
-              </label>
-              <label>状态
-                <select id="eventStatusSelect">
+              <textarea id="inlineQuickContentInput" placeholder="一句话即可，例如：第 2 节说话，提醒后收敛；或电话沟通家长，反馈近期犯困。"></textarea>
+              <input id="eventFollowInput" class="event-follow-input hidden" placeholder="跟进动作，可选，例如：3 天后看午休和纠错">
+              <label id="inlineEventStatusLabel" class="hidden">状态
+                <select id="inlineEventStatusSelect">
                   <option value="已记录">已记录</option>
                   <option value="需跟进">需跟进</option>
                   <option value="已完成">已完成</option>
                 </select>
               </label>
+              <button id="addInlineQuickNoteBtn" class="primary">保存</button>
             </div>
-            <div class="toolbar" style="margin-top:10px; align-items:flex-start">
-              <textarea id="eventContentInput" class="event-content-input" placeholder="沟通跟进内容，例如：电话沟通母亲，反馈近期上课犯困和日测低分；家长表示晚上会收手机。"></textarea>
-              <input id="eventFollowInput" class="event-follow-input" placeholder="跟进动作，可选，例如：3 天后看午休和纠错">
-              <button id="addEventBtn" class="primary">添加沟通</button>
-              <button id="cancelEventEditBtn" class="hidden">取消编辑</button>
-            </div>
+          </div>
+          <div class="toolbar hidden" id="eventEditActions">
+            <button id="addEventBtn" class="primary">保存修改</button>
+            <button id="cancelEventEditBtn">取消编辑</button>
           </div>
         </div>
         <div class="table-wrap">
@@ -1023,8 +1001,6 @@
                   <th>日测分数</th>
                   <th>作业</th>
                   <th>上课异常</th>
-                  <th>当天备注分析</th>
-                  <th>当天备注</th>
                   <th>操作</th>
                 </tr>
               </thead>
@@ -1071,7 +1047,6 @@
                     <th>作业</th>
                     <th>上课异常</th>
                     <th>随手记</th>
-                    <th>当天备注</th>
                   </tr>
                 </thead>
                 <tbody id="historyBody"></tbody>
@@ -1162,18 +1137,6 @@
         <button id="closeQuickNoteModalBtn">关闭</button>
       </div>
       <div class="quick-note-list" id="quickNoteList"></div>
-    </div>
-  </div>
-  <div class="modal hidden" id="dailyNoteModal">
-    <div class="modal-box">
-      <h3 id="dailyNoteTitle">当天备注</h3>
-      <div class="sub">只写当天整体补充；具体小事优先用随手记。</div>
-      <textarea id="dailyNoteInput" placeholder="例如：今天整体状态低迷，已提醒午休和作息。"></textarea>
-      <div class="actions" style="margin-top:10px">
-        <button id="saveDailyNoteBtn" class="primary">保存备注</button>
-        <button id="clearDailyNoteBtn" class="danger">清空</button>
-        <button id="closeDailyNoteBtn">关闭</button>
-      </div>
     </div>
   </div>
   <div class="modal hidden" id="backupModal">
@@ -1526,7 +1489,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function snapshotSummary(target) {
-      const dailyCount = Object.values(target.records || {}).filter(record => parseScore(record.score) !== null || record.note || record.status?.length || record.homework).length;
+      const dailyCount = Object.values(target.records || {}).filter(record => parseScore(record.score) !== null || record.status?.length || record.homework).length;
       const subjectCount = Object.values(target.subjectTests || {}).filter(test => parseScore(test.score) !== null || test.note).length;
       const eventCount = (target.events || []).length;
       const quickCount = (target.quickNotes || []).length;
@@ -1950,7 +1913,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function isAbnormalRecord(record) {
-      return isHomeworkIssue(record) || Boolean(record.status?.length) || analyzeNote(record.note).type === "bad";
+      return isHomeworkIssue(record) || Boolean(record.status?.length);
     }
 
     function currentTimeText() {
@@ -2119,12 +2082,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
               ${quickNoteCounts.get(student.name) ? `<span class="badge ${quickNoteCounts.get(student.name).attention ? "warn" : "neutral"}">随手记 ${quickNoteCounts.get(student.name).count}</span>` : `<span class="muted">无</span>`}
             </div>
           </td>
-          <td>
-            <div class="note-cell">
-              <button class="small daily-note-btn" data-name="${student.name}">${record.note?.trim() ? "已备注" : "补充"}</button>
-              ${noteBadgeHtml(record.note)}
-            </div>
-          </td>
         </tr>
       `).join("");
 
@@ -2154,9 +2111,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       });
       document.querySelectorAll(".daily-correction-select").forEach(select => {
         select.addEventListener("change", () => updateRecordField(date, select.dataset.name, "correction", select.value));
-      });
-      document.querySelectorAll(".daily-note-btn").forEach(btn => {
-        btn.addEventListener("click", () => openDailyNoteModal(btn.dataset.name));
       });
       document.querySelectorAll(".tag").forEach(btn => {
         btn.addEventListener("click", () => toggleStatus(date, btn.dataset.name, btn.dataset.status));
@@ -2323,8 +2277,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function renderEvents() {
-      renderEventStudentOptions();
       renderInlineQuickStudentOptions();
+      updateInlineRecordMode();
       const query = $("eventSearch").value.trim();
       const items = getCommunicationTimeline(query);
       $("eventBody").innerHTML = items.map(item => item.kind === "event" ? `
@@ -2372,14 +2326,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       });
     }
 
-    function renderEventStudentOptions() {
-      const current = $("eventStudentSelect").value;
-      $("eventStudentSelect").innerHTML = `<option value="">未指定/全班</option>` + state.students.map((student, index) => `
-        <option value="${escapeHtml(student.name)}">#${index + 1} ${escapeHtml(student.name)}</option>
-      `).join("");
-      $("eventStudentSelect").value = current || "";
-    }
-
     function renderInlineQuickStudentOptions() {
       const select = $("inlineQuickStudentSelect");
       if (!select) return;
@@ -2389,6 +2335,15 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       `).join("");
       select.value = current || selectedStudent || state.students[0]?.name || "";
       if ($("inlineQuickTimeInput") && !$("inlineQuickTimeInput").value) $("inlineQuickTimeInput").value = currentTimeText();
+    }
+
+    function updateInlineRecordMode() {
+      const isEvent = $("inlineRecordModeSelect")?.value === "event";
+      $("eventFollowInput")?.classList.toggle("hidden", !isEvent);
+      $("inlineEventStatusLabel")?.classList.toggle("hidden", !isEvent);
+      $("inlineQuickLevelSelect")?.closest("label")?.classList.toggle("hidden", isEvent);
+      $("inlineQuickTimeInput")?.closest("label")?.classList.toggle("hidden", isEvent);
+      if ($("addInlineQuickNoteBtn")) $("addInlineQuickNoteBtn").textContent = isEvent ? "保存沟通" : "保存随手记";
     }
 
     function getCommunicationTimeline(query) {
@@ -2415,18 +2370,18 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function addEvent() {
-      const content = $("eventContentInput").value.trim();
+      const content = $("inlineQuickContentInput").value.trim();
       if (!content) {
         showToast("请先填写事件内容");
         return;
       }
       const eventData = {
         date: $("eventDateInput").value || today(),
-        name: $("eventStudentSelect").value,
-        type: $("eventTypeSelect").value,
+        name: $("inlineQuickStudentSelect").value,
+        type: eventTypeFromQuickType($("inlineQuickTypeSelect").value),
         content,
         followUp: $("eventFollowInput").value.trim(),
-        status: $("eventStatusSelect").value,
+        status: $("inlineEventStatusSelect").value,
         updatedAt: new Date().toISOString()
       };
       if (editingEventId) {
@@ -2455,7 +2410,19 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       showToast(wasEditing ? "沟通记录已修改" : "沟通记录已保存");
     }
 
+    function eventTypeFromQuickType(type) {
+      if (type === "表扬") return "表扬鼓励";
+      if (type === "作业") return "学习反馈";
+      if (["迟到", "说话", "打盹", "走神"].includes(type)) return "纪律提醒";
+      if (type === "情绪") return "学生谈话";
+      return "其他";
+    }
+
     function addInlineQuickNote() {
+      if ($("inlineRecordModeSelect").value === "event" || editingEventId) {
+        addEvent();
+        return;
+      }
       const name = $("inlineQuickStudentSelect").value;
       const content = $("inlineQuickContentInput").value.trim();
       if (!name) {
@@ -2489,18 +2456,20 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         showToast("这条随手记没有找到");
         return;
       }
-      renderEventStudentOptions();
       editingEventId = "";
       $("eventDateInput").value = note.date || today();
-      $("eventStudentSelect").value = note.name || "";
-      $("eventTypeSelect").value = note.type === "表扬" ? "表扬鼓励" : note.type === "作业" ? "学习反馈" : "学生谈话";
-      $("eventStatusSelect").value = note.level === "需关注" ? "需跟进" : "已记录";
-      $("eventContentInput").value = `${note.time || ""} ${note.type || "随手记"}：${note.content || ""}`.trim();
+      $("inlineRecordModeSelect").value = "event";
+      renderInlineQuickStudentOptions();
+      $("inlineQuickStudentSelect").value = note.name || "";
+      $("inlineQuickTypeSelect").value = note.type || "其他";
+      $("inlineQuickContentInput").value = `${note.time || ""} ${note.type || "随手记"}：${note.content || ""}`.trim();
       $("eventFollowInput").value = note.level === "需关注" ? "结合后续表现跟进" : "";
-      $("addEventBtn").textContent = "添加沟通";
-      $("cancelEventEditBtn").classList.add("hidden");
-      $("eventContentInput").focus();
-      showToast("已带入沟通跟进，确认后点添加沟通");
+      $("inlineEventStatusSelect").value = note.level === "需关注" ? "需跟进" : "已记录";
+      $("eventEditActions").classList.add("hidden");
+      $("addInlineQuickNoteBtn").classList.remove("hidden");
+      updateInlineRecordMode();
+      $("inlineQuickContentInput").focus();
+      showToast("已带入沟通跟进，确认后点保存沟通");
     }
 
     function startEditEvent(id) {
@@ -2509,18 +2478,28 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         showToast("这条事件没有找到");
         return;
       }
-      renderEventStudentOptions();
       editingEventId = id;
       $("eventDateInput").value = event.date || today();
-      $("eventStudentSelect").value = event.name || "";
-      $("eventTypeSelect").value = event.type || "其他";
-      $("eventStatusSelect").value = event.status || "已记录";
-      $("eventContentInput").value = event.content || "";
+      $("inlineRecordModeSelect").value = "event";
+      renderInlineQuickStudentOptions();
+      $("inlineQuickStudentSelect").value = event.name || "";
+      $("inlineQuickTypeSelect").value = quickTypeFromEventType(event.type || "其他");
+      $("inlineQuickContentInput").value = event.content || "";
       $("eventFollowInput").value = event.followUp || "";
-      $("addEventBtn").textContent = "保存修改";
-      $("cancelEventEditBtn").classList.remove("hidden");
-      $("eventContentInput").focus();
+      $("inlineEventStatusSelect").value = event.status || "已记录";
+      $("eventEditActions").classList.remove("hidden");
+      $("addInlineQuickNoteBtn").classList.add("hidden");
+      updateInlineRecordMode();
+      $("inlineQuickContentInput").focus();
       showToast("已进入编辑，可修改后保存");
+    }
+
+    function quickTypeFromEventType(type) {
+      if (type === "表扬鼓励") return "表扬";
+      if (type === "学习反馈") return "作业";
+      if (type === "纪律提醒") return "说话";
+      if (type === "学生谈话") return "情绪";
+      return "其他";
     }
 
     function deleteEvent(id) {
@@ -2536,11 +2515,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function resetEventForm() {
       editingEventId = "";
-      $("eventContentInput").value = "";
+      $("inlineRecordModeSelect").value = "quick";
+      $("inlineQuickContentInput").value = "";
       $("eventFollowInput").value = "";
-      $("eventStatusSelect").value = "已记录";
-      $("addEventBtn").textContent = "添加沟通";
-      $("cancelEventEditBtn").classList.add("hidden");
+      $("inlineEventStatusSelect").value = "已记录";
+      $("addInlineQuickNoteBtn").classList.remove("hidden");
+      $("eventEditActions").classList.add("hidden");
+      updateInlineRecordMode();
     }
 
     function openQuickNoteModal(name = "") {
@@ -2558,45 +2539,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function closeQuickNoteModal() {
       $("quickNoteModal").classList.add("hidden");
-    }
-
-    function openDailyNoteModal(name) {
-      const date = $("dateInput").value || today();
-      const student = state.students.find(item => item.name === name);
-      if (!student) {
-        showToast("没有找到该学生");
-        return;
-      }
-      const record = ensureRecord(date, student);
-      $("dailyNoteModal").dataset.name = name;
-      $("dailyNoteTitle").textContent = `${name} 的当天备注`;
-      $("dailyNoteInput").value = record.note || "";
-      $("dailyNoteModal").classList.remove("hidden");
-      $("dailyNoteInput").focus();
-    }
-
-    function closeDailyNoteModal() {
-      $("dailyNoteModal").classList.add("hidden");
-      $("dailyNoteModal").dataset.name = "";
-    }
-
-    function saveDailyNote() {
-      const name = $("dailyNoteModal").dataset.name;
-      if (!name) return;
-      updateRecordField($("dateInput").value || today(), name, "note", $("dailyNoteInput").value.trim());
-      closeDailyNoteModal();
-      render();
-      showToast("当天备注已保存");
-    }
-
-    function clearDailyNote() {
-      const name = $("dailyNoteModal").dataset.name;
-      if (!name) return;
-      updateRecordField($("dateInput").value || today(), name, "note", "");
-      $("dailyNoteInput").value = "";
-      closeDailyNoteModal();
-      render();
-      showToast("当天备注已清空");
     }
 
     function renderQuickNoteStudentOptions() {
@@ -2741,24 +2683,20 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function renderSummary(date) {
       const records = getDateRecords(date);
       const quickNotes = getQuickNotes({ date });
-      $("summaryDateLabel").textContent = `${date}，显示作业、上课状态、当天备注分析中的异常学生。`;
+      $("summaryDateLabel").textContent = `${date}，显示作业、上课状态和随手记中的异常学生。`;
       const buckets = [
         ["作业未达 A", records.filter(isHomeworkIssue).map(r => `${r.name}：${homeworkIssueText(r)}`)],
         ["迟到", records.filter(r => r.status?.includes("late")).map(r => r.name)],
         ["走神", records.filter(r => r.status?.includes("distracted")).map(r => r.name)],
         ["打盹/睡觉", records.filter(r => r.status?.includes("sleep")).map(r => r.name)],
         ["请假", records.filter(r => r.status?.includes("absent")).map(r => r.name)],
-        ["随手记", quickNotes.map(note => `${note.name}：${note.time || ""} ${note.type} ${note.content}${note.level === "需关注" ? "（需关注）" : ""}`)],
-        ["当天备注", records.filter(r => r.note?.trim()).map(r => {
-          const analysis = analyzeNote(r.note);
-          return `${r.name}：${r.note.trim()}（${analysis.label}）`;
-        })]
+        ["随手记", quickNotes.map(note => `${note.name}：${note.time || ""} ${note.type} ${note.content}${note.level === "需关注" ? "（需关注）" : ""}`)]
       ];
       $("summaryGrid").innerHTML = buckets.map(([title, list]) => `
         <div class="summary-box">
           <h3>${title} <span class="muted">(${list.length})</span></h3>
           <div class="summary-list">
-            ${list.length ? list.map(item => `<span class="badge ${title === "当天备注" ? "" : "warn"}">${escapeHtml(item)}</span>`).join("") : `<span class="empty">暂无</span>`}
+            ${list.length ? list.map(item => `<span class="badge warn">${escapeHtml(item)}</span>`).join("") : `<span class="empty">暂无</span>`}
           </div>
         </div>
       `).join("");
@@ -2774,11 +2712,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <td>${escapeHtml(record.score)}</td>
           <td>${homeworkBadgesHtml(record)}</td>
           <td>${record.status?.length ? record.status.map(key => `<span class="badge bad">${STATUS_LABELS[key]}</span>`).join(" ") : "<span class='muted'>正常</span>"}</td>
-          <td>${noteBadgeHtml(record.note) || "<span class='badge neutral'>无备注</span>"}</td>
-          <td>${escapeHtml(record.note || "")}</td>
           <td><button class="small detail-profile-btn" data-name="${escapeHtml(record.name)}">查看画像</button></td>
         </tr>
-      `).join("") || `<tr><td colspan="8" class="empty">暂无异常明细</td></tr>`;
+      `).join("") || `<tr><td colspan="6" class="empty">暂无异常明细</td></tr>`;
       document.querySelectorAll(".detail-profile-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           selectedStudent = btn.dataset.name;
@@ -2797,11 +2733,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         "走神": records.filter(r => r.status?.includes("distracted")).map(r => r.name),
         "打盹/睡觉": records.filter(r => r.status?.includes("sleep")).map(r => r.name),
         "请假": records.filter(r => r.status?.includes("absent")).map(r => r.name),
-        "随手记": quickNotes.map(note => `${note.name}(${note.time || ""}${note.type}：${note.content}${note.level === "需关注" ? "，需关注" : ""})`),
-        "当天备注": records.filter(r => r.note?.trim()).map(r => {
-          const analysis = analyzeNote(r.note);
-          return `${r.name}：${r.note.trim()}（${analysis.label}）`;
-        })
+        "随手记": quickNotes.map(note => `${note.name}(${note.time || ""}${note.type}：${note.content}${note.level === "需关注" ? "，需关注" : ""})`)
       };
       Object.entries(groups).forEach(([label, list]) => lines.push(`${label}：${list.length ? list.join("、") : "无"}`));
       return lines.join("\n");
@@ -3074,9 +3006,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <td>${homeworkBadgesHtml(record)}</td>
           <td>${record.status?.length ? record.status.map(key => `<span class="badge bad">${STATUS_LABELS[key]}</span>`).join(" ") : "<span class='muted'>正常</span>"}</td>
           <td>${dailyQuickNoteBadges(record.date, record.name)}</td>
-          <td>${escapeHtml(record.note || "")} ${noteBadgeHtml(record.note)}</td>
         </tr>
-      `).join("") || `<tr><td colspan="7" class="empty">暂无记录</td></tr>`;
+      `).join("") || `<tr><td colspan="6" class="empty">暂无记录</td></tr>`;
     }
 
     function dailyQuickNoteBadges(date, name) {
@@ -3093,7 +3024,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         <div class="ai-panel-head">
           <div>
             <h3 class="ai-panel-title">智能分析</h3>
-            <div class="sub">基于当前日期范围内的日测、单科、作业、课堂状态、随手记、当天备注和正式沟通生成。</div>
+            <div class="sub">基于当前日期范围内的日测、单科、作业、课堂状态、随手记和沟通跟进生成。</div>
           </div>
           <button id="copyAiPromptBtn" class="small primary">复制给 AI 深度分析</button>
         </div>
@@ -3258,7 +3189,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function noteKeywordStats(records, subjectTests, events, quickNotes = []) {
       const text = [
-        ...records.map(record => record.note || ""),
         ...subjectTests.map(test => test.note || ""),
         ...events.map(event => `${event.content || ""} ${event.followUp || ""}`),
         ...quickNotes.map(note => note.content || "")
@@ -3282,7 +3212,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function buildAiPrompt(student, records, subjectTests, events, quickNotes, analysis) {
-      const dailyLines = records.map(record => `${record.date} 日测:${record.score || "未填"} 纠错:${dailyCorrectionText(record)} 作业:${homeworkSummaryText(record)} 状态:${statusText(record.status) || "正常"} 当天备注:${record.note || "无"}`);
+      const dailyLines = records.map(record => `${record.date} 日测:${record.score || "未填"} 纠错:${dailyCorrectionText(record)} 作业:${homeworkSummaryText(record)} 状态:${statusText(record.status) || "正常"}`);
       const subjectLines = subjectTests.map(test => `${test.date} ${test.subject} 分数:${test.score || "未填"} 排名:${test.rank || "无"} 纠错:${test.correction || "无"} 备注:${test.note || "无"}`);
       const quickLines = quickNotes.map(note => `${note.date} ${note.time || ""} ${note.type} ${note.level}：${note.content || ""}`);
       const eventLines = events.map(event => `${event.date} ${event.type} ${event.content || ""} 后续:${event.followUp || "无"} 状态:${event.status || "已记录"}`);
@@ -3319,25 +3249,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       } catch {
         prompt("复制以下内容给 AI：", currentAiPrompt);
       }
-    }
-
-    function analyzeNote(note) {
-      const text = String(note || "").trim();
-      if (!text) return { type: "neutral", label: "未分析" };
-      const negativeWords = ["迟到", "走神", "睡", "打盹", "未交", "没交", "缺勤", "退步", "不会", "不认真", "不专注", "作业差", "低分", "漏", "忘", "批评", "拖拉", "扰乱", "欠"];
-      const positiveWords = ["表扬", "进步", "认真", "积极", "优秀", "满分", "主动", "专注", "完成好", "状态好", "纠错完成", "稳定", "提升", "很棒"];
-      const negativeScore = negativeWords.filter(word => text.includes(word)).length;
-      const positiveScore = positiveWords.filter(word => text.includes(word)).length;
-      if (negativeScore > positiveScore) return { type: "bad", label: "需关注" };
-      if (positiveScore > negativeScore) return { type: "ok", label: "积极" };
-      return { type: "neutral", label: "中性" };
-    }
-
-    function noteBadgeHtml(note) {
-      const text = String(note || "").trim();
-      if (!text) return "";
-      const analysis = analyzeNote(text);
-      return `<span class="badge ${analysis.type} note-analysis">${analysis.label}</span>`;
     }
 
     function homeworkBadgesHtml(record) {
@@ -3959,7 +3870,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function dailyRowsForExport() {
       const names = homeworkNames();
       return [
-        ["日期", "序号", "姓名", "日测分数", "日测纠错", ...names, "上课异常", "随手记条数", "当天备注分析", "当天备注"],
+        ["日期", "序号", "姓名", "日测分数", "日测纠错", ...names, "上课异常", "随手记条数"],
         ...Object.values(state.records)
           .sort(compareRecordsByDateAndStudent)
           .map(record => [
@@ -3970,28 +3881,22 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             dailyCorrectionText(record),
             ...names.map((_, index) => getHomeworkGrade(record, index)),
             statusText(record.status),
-            getQuickNotes({ date: record.date, name: record.name }).length,
-            record.note ? analyzeNote(record.note).label : "",
-            record.note
+            getQuickNotes({ date: record.date, name: record.name }).length
           ])
       ];
     }
 
     function abnormalRowsForExport() {
-      const rows = [["日期", "序号", "姓名", "异常类型", "具体内容", "当天备注分析", "当天备注"]];
+      const rows = [["日期", "序号", "姓名", "异常类型", "具体内容"]];
       Object.values(state.records)
         .sort(compareRecordsByDateAndStudent)
         .forEach(record => {
-          const noteAnalysis = record.note ? analyzeNote(record.note).label : "";
           if (isHomeworkIssue(record)) {
-            rows.push([record.date, studentNumber(record.name), record.name, "作业", homeworkIssueText(record), noteAnalysis, record.note]);
+            rows.push([record.date, studentNumber(record.name), record.name, "作业", homeworkIssueText(record)]);
           }
           (record.status || []).forEach(status => {
-            rows.push([record.date, studentNumber(record.name), record.name, "上课异常", STATUS_LABELS[status] || status, noteAnalysis, record.note]);
+            rows.push([record.date, studentNumber(record.name), record.name, "上课异常", STATUS_LABELS[status] || status]);
           });
-          if (analyzeNote(record.note).type === "bad") {
-            rows.push([record.date, studentNumber(record.name), record.name, "当天备注", "需关注", noteAnalysis, record.note]);
-          }
         });
       return rows;
     }
@@ -4083,7 +3988,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const header = [
         "序号", "姓名", "来源班级", "标签", "日测次数", "日测平均分", "单科考试次数", "单科均分",
         ...homeworkHeaders,
-        "迟到次数", "走神次数", "打盹次数", "请假次数", "需关注当天备注次数", "随手记次数", "需关注随手记", "正式沟通次数", "待跟进沟通"
+        "迟到次数", "走神次数", "打盹次数", "请假次数", "随手记次数", "需关注随手记", "正式沟通次数", "待跟进沟通"
       ];
       const rows = state.students.map((student, index) => {
         const daily = Object.values(state.records).filter(record => record.name === student.name);
@@ -4106,7 +4011,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           countStatus(daily, "distracted"),
           countStatus(daily, "sleep"),
           countStatus(daily, "absent"),
-          daily.filter(record => analyzeNote(record.note).type === "bad").length,
           quickNotes.length,
           quickNotes.filter(note => note.level === "需关注").length,
           events.length,
@@ -4534,6 +4438,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("renameSubjectBtn").addEventListener("click", changeCurrentSubjectName);
     $("eventDateInput").addEventListener("change", renderEvents);
     $("eventSearch").addEventListener("input", renderEvents);
+    $("inlineRecordModeSelect").addEventListener("change", updateInlineRecordMode);
     $("addInlineQuickNoteBtn").addEventListener("click", addInlineQuickNote);
     $("inlineQuickContentInput").addEventListener("keydown", event => {
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
@@ -4546,9 +4451,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("openQuickNoteBtn").addEventListener("click", () => openQuickNoteModal(selectedStudent || state.students[0]?.name || ""));
     $("saveQuickNoteBtn").addEventListener("click", saveQuickNote);
     $("closeQuickNoteModalBtn").addEventListener("click", closeQuickNoteModal);
-    $("saveDailyNoteBtn").addEventListener("click", saveDailyNote);
-    $("clearDailyNoteBtn").addEventListener("click", clearDailyNote);
-    $("closeDailyNoteBtn").addEventListener("click", closeDailyNoteModal);
     ["quickNoteStudentSelect", "quickNoteDateInput"].forEach(id => {
       $(id).addEventListener("change", renderQuickNoteList);
     });
@@ -4597,9 +4499,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     });
     $("quickNoteModal").addEventListener("click", event => {
       if (event.target.id === "quickNoteModal") closeQuickNoteModal();
-    });
-    $("dailyNoteModal").addEventListener("click", event => {
-      if (event.target.id === "dailyNoteModal") closeDailyNoteModal();
     });
     $("saveCloudConfigBtn").addEventListener("click", persistCloudConfigFromModal);
     $("uploadCloudBtn").addEventListener("click", () => uploadCloudState(true));
