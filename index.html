@@ -825,7 +825,7 @@
         <div class="panel-head">
           <div>
             <h2 class="panel-title">每周单科测试</h2>
-            <div class="sub">选择考试日期和科目后录入成绩，系统按有效分数自动生成班级排名；分数框按 Enter 跳到下一位。</div>
+            <div class="sub">顶部显示所选科目的历史总览；下方表格按当前日期录入或修改成绩。</div>
           </div>
           <div class="toolbar">
             <label>日期 <input id="subjectDateInput" type="date"></label>
@@ -2202,19 +2202,35 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function renderSubjectStats(date, subject) {
-      const tests = getSubjectTests(date, subject);
-      const scored = tests.map(test => parseScore(test.score)).filter(score => score !== null);
-      const avg = scored.length ? (scored.reduce((a, b) => a + b, 0) / scored.length).toFixed(1) : "-";
-      const max = scored.length ? Math.max(...scored) : "-";
       const maxScore = Number($("subjectMaxInput").value) || 100;
-      const excellent = scored.filter(score => score >= maxScore * 0.85).length;
+      const overview = subjectOverviewStats(subject, maxScore);
       $("subjectStats").innerHTML = [
         statHtml("科目", subject),
-        statHtml("已录成绩", `${scored.length}/${state.students.length}`),
-        statHtml("平均分", avg),
-        statHtml("最高分", max),
-        statHtml("85%+人数", excellent)
+        statHtml("已测人数", `${overview.studentCount}/${state.students.length}`),
+        statHtml("考试次数", overview.examCount),
+        statHtml("最近均分", overview.latestAvg),
+        statHtml("最高分", overview.maxScore),
+        statHtml("85%+累计", overview.excellentCount),
+        statHtml("当前录入", date)
       ].join("");
+    }
+
+    function subjectOverviewStats(subject, maxScore = 100) {
+      const tests = Object.values(state.subjectTests || {})
+        .filter(test => test.subject === subject)
+        .map(test => ({ ...test, scoreNum: parseScore(test.score) }))
+        .filter(test => test.scoreNum !== null);
+      const dates = [...new Set(tests.map(test => test.date).filter(Boolean))].sort();
+      const latestDate = dates[dates.length - 1] || "";
+      const latestScores = tests.filter(test => test.date === latestDate).map(test => test.scoreNum);
+      const max = tests.length ? Math.max(...tests.map(test => test.scoreNum)) : null;
+      return {
+        studentCount: new Set(tests.map(test => test.name)).size,
+        examCount: dates.length,
+        latestAvg: latestScores.length ? averageNumber(latestScores).toFixed(1) : "-",
+        maxScore: max === null ? "-" : max,
+        excellentCount: tests.filter(test => test.scoreNum >= maxScore * 0.85).length
+      };
     }
 
     function renderEvents() {
