@@ -1871,11 +1871,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return `<div class="stat ${action ? "clickable" : ""}" ${action ? `data-action="${action}" title="${title}"` : ""}><div class="num">${num}</div><div class="label">${label}</div></div>`;
     }
 
-    function subjectOverviewSelectHtml(subject) {
+    function subjectOverviewSelectHtml(subject, label = "科目") {
       const options = SUBJECTS
         .map(item => `<option value="${item}" ${item === subject ? "selected" : ""}>${item}</option>`)
         .join("");
-      return `<div class="stat"><select id="overviewSubjectSelect" class="stat-select" aria-label="查看科目">${options}</select><div class="label">科目</div></div>`;
+      return `<div class="stat"><select id="overviewSubjectSelect" class="stat-select" aria-label="查看科目">${options}</select><div class="label">${label}</div></div>`;
     }
 
     function currentOverviewSubject(fallback = "电路") {
@@ -2230,8 +2230,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function renderSubjectStats(date, subject) {
       const maxScore = Number($("subjectMaxInput").value) || 100;
       const overview = subjectOverviewStats(subject, maxScore);
+      const subjectDateLabel = overview.latestDate ? `最近考试 ${formatShortDate(overview.latestDate)}` : "暂无考试日期";
       $("subjectStats").innerHTML = [
-        subjectOverviewSelectHtml(subject),
+        subjectOverviewSelectHtml(subject, subjectDateLabel),
         statHtml("已测人数", `${overview.studentCount}/${state.students.length}`),
         statHtml("考试次数", overview.examCount),
         statHtml("最近均分", overview.latestAvg),
@@ -2253,6 +2254,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return {
         studentCount: new Set(tests.map(test => test.name)).size,
         examCount: dates.length,
+        latestDate,
         latestAvg: latestScores.length ? averageNumber(latestScores).toFixed(1) : "-",
         maxScore: max === null ? "-" : max,
         excellentCount: tests.filter(test => test.scoreNum >= maxScore * 0.85).length
