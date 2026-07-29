@@ -802,7 +802,7 @@
         <div class="panel-head">
           <div>
             <h2 class="panel-title">按日期录入</h2>
-            <div class="sub">每日录入是当天总表；临时小事用“随手记”，系统会自动归到当天和学生画像。</div>
+            <div class="sub">每日录入只做当天总表和状态打标；具体原因、处理和跟进写进“随手记”。</div>
           </div>
           <div class="toolbar">
             <label>日期 <input id="dateInput" type="date"></label>
@@ -829,7 +829,7 @@
                 <th>日测纠错</th>
                 <th id="homeworkHeader0">讲义</th>
                 <th id="homeworkHeader1">宝典</th>
-                <th>上课异常</th>
+                <th>今日状态</th>
               </tr>
             </thead>
             <tbody id="entryBody"></tbody>
@@ -956,7 +956,7 @@
                   <th>姓名</th>
                   <th>日测分数</th>
                   <th>作业</th>
-                  <th>上课异常</th>
+                  <th>今日状态</th>
                   <th>操作</th>
                 </tr>
               </thead>
@@ -1001,7 +1001,7 @@
                     <th>日测分数</th>
                     <th>日测纠错</th>
                     <th>作业</th>
-                    <th>上课异常</th>
+                    <th>今日状态</th>
                   </tr>
                 </thead>
                 <tbody id="historyBody"></tbody>
@@ -3745,7 +3745,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function dailyRowsForExport() {
       const names = homeworkNames();
       return [
-        ["日期", "序号", "姓名", "日测分数", "日测纠错", ...names, "上课异常", "随手记条数"],
+        ["日期", "序号", "姓名", "日测分数", "日测纠错", ...names, "今日状态", "随手记条数"],
         ...Object.values(state.records)
           .sort(compareRecordsByDateAndStudent)
           .map(record => [
@@ -3770,7 +3770,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             rows.push([record.date, studentNumber(record.name), record.name, "作业", homeworkIssueText(record)]);
           }
           (record.status || []).forEach(status => {
-            rows.push([record.date, studentNumber(record.name), record.name, "上课异常", STATUS_LABELS[status] || status]);
+            rows.push([record.date, studentNumber(record.name), record.name, "今日状态", STATUS_LABELS[status] || status]);
           });
         });
       return rows;
