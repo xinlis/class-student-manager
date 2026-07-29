@@ -729,7 +729,7 @@
     <div class="tabs">
       <button class="tab active" data-view="entryView">每日录入</button>
       <button class="tab" data-view="subjectView">单科测试</button>
-      <button class="tab" data-view="eventView">学生动态</button>
+      <button class="tab" data-view="eventView">随手记</button>
       <button class="tab" data-view="summaryView">今日异常</button>
       <button class="tab" data-view="profileView">学生画像</button>
       <button class="tab" data-view="rosterView">学生名单</button>
@@ -906,8 +906,8 @@
       <div class="panel">
         <div class="panel-head">
           <div>
-            <h2 class="panel-title">学生动态与沟通</h2>
-            <div class="sub">随手记负责现场小事，正式沟通负责闭环跟进；下方按时间线统一查看。</div>
+            <h2 class="panel-title">随手记</h2>
+            <div class="sub">随时记录学生现场状态；需要家校或学生谈话时，可转为沟通跟进。</div>
           </div>
           <div class="toolbar">
             <label>日期 <input id="eventDateInput" type="date"></label>
@@ -947,7 +947,7 @@
             </div>
           </div>
           <div class="communication-box">
-            <h3>正式沟通</h3>
+            <h3>沟通跟进</h3>
             <div class="toolbar">
               <label>学生
                 <select id="eventStudentSelect"></select>
@@ -972,7 +972,7 @@
               </label>
             </div>
             <div class="toolbar" style="margin-top:10px; align-items:flex-start">
-              <textarea id="eventContentInput" class="event-content-input" placeholder="正式沟通内容，例如：电话沟通母亲，反馈近期上课犯困和日测低分；家长表示晚上会收手机。"></textarea>
+              <textarea id="eventContentInput" class="event-content-input" placeholder="沟通跟进内容，例如：电话沟通母亲，反馈近期上课犯困和日测低分；家长表示晚上会收手机。"></textarea>
               <input id="eventFollowInput" class="event-follow-input" placeholder="跟进动作，可选，例如：3 天后看午休和纠错">
               <button id="addEventBtn" class="primary">添加沟通</button>
               <button id="cancelEventEditBtn" class="hidden">取消编辑</button>
@@ -2324,7 +2324,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("eventBody").innerHTML = items.map(item => item.kind === "event" ? `
         <tr>
           <td>${escapeHtml(item.date)}</td>
-          <td><span class="badge neutral">正式沟通</span></td>
+          <td><span class="badge neutral">沟通跟进</span></td>
           <td class="idx">${item.name ? studentNumber(item.name) : ""}</td>
           <td><span class="name">${escapeHtml(item.name || "未指定")}</span></td>
           <td><span class="badge neutral">${escapeHtml(item.type)}</span></td>
@@ -2351,7 +2351,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             <button class="small danger quick-timeline-delete-btn" data-id="${escapeHtml(item.id)}">删除</button>
           </td>
         </tr>
-      `).join("") || `<tr><td colspan="9" class="empty">暂无学生动态</td></tr>`;
+      `).join("") || `<tr><td colspan="9" class="empty">暂无随手记</td></tr>`;
       document.querySelectorAll(".event-edit-btn").forEach(btn => {
         btn.addEventListener("click", () => startEditEvent(btn.dataset.id));
       });
@@ -2399,7 +2399,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const student = state.students.find(studentItem => studentItem.name === item.name);
       if (student && matchesStudentSearch(student, studentNumber(item.name) - 1, text)) return true;
       return matchesSearchValues([
-        item.kind === "quick" ? "随手记" : "正式沟通",
+        item.kind === "quick" ? "随手记" : "沟通跟进",
         item.type,
         item.content,
         item.followUp,
@@ -2494,7 +2494,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("addEventBtn").textContent = "添加沟通";
       $("cancelEventEditBtn").classList.add("hidden");
       $("eventContentInput").focus();
-      showToast("已带入正式沟通，确认后点添加沟通");
+      showToast("已带入沟通跟进，确认后点添加沟通");
     }
 
     function startEditEvent(id) {
