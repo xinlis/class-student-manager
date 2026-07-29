@@ -908,7 +908,7 @@
               <label>时间 <input id="inlineQuickTimeInput" type="time"></label>
             </div>
             <div class="toolbar" style="margin-top:10px; align-items:flex-start">
-              <textarea id="inlineQuickContentInput" placeholder="直接写即可，例如：第 2 节说话提醒后收敛；上午迟到；电话沟通家长反馈近期犯困。"></textarea>
+              <textarea id="inlineQuickContentInput" placeholder="直接写即可，例如：李同学上课玩平板，没收一节课，下次没收一天；家长给孩子请假；上午迟到 2 分钟肚子疼。"></textarea>
               <button id="addInlineQuickNoteBtn" class="primary">保存随手记</button>
             </div>
           </div>
@@ -1060,7 +1060,7 @@
       </div>
       <div class="quick-note-grid" style="grid-template-columns: 1fr 130px 120px">
         <label>内容
-          <textarea id="quickNoteContentInput" placeholder="一句话即可，例如：第 2 节上课说话，提醒后收敛。"></textarea>
+          <textarea id="quickNoteContentInput" placeholder="一句话即可，例如：李同学上课玩平板，没收一节课，下次没收一天。"></textarea>
         </label>
         <label>日期
           <input id="quickNoteDateInput" type="date">
@@ -1183,7 +1183,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const DAILY_FULL_SCORE = 100;
     const DAILY_CORRECTION_OPTIONS = ["已纠错", "未纠错"];
     const DAILY_NO_CORRECTION = "不需纠错";
-    const QUICK_NOTE_TYPES = ["家校沟通", "迟到", "睡眠状态", "课堂纪律", "作业纠错", "学习状态", "情绪状态", "表扬鼓励", "日常记录", "沟通跟进", "其他"];
+    const QUICK_NOTE_TYPES = ["家校沟通", "迟到", "身体状态", "睡眠状态", "课堂纪律", "作业纠错", "学习状态", "情绪状态", "表扬鼓励", "日常记录", "沟通跟进", "其他"];
     const QUICK_NOTE_LEVELS = ["普通", "需关注"];
     const DEFAULT_HOMEWORK_NAMES = ["讲义", "宝典"];
     const DEFAULT_CLASS_NAME = "VIP2 班";
@@ -2254,21 +2254,61 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function classifyRecordContent(content, mode = "quick") {
       const text = String(content || "");
       const rules = [
-        ["家校沟通", ["家长", "妈妈", "母亲", "爸爸", "父亲", "电话", "微信", "沟通", "反馈", "联系", "请假"]],
-        ["迟到", ["迟到", "晚到", "到班晚", "没按时", "踩点"]],
+        ["家校沟通", ["家长", "妈妈", "母亲", "爸爸", "父亲", "电话", "微信", "沟通", "反馈", "联系", "请假", "病假", "事假"]],
+        ["迟到", ["迟到", "晚到", "到班晚", "没按时", "踩点", "迟了"]],
+        ["身体状态", ["肚子疼", "头疼", "胃疼", "不舒服", "身体", "生病", "发烧", "感冒", "医院", "校医"]],
         ["睡眠状态", ["打盹", "睡觉", "犯困", "困", "午休", "睡过", "睡不醒", "趴"]],
-        ["课堂纪律", ["说话", "讲话", "聊天", "纪律", "扰乱", "插话", "玩", "手机", "平板", "走神", "发呆", "不专注"]],
+        ["课堂纪律", ["说话", "讲话", "聊天", "纪律", "扰乱", "插话", "玩", "手机", "平板", "没收", "走神", "发呆", "不专注"]],
         ["作业纠错", ["作业", "未交", "没交", "补交", "讲义", "宝典", "纠错", "错题", "订正"]],
-        ["学习状态", ["低分", "退步", "不会", "听不懂", "卡点", "薄弱", "测试", "成绩", "分数"]],
-        ["情绪状态", ["情绪", "哭", "焦虑", "烦", "压力", "低落", "崩", "不想学", "心态"]],
+        ["学习状态", ["低分", "退步", "不会", "听不懂", "卡点", "薄弱", "测试", "成绩", "分数", "下滑", "掉分"]],
+        ["情绪状态", ["情绪", "哭", "焦虑", "烦", "压力", "低落", "崩", "不想学", "心态", "状态不对", "状态差", "状态低"]],
         ["表扬鼓励", ["表扬", "进步", "主动", "认真", "积极", "优秀", "满分", "状态好", "很棒"]]
       ];
       const match = rules.find(([, words]) => words.some(word => text.includes(word)));
       const type = match ? match[0] : (mode === "event" ? "沟通跟进" : "日常记录");
-      const attentionWords = ["需关注", "严重", "多次", "连续", "反复", "家长", "电话", "请假", "哭", "焦虑", "睡觉", "未交", "低分", "退步", "手机", "扰乱"];
+      const attentionWords = ["需关注", "严重", "多次", "连续", "反复", "家长", "电话", "请假", "哭", "焦虑", "睡觉", "未交", "低分", "退步", "下滑", "手机", "平板", "没收", "扰乱", "肚子疼", "不舒服", "状态不对"];
       const positiveWords = ["表扬", "进步", "主动", "认真", "积极", "优秀", "满分", "状态好", "很棒"];
       const level = attentionWords.some(word => text.includes(word)) && !positiveWords.some(word => text.includes(word)) ? "需关注" : "普通";
       return { type, level };
+    }
+
+    function detectStudentNameFromContent(content, fallbackName = "") {
+      const text = String(content || "").trim();
+      if (!text) return fallbackName;
+      const exactMatches = state.students.filter(student => student.name && text.includes(student.name));
+      if (exactMatches.length === 1) return exactMatches[0].name;
+      const aliasMatches = state.students.filter(student => {
+        const name = student.name || "";
+        if (!name) return false;
+        const familyName = Array.from(name)[0];
+        return text.includes(`${familyName}同学`) || text.includes(`${familyName}同`);
+      });
+      return aliasMatches.length === 1 ? aliasMatches[0].name : fallbackName;
+    }
+
+    function extractFollowUpFromContent(content, level) {
+      const text = String(content || "").trim();
+      const match = text.match(/(?:下次|以后|后续|明天|接下来|之后|跟进|观察)[^，。；;,.]*/);
+      if (match) return match[0].trim();
+      return "";
+    }
+
+    function buildQuickNoteData({ name, content, date, time }) {
+      const classified = classifyRecordContent(content, "quick");
+      const detectedName = detectStudentNameFromContent(content, name);
+      const followUp = extractFollowUpFromContent(content, classified.level);
+      return {
+        id: `quick-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        date: date || today(),
+        time: time || currentTimeText(),
+        name: detectedName,
+        type: classified.type,
+        level: classified.level,
+        status: followUp ? "需跟进" : (classified.level === "需关注" ? "需关注" : "已记录"),
+        followUp,
+        content,
+        createdAt: new Date().toISOString()
+      };
     }
 
     function quickNoteStatus(note) {
@@ -2315,24 +2355,22 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         showToast("请写一句随手记内容");
         return;
       }
-      const classified = classifyRecordContent(content, "quick");
-      state.quickNotes = [{
-        id: `quick-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      const note = buildQuickNoteData({
+        name,
         date: $("eventDateInput").value || today(),
         time: $("inlineQuickTimeInput").value || currentTimeText(),
-        name,
-        type: classified.type,
-        level: classified.level,
-        status: classified.level === "需关注" ? "需关注" : "已记录",
-        followUp: "",
-        content,
-        createdAt: new Date().toISOString()
-      }, ...(state.quickNotes || [])];
+        content
+      });
+      if (!note.name) {
+        showToast("请先选择学生，或在内容里写清学生姓名");
+        return;
+      }
+      state.quickNotes = [note, ...(state.quickNotes || [])];
       saveState();
       $("inlineQuickContentInput").value = "";
       $("inlineQuickTimeInput").value = currentTimeText();
       render();
-      showToast("随手记已保存");
+      showToast(note.name !== name ? `已识别为 ${note.name}，随手记已保存` : "随手记已保存");
     }
 
     function deleteEvent(id) {
@@ -2404,25 +2442,23 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         showToast("请写一句随手记内容");
         return;
       }
-      const classified = classifyRecordContent(content, "quick");
-      state.quickNotes = [{
-        id: `quick-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      const note = buildQuickNoteData({
+        name,
         date: $("quickNoteDateInput").value || today(),
         time: $("quickNoteTimeInput").value || currentTimeText(),
-        name,
-        type: classified.type,
-        level: classified.level,
-        status: classified.level === "需关注" ? "需关注" : "已记录",
-        followUp: "",
-        content,
-        createdAt: new Date().toISOString()
-      }, ...(state.quickNotes || [])];
+        content
+      });
+      if (!note.name) {
+        showToast("请先选择学生，或在内容里写清学生姓名");
+        return;
+      }
+      state.quickNotes = [note, ...(state.quickNotes || [])];
       saveState();
       $("quickNoteContentInput").value = "";
       $("quickNoteTimeInput").value = currentTimeText();
       renderQuickNoteList();
       render();
-      showToast("随手记已保存");
+      showToast(note.name !== name ? `已识别为 ${note.name}，随手记已保存` : "随手记已保存");
     }
 
     function renderQuickNoteList() {
