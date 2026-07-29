@@ -230,13 +230,6 @@
       font-size: 12px;
     }
     .homework-name-input { width: 116px; }
-    .quick-note-cell {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      flex-wrap: wrap;
-      min-width: 120px;
-    }
     .subject-input { width: 86px; text-align: center; }
     .compact-date { width: 132px; min-width: 132px; }
     .rank-cell { font-weight: 750; color: var(--blue); }
@@ -837,7 +830,6 @@
                 <th id="homeworkHeader0">讲义</th>
                 <th id="homeworkHeader1">宝典</th>
                 <th>上课异常</th>
-                <th>随手记</th>
               </tr>
             </thead>
             <tbody id="entryBody"></tbody>
@@ -1010,7 +1002,6 @@
                     <th>日测纠错</th>
                     <th>作业</th>
                     <th>上课异常</th>
-                    <th>随手记</th>
                   </tr>
                 </thead>
                 <tbody id="historyBody"></tbody>
@@ -1990,7 +1981,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function renderEntry(date) {
       const query = $("entrySearch").value.trim();
       const names = homeworkNames();
-      const quickNoteCounts = quickNoteCountsForDate(date);
       const rows = state.students
         .map((student, idx) => ({ student, idx, record: ensureRecord(date, student) }))
         .filter(item => matchesStudentSearch(item.student, item.idx, query));
@@ -2019,12 +2009,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
               ${STATUS_OPTIONS.map(status => `
                 <button class="tag ${status.key} ${record.status?.includes(status.key) ? "on" : ""}" data-status="${status.key}" data-name="${student.name}">${status.label}</button>
               `).join("")}
-            </div>
-          </td>
-          <td>
-            <div class="quick-note-cell">
-              <button class="small quick-note-btn" data-name="${student.name}">记</button>
-              ${quickNoteCounts.get(student.name) ? `<span class="badge ${quickNoteCounts.get(student.name).attention ? "warn" : "neutral"}">随手记 ${quickNoteCounts.get(student.name).count}</span>` : `<span class="muted">无</span>`}
             </div>
           </td>
         </tr>
@@ -2060,20 +2044,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       document.querySelectorAll(".tag").forEach(btn => {
         btn.addEventListener("click", () => toggleStatus(date, btn.dataset.name, btn.dataset.status));
       });
-      document.querySelectorAll(".quick-note-btn").forEach(btn => {
-        btn.addEventListener("click", () => openQuickNoteModal(btn.dataset.name));
-      });
-    }
-
-    function quickNoteCountsForDate(date) {
-      const map = new Map();
-      getQuickNotes({ date }).forEach(note => {
-        const current = map.get(note.name) || { count: 0, attention: false };
-        current.count += 1;
-        current.attention = current.attention || note.level === "需关注";
-        map.set(note.name, current);
-      });
-      return map;
     }
 
     function renderHomeworkSettings() {
@@ -2882,16 +2852,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <td><span class="badge ${dailyCorrectionBadgeClass(record)}">${escapeHtml(dailyCorrectionText(record))}</span></td>
           <td>${homeworkBadgesHtml(record)}</td>
           <td>${record.status?.length ? record.status.map(key => `<span class="badge bad">${STATUS_LABELS[key]}</span>`).join(" ") : "<span class='muted'>正常</span>"}</td>
-          <td>${dailyQuickNoteBadges(record.date, record.name)}</td>
         </tr>
-      `).join("") || `<tr><td colspan="6" class="empty">暂无记录</td></tr>`;
-    }
-
-    function dailyQuickNoteBadges(date, name) {
-      const notes = getQuickNotes({ date, name });
-      if (!notes.length) return `<span class="muted">无</span>`;
-      const attention = notes.some(note => note.level === "需关注");
-      return `<span class="badge ${attention ? "warn" : "neutral"}">${notes.length} 条</span>`;
+      `).join("") || `<tr><td colspan="5" class="empty">暂无记录</td></tr>`;
     }
 
     function renderAiAnalysis(student, records, subjectTests, events, quickNotes = []) {
