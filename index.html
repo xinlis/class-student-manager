@@ -910,12 +910,6 @@
           <div class="communication-box">
             <h3>记一条</h3>
             <div class="toolbar">
-              <label>记录方式
-                <select id="inlineRecordModeSelect">
-                  <option value="quick">随手记</option>
-                  <option value="event">沟通跟进</option>
-                </select>
-              </label>
               <label>学生
                 <select id="inlineQuickStudentSelect"></select>
               </label>
@@ -923,20 +917,8 @@
             </div>
             <div class="toolbar" style="margin-top:10px; align-items:flex-start">
               <textarea id="inlineQuickContentInput" placeholder="直接写即可，例如：第 2 节说话提醒后收敛；上午迟到；电话沟通家长反馈近期犯困。"></textarea>
-              <input id="eventFollowInput" class="event-follow-input hidden" placeholder="跟进动作，可选，例如：3 天后看午休和纠错">
-              <label id="inlineEventStatusLabel" class="hidden">状态
-                <select id="inlineEventStatusSelect">
-                  <option value="已记录">已记录</option>
-                  <option value="需跟进">需跟进</option>
-                  <option value="已完成">已完成</option>
-                </select>
-              </label>
-              <button id="addInlineQuickNoteBtn" class="primary">保存</button>
+              <button id="addInlineQuickNoteBtn" class="primary">保存随手记</button>
             </div>
-          </div>
-          <div class="toolbar hidden" id="eventEditActions">
-            <button id="addEventBtn" class="primary">保存修改</button>
-            <button id="cancelEventEditBtn">取消编辑</button>
           </div>
         </div>
         <div class="table-wrap">
@@ -1219,7 +1201,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     let state = loadState();
     let activeView = "entryView";
     let selectedStudent = state.students[0]?.name || "";
-    let editingEventId = "";
     let editingStudentIndex = -1;
     let currentAiPrompt = "";
     let cloudSaveTimer = null;
@@ -2242,13 +2223,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function renderEvents() {
       renderInlineQuickStudentOptions();
-      updateInlineRecordMode();
       const query = $("eventSearch").value.trim();
       const items = getCommunicationTimeline(query);
       $("eventBody").innerHTML = items.map(item => item.kind === "event" ? `
         <tr>
           <td>${escapeHtml(item.date)}</td>
-          <td><span class="badge neutral">沟通跟进</span></td>
+          <td><span class="badge neutral">历史沟通</span></td>
           <td class="idx">${item.name ? studentNumber(item.name) : ""}</td>
           <td><span class="name">${escapeHtml(item.name || "未指定")}</span></td>
           <td><span class="badge neutral">${escapeHtml(item.type)}</span></td>
@@ -2256,7 +2236,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <td>${escapeHtml(item.followUp || "")}</td>
           <td><span class="badge ${item.status === "需跟进" ? "warn" : item.status === "已完成" ? "ok" : "neutral"}">${escapeHtml(item.status)}</span></td>
           <td>
-            <button class="small event-edit-btn" data-id="${escapeHtml(item.id)}">编辑</button>
             <button class="small danger event-delete-btn" data-id="${escapeHtml(item.id)}">删除</button>
           </td>
         </tr>
@@ -2266,24 +2245,25 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <td><span class="badge ${item.level === "需关注" ? "warn" : "neutral"}">随手记</span></td>
           <td class="idx">${item.name ? studentNumber(item.name) : ""}</td>
           <td><span class="name">${escapeHtml(item.name || "")}</span></td>
-          <td><span class="badge ${item.type === "表扬" ? "ok" : "neutral"}">${escapeHtml(item.type)}</span></td>
+          <td><span class="badge ${item.type === "表扬鼓励" ? "ok" : "neutral"}">${escapeHtml(item.type)}</span></td>
           <td>${escapeHtml(item.content)}</td>
-          <td><span class="muted">-</span></td>
-          <td><span class="badge ${item.level === "需关注" ? "warn" : "neutral"}">${escapeHtml(item.level || "普通")}</span></td>
+          <td>${escapeHtml(item.followUp || "") || `<span class="muted">-</span>`}</td>
+          <td><span class="badge ${quickNoteStatusBadgeClass(quickNoteStatus(item))}">${escapeHtml(quickNoteStatus(item))}</span></td>
           <td>
-            <button class="small quick-promote-btn" data-id="${escapeHtml(item.id)}">转沟通</button>
+            <button class="small quick-follow-btn" data-id="${escapeHtml(item.id)}">标记跟进</button>
+            <button class="small quick-complete-btn" data-id="${escapeHtml(item.id)}">已跟进</button>
             <button class="small danger quick-timeline-delete-btn" data-id="${escapeHtml(item.id)}">删除</button>
           </td>
         </tr>
       `).join("") || `<tr><td colspan="9" class="empty">暂无随手记</td></tr>`;
-      document.querySelectorAll(".event-edit-btn").forEach(btn => {
-        btn.addEventListener("click", () => startEditEvent(btn.dataset.id));
-      });
       document.querySelectorAll(".event-delete-btn").forEach(btn => {
         btn.addEventListener("click", () => deleteEvent(btn.dataset.id));
       });
-      document.querySelectorAll(".quick-promote-btn").forEach(btn => {
-        btn.addEventListener("click", () => promoteQuickNoteToEvent(btn.dataset.id));
+      document.querySelectorAll(".quick-follow-btn").forEach(btn => {
+        btn.addEventListener("click", () => markQuickNoteFollowUp(btn.dataset.id));
+      });
+      document.querySelectorAll(".quick-complete-btn").forEach(btn => {
+        btn.addEventListener("click", () => completeQuickNoteFollowUp(btn.dataset.id));
       });
       document.querySelectorAll(".quick-timeline-delete-btn").forEach(btn => {
         btn.addEventListener("click", () => deleteQuickNote(btn.dataset.id));
@@ -2299,14 +2279,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       `).join("");
       select.value = current || selectedStudent || state.students[0]?.name || "";
       if ($("inlineQuickTimeInput") && !$("inlineQuickTimeInput").value) $("inlineQuickTimeInput").value = currentTimeText();
-    }
-
-    function updateInlineRecordMode() {
-      const isEvent = $("inlineRecordModeSelect")?.value === "event";
-      $("eventFollowInput")?.classList.toggle("hidden", !isEvent);
-      $("inlineEventStatusLabel")?.classList.toggle("hidden", !isEvent);
-      $("inlineQuickTimeInput")?.closest("label")?.classList.toggle("hidden", isEvent);
-      if ($("addInlineQuickNoteBtn")) $("addInlineQuickNoteBtn").textContent = isEvent ? "保存沟通" : "保存随手记";
     }
 
     function classifyRecordContent(content, mode = "quick") {
@@ -2327,6 +2299,16 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const positiveWords = ["表扬", "进步", "主动", "认真", "积极", "优秀", "满分", "状态好", "很棒"];
       const level = attentionWords.some(word => text.includes(word)) && !positiveWords.some(word => text.includes(word)) ? "需关注" : "普通";
       return { type, level };
+    }
+
+    function quickNoteStatus(note) {
+      return note.status || (note.level === "需关注" ? "需关注" : "已记录");
+    }
+
+    function quickNoteStatusBadgeClass(status) {
+      if (status === "已跟进" || status === "已完成") return "ok";
+      if (status === "需跟进" || status === "需关注") return "warn";
+      return "neutral";
     }
 
     function getCommunicationTimeline(query) {
@@ -2352,53 +2334,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       ], text);
     }
 
-    function addEvent() {
-      const content = $("inlineQuickContentInput").value.trim();
-      if (!content) {
-        showToast("请先填写事件内容");
-        return;
-      }
-      const classified = classifyRecordContent(content, "event");
-      const eventData = {
-        date: $("eventDateInput").value || today(),
-        name: $("inlineQuickStudentSelect").value,
-        type: classified.type,
-        content,
-        followUp: $("eventFollowInput").value.trim(),
-        status: $("inlineEventStatusSelect").value,
-        updatedAt: new Date().toISOString()
-      };
-      if (editingEventId) {
-        const index = (state.events || []).findIndex(event => event.id === editingEventId);
-        if (index === -1) {
-          showToast("这条事件没有找到，请重新选择");
-          resetEventForm();
-          return;
-        }
-        state.events[index] = {
-          ...state.events[index],
-          ...eventData
-        };
-      } else {
-        const event = {
-          id: `event-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-          ...eventData,
-          createdAt: new Date().toISOString()
-        };
-        state.events = [event, ...(state.events || [])];
-      }
-      saveState();
-      const wasEditing = Boolean(editingEventId);
-      resetEventForm();
-      renderEvents();
-      showToast(wasEditing ? "沟通记录已修改" : "沟通记录已保存");
-    }
-
     function addInlineQuickNote() {
-      if ($("inlineRecordModeSelect").value === "event" || editingEventId) {
-        addEvent();
-        return;
-      }
       const name = $("inlineQuickStudentSelect").value;
       const content = $("inlineQuickContentInput").value.trim();
       if (!name) {
@@ -2417,6 +2353,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         name,
         type: classified.type,
         level: classified.level,
+        status: classified.level === "需关注" ? "需关注" : "已记录",
+        followUp: "",
         content,
         createdAt: new Date().toISOString()
       }, ...(state.quickNotes || [])];
@@ -2427,68 +2365,39 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       showToast("随手记已保存");
     }
 
-    function promoteQuickNoteToEvent(id) {
-      const note = (state.quickNotes || []).find(item => item.id === id);
-      if (!note) {
-        showToast("这条随手记没有找到");
-        return;
-      }
-      editingEventId = "";
-      $("eventDateInput").value = note.date || today();
-      $("inlineRecordModeSelect").value = "event";
-      renderInlineQuickStudentOptions();
-      $("inlineQuickStudentSelect").value = note.name || "";
-      $("inlineQuickContentInput").value = `${note.time || ""} ${note.type || "随手记"}：${note.content || ""}`.trim();
-      $("eventFollowInput").value = note.level === "需关注" ? "结合后续表现跟进" : "";
-      $("inlineEventStatusSelect").value = note.level === "需关注" ? "需跟进" : "已记录";
-      $("eventEditActions").classList.add("hidden");
-      $("addInlineQuickNoteBtn").classList.remove("hidden");
-      updateInlineRecordMode();
-      $("inlineQuickContentInput").focus();
-      showToast("已带入沟通跟进，确认后点保存沟通");
-    }
-
-    function startEditEvent(id) {
-      const event = (state.events || []).find(item => item.id === id);
-      if (!event) {
-        showToast("这条事件没有找到");
-        return;
-      }
-      editingEventId = id;
-      $("eventDateInput").value = event.date || today();
-      $("inlineRecordModeSelect").value = "event";
-      renderInlineQuickStudentOptions();
-      $("inlineQuickStudentSelect").value = event.name || "";
-      $("inlineQuickContentInput").value = event.content || "";
-      $("eventFollowInput").value = event.followUp || "";
-      $("inlineEventStatusSelect").value = event.status || "已记录";
-      $("eventEditActions").classList.remove("hidden");
-      $("addInlineQuickNoteBtn").classList.add("hidden");
-      updateInlineRecordMode();
-      $("inlineQuickContentInput").focus();
-      showToast("已进入编辑，可修改后保存");
-    }
-
     function deleteEvent(id) {
       const event = (state.events || []).find(item => item.id === id);
       if (!event) return;
       if (!confirm("确定删除这条沟通记录吗？删除后可通过之前的备份找回。")) return;
       state.events = (state.events || []).filter(item => item.id !== id);
       saveState();
-      if (editingEventId === id) resetEventForm();
       renderEvents();
       showToast("沟通记录已删除");
     }
 
-    function resetEventForm() {
-      editingEventId = "";
-      $("inlineRecordModeSelect").value = "quick";
-      $("inlineQuickContentInput").value = "";
-      $("eventFollowInput").value = "";
-      $("inlineEventStatusSelect").value = "已记录";
-      $("addInlineQuickNoteBtn").classList.remove("hidden");
-      $("eventEditActions").classList.add("hidden");
-      updateInlineRecordMode();
+    function markQuickNoteFollowUp(id) {
+      const note = (state.quickNotes || []).find(item => item.id === id);
+      if (!note) return;
+      const followUp = prompt("写一下后续要怎么跟进（可留空）：", note.followUp || "");
+      if (followUp === null) return;
+      note.followUp = followUp.trim();
+      note.status = "需跟进";
+      note.updatedAt = new Date().toISOString();
+      saveState();
+      renderEvents();
+      renderProfile();
+      showToast("已标记为需跟进");
+    }
+
+    function completeQuickNoteFollowUp(id) {
+      const note = (state.quickNotes || []).find(item => item.id === id);
+      if (!note) return;
+      note.status = "已跟进";
+      note.updatedAt = new Date().toISOString();
+      saveState();
+      renderEvents();
+      renderProfile();
+      showToast("已标记为已跟进");
     }
 
     function openQuickNoteModal(name = "") {
@@ -2533,6 +2442,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         name,
         type: classified.type,
         level: classified.level,
+        status: classified.level === "需关注" ? "需关注" : "已记录",
+        followUp: "",
         content,
         createdAt: new Date().toISOString()
       }, ...(state.quickNotes || [])];
@@ -2551,11 +2462,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("quickNoteList").innerHTML = notes.map(note => `
         <div class="quick-note-item">
           <div>
-            <span class="badge ${note.level === "需关注" ? "warn" : note.type === "表扬" ? "ok" : "neutral"}">${escapeHtml(note.time || "")} ${escapeHtml(note.type)}</span>
+            <span class="badge ${note.level === "需关注" ? "warn" : note.type === "表扬鼓励" ? "ok" : "neutral"}">${escapeHtml(note.time || "")} ${escapeHtml(note.type)}</span>
           </div>
           <div class="quick-note-text">
             <strong>${escapeHtml(note.name)}</strong>：${escapeHtml(note.content)}
-            ${note.level === "需关注" ? `<span class="badge warn">需关注</span>` : ""}
+            <span class="badge ${quickNoteStatusBadgeClass(quickNoteStatus(note))}">${escapeHtml(quickNoteStatus(note))}</span>
           </div>
           <button class="small danger quick-note-delete-btn" data-id="${escapeHtml(note.id)}">删除</button>
         </div>
@@ -4404,7 +4315,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("renameSubjectBtn").addEventListener("click", changeCurrentSubjectName);
     $("eventDateInput").addEventListener("change", renderEvents);
     $("eventSearch").addEventListener("input", renderEvents);
-    $("inlineRecordModeSelect").addEventListener("change", updateInlineRecordMode);
     $("addInlineQuickNoteBtn").addEventListener("click", addInlineQuickNote);
     $("inlineQuickContentInput").addEventListener("keydown", event => {
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
@@ -4412,8 +4322,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         addInlineQuickNote();
       }
     });
-    $("addEventBtn").addEventListener("click", addEvent);
-    $("cancelEventEditBtn").addEventListener("click", resetEventForm);
     $("openQuickNoteBtn").addEventListener("click", () => openQuickNoteModal(selectedStudent || state.students[0]?.name || ""));
     $("saveQuickNoteBtn").addEventListener("click", saveQuickNote);
     $("closeQuickNoteModalBtn").addEventListener("click", closeQuickNoteModal);
