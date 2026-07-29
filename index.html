@@ -2847,15 +2847,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const homeworkDays = records.filter(r => homeworkNames().some((_, index) => getHomeworkGrade(r, index) !== NO_HOMEWORK)).length;
       const napCount = records.filter(r => r.status?.includes("sleep")).length;
       const correctionStats = dailyCorrectionStats(records);
-      const quickConcernCount = quickNotes.filter(note => note.level === "需关注").length;
       $("profileKpis").innerHTML = [
         statHtml("记录天数", records.length),
         statHtml("平均分", avg),
         statHtml("最近分数", latest),
         statHtml("打盹次数", napCount),
         statHtml("未纠错", correctionStats.uncorrected),
-        statHtml("随手记", quickNotes.length),
-        statHtml("需关注随手记", quickConcernCount),
         statHtml("单科考试次数", subjectTests.filter(test => parseScore(test.score) !== null).length),
         statHtml("单科均分", subjectAvg),
         statHtml("沟通历史", events.length)
