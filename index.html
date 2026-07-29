@@ -768,7 +768,7 @@
               </div>
               <div class="roster-help-item">
                 <strong>清空重建</strong>
-                会清空旧名单、每日记录、随手记、单科成绩和正式沟通记录，适合开新班。
+                会清空旧名单、每日记录、随手记、单科成绩和沟通历史，适合开新班。
               </div>
               <div class="roster-help-item">
                 <strong>合班建议</strong>
@@ -908,7 +908,7 @@
               <label>时间 <input id="inlineQuickTimeInput" type="time"></label>
             </div>
             <div class="toolbar" style="margin-top:10px; align-items:flex-start">
-              <textarea id="inlineQuickContentInput" placeholder="直接写即可，例如：李同学上课玩平板，没收一节课，下次没收一天；家长给孩子请假；上午迟到 2 分钟肚子疼。"></textarea>
+              <textarea id="inlineQuickContentInput" placeholder="直接写即可，例如：李同学上课玩平板，没收一节课，下次没收一天；家长给孩子请假；晚自习结束去宿舍声音放小。"></textarea>
               <button id="addInlineQuickNoteBtn" class="primary">保存随手记</button>
             </div>
           </div>
@@ -918,13 +918,13 @@
             <thead>
               <tr>
                 <th>日期</th>
-                <th>来源</th>
                 <th>序号</th>
                 <th>姓名</th>
                 <th>类型</th>
                 <th>内容</th>
                 <th>后续动作</th>
                 <th>状态</th>
+                <th>创建时间</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -1052,7 +1052,7 @@
   <div class="modal hidden" id="quickNoteModal">
     <div class="modal-box quick-modal-box">
       <h3>随手记</h3>
-      <div class="sub">随时记录现场小事；系统按日期和学生自动归档，不替代正式沟通。</div>
+      <div class="sub">随时记录现场小事；系统会自动分类、归档到学生或全班。</div>
       <div class="quick-note-grid">
         <label>学生
           <select id="quickNoteStudentSelect"></select>
@@ -1060,7 +1060,7 @@
       </div>
       <div class="quick-note-grid" style="grid-template-columns: 1fr 130px 120px">
         <label>内容
-          <textarea id="quickNoteContentInput" placeholder="一句话即可，例如：李同学上课玩平板，没收一节课，下次没收一天。"></textarea>
+          <textarea id="quickNoteContentInput" placeholder="一句话即可，例如：李同学上课玩平板，没收一节课，下次没收一天。没写具体学生时会记为全班。"></textarea>
         </label>
         <label>日期
           <input id="quickNoteDateInput" type="date">
@@ -1150,7 +1150,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
   <div class="modal hidden" id="studentEditModal">
     <div class="modal-box">
       <h3>编辑学生信息</h3>
-      <div class="sub">修改姓名会同步迁移该学生的每日记录、随手记、单科成绩和正式沟通记录。</div>
+      <div class="sub">修改姓名会同步迁移该学生的每日记录、随手记、单科成绩和沟通历史。</div>
       <div class="mentor-grid">
         <label>姓名 <input id="editStudentNameInput" type="text"></label>
         <label>性别 <input id="editStudentGenderInput" type="text"></label>
@@ -1183,7 +1183,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const DAILY_FULL_SCORE = 100;
     const DAILY_CORRECTION_OPTIONS = ["已纠错", "未纠错"];
     const DAILY_NO_CORRECTION = "不需纠错";
-    const QUICK_NOTE_TYPES = ["家校沟通", "迟到", "身体状态", "睡眠状态", "课堂纪律", "作业纠错", "学习状态", "情绪状态", "表扬鼓励", "日常记录", "沟通跟进", "其他"];
+    const CLASS_NOTE_NAME = "全班";
+    const QUICK_NOTE_TYPES = ["家长沟通", "家长请假", "纪律提醒", "班级提醒", "迟到", "身体状态", "睡眠状态", "作业纠错", "学习状态", "情绪状态", "表扬鼓励", "日常记录", "其他"];
     const QUICK_NOTE_LEVELS = ["普通", "需关注"];
     const DEFAULT_HOMEWORK_NAMES = ["讲义", "宝典"];
     const DEFAULT_CLASS_NAME = "VIP2 班";
@@ -1283,15 +1284,16 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         if (!event.id) event.id = `event-${Date.now()}-${Math.random().toString(16).slice(2)}`;
         if (!event.status) event.status = "已记录";
         if (!event.type) event.type = "其他";
+        event.name = String(event.name || "").trim() || CLASS_NOTE_NAME;
       });
       if (!Array.isArray(target.quickNotes)) target.quickNotes = [];
       target.quickNotes.forEach(note => {
         if (!note.id) note.id = `quick-${Date.now()}-${Math.random().toString(16).slice(2)}`;
         note.date = note.date || today();
         note.time = note.time || "";
-        if (!QUICK_NOTE_TYPES.includes(note.type)) note.type = "其他";
+        note.type = normalizeQuickNoteType(note.type);
         if (!QUICK_NOTE_LEVELS.includes(note.level)) note.level = "普通";
-        note.name = String(note.name || "").trim();
+        note.name = String(note.name || "").trim() || CLASS_NOTE_NAME;
         note.content = String(note.content || "").trim();
       });
     }
@@ -1429,7 +1431,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const subjectCount = Object.values(target.subjectTests || {}).filter(test => parseScore(test.score) !== null || test.note).length;
       const eventCount = (target.events || []).length;
       const quickCount = (target.quickNotes || []).length;
-      return `${dailyCount}条每日记录 / ${quickCount}条随手记 / ${subjectCount}条单科记录 / ${eventCount}条正式沟通`;
+      return `${dailyCount}条每日记录 / ${quickCount}条随手记 / ${subjectCount}条单科记录 / ${eventCount}条沟通历史`;
     }
 
     function ensureRecord(date, student) {
@@ -1875,6 +1877,21 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return index >= 0 ? index + 1 : "";
     }
 
+    function recordStudentName(name) {
+      const value = String(name || "").trim();
+      return value && value !== "未指定" ? value : CLASS_NOTE_NAME;
+    }
+
+    function recordStudentNumber(name) {
+      const value = recordStudentName(name);
+      return value === CLASS_NOTE_NAME ? "" : studentNumber(value);
+    }
+
+    function formatRecordCreatedAt(value) {
+      if (!value) return "";
+      return formatDateTime(value);
+    }
+
     const PINYIN_BOUNDARIES = [
       ["a", "阿"], ["b", "八"], ["c", "嚓"], ["d", "咑"], ["e", "妸"], ["f", "发"], ["g", "旮"], ["h", "哈"],
       ["j", "讥"], ["k", "咔"], ["l", "垃"], ["m", "妈"], ["n", "拿"], ["o", "噢"], ["p", "啪"], ["q", "期"],
@@ -2198,13 +2215,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("eventBody").innerHTML = items.map(item => item.kind === "event" ? `
         <tr>
           <td>${escapeHtml(item.date)}</td>
-          <td><span class="badge neutral">历史沟通</span></td>
-          <td class="idx">${item.name ? studentNumber(item.name) : ""}</td>
-          <td><span class="name">${escapeHtml(item.name || "未指定")}</span></td>
+          <td class="idx">${recordStudentNumber(item.name)}</td>
+          <td><span class="name">${escapeHtml(recordStudentName(item.name))}</span></td>
           <td><span class="badge neutral">${escapeHtml(item.type)}</span></td>
           <td>${escapeHtml(item.content)}</td>
           <td>${escapeHtml(item.followUp || "")}</td>
           <td><span class="badge ${item.status === "需跟进" ? "warn" : item.status === "已完成" ? "ok" : "neutral"}">${escapeHtml(item.status)}</span></td>
+          <td>${escapeHtml(formatRecordCreatedAt(item.createdAt))}</td>
           <td>
             <button class="small danger event-delete-btn" data-id="${escapeHtml(item.id)}">删除</button>
           </td>
@@ -2212,13 +2229,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       ` : `
         <tr>
           <td>${escapeHtml(item.date)} ${escapeHtml(item.time || "")}</td>
-          <td><span class="badge ${item.level === "需关注" ? "warn" : "neutral"}">随手记</span></td>
-          <td class="idx">${item.name ? studentNumber(item.name) : ""}</td>
-          <td><span class="name">${escapeHtml(item.name || "")}</span></td>
-          <td><span class="badge ${item.type === "表扬鼓励" ? "ok" : "neutral"}">${escapeHtml(item.type)}</span></td>
+          <td class="idx">${recordStudentNumber(item.name)}</td>
+          <td><span class="name">${escapeHtml(recordStudentName(item.name))}</span></td>
+          <td><span class="badge ${normalizeQuickNoteType(item.type) === "表扬鼓励" ? "ok" : "neutral"}">${escapeHtml(normalizeQuickNoteType(item.type))}</span></td>
           <td>${escapeHtml(item.content)}</td>
           <td>${escapeHtml(item.followUp || "") || `<span class="muted">-</span>`}</td>
           <td><span class="badge ${quickNoteStatusBadgeClass(quickNoteStatus(item))}">${escapeHtml(quickNoteStatus(item))}</span></td>
+          <td>${escapeHtml(formatRecordCreatedAt(item.createdAt))}</td>
           <td>
             <button class="small quick-follow-btn" data-id="${escapeHtml(item.id)}">标记跟进</button>
             <button class="small quick-complete-btn" data-id="${escapeHtml(item.id)}">已跟进</button>
@@ -2244,32 +2261,46 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const select = $("inlineQuickStudentSelect");
       if (!select) return;
       const current = select.value;
-      select.innerHTML = state.students.map((student, index) => `
+      select.innerHTML = `
+        <option value="${CLASS_NOTE_NAME}">${CLASS_NOTE_NAME}</option>
+      ` + state.students.map((student, index) => `
         <option value="${escapeHtml(student.name)}">#${index + 1} ${escapeHtml(student.name)}</option>
       `).join("");
-      select.value = current || selectedStudent || state.students[0]?.name || "";
+      select.value = [...select.options].some(option => option.value === current) ? current : CLASS_NOTE_NAME;
       if ($("inlineQuickTimeInput") && !$("inlineQuickTimeInput").value) $("inlineQuickTimeInput").value = currentTimeText();
     }
 
     function classifyRecordContent(content, mode = "quick") {
       const text = String(content || "");
       const rules = [
-        ["家校沟通", ["家长", "妈妈", "母亲", "爸爸", "父亲", "电话", "微信", "沟通", "反馈", "联系", "请假", "病假", "事假"]],
+        ["家长请假", ["请假", "病假", "事假", "请个假"]],
+        ["家长沟通", ["家长", "妈妈", "母亲", "爸爸", "父亲", "电话", "微信", "沟通", "反馈", "联系"]],
+        ["班级提醒", ["全班", "大家", "同学们", "晚自习", "宿舍", "声音", "不要影响", "qq群", "QQ群", "群里", "通知"]],
+        ["纪律提醒", ["说话", "讲话", "聊天", "纪律", "扰乱", "插话", "玩", "手机", "平板", "没收", "娱乐", "警告", "走神", "发呆", "不专注"]],
         ["迟到", ["迟到", "晚到", "到班晚", "没按时", "踩点", "迟了"]],
         ["身体状态", ["肚子疼", "头疼", "胃疼", "不舒服", "身体", "生病", "发烧", "感冒", "医院", "校医"]],
         ["睡眠状态", ["打盹", "睡觉", "犯困", "困", "午休", "睡过", "睡不醒", "趴"]],
-        ["课堂纪律", ["说话", "讲话", "聊天", "纪律", "扰乱", "插话", "玩", "手机", "平板", "没收", "走神", "发呆", "不专注"]],
         ["作业纠错", ["作业", "未交", "没交", "补交", "讲义", "宝典", "纠错", "错题", "订正"]],
         ["学习状态", ["低分", "退步", "不会", "听不懂", "卡点", "薄弱", "测试", "成绩", "分数", "下滑", "掉分"]],
         ["情绪状态", ["情绪", "哭", "焦虑", "烦", "压力", "低落", "崩", "不想学", "心态", "状态不对", "状态差", "状态低"]],
         ["表扬鼓励", ["表扬", "进步", "主动", "认真", "积极", "优秀", "满分", "状态好", "很棒"]]
       ];
       const match = rules.find(([, words]) => words.some(word => text.includes(word)));
-      const type = match ? match[0] : (mode === "event" ? "沟通跟进" : "日常记录");
+      const type = match ? match[0] : "日常记录";
       const attentionWords = ["需关注", "严重", "多次", "连续", "反复", "家长", "电话", "请假", "哭", "焦虑", "睡觉", "未交", "低分", "退步", "下滑", "手机", "平板", "没收", "扰乱", "肚子疼", "不舒服", "状态不对"];
       const positiveWords = ["表扬", "进步", "主动", "认真", "积极", "优秀", "满分", "状态好", "很棒"];
       const level = attentionWords.some(word => text.includes(word)) && !positiveWords.some(word => text.includes(word)) ? "需关注" : "普通";
       return { type, level };
+    }
+
+    function normalizeQuickNoteType(type) {
+      const map = {
+        "家校沟通": "家长沟通",
+        "课堂纪律": "纪律提醒",
+        "沟通跟进": "家长沟通"
+      };
+      const normalized = map[type] || type || "日常记录";
+      return QUICK_NOTE_TYPES.includes(normalized) ? normalized : "其他";
     }
 
     function detectStudentNameFromContent(content, fallbackName = "") {
@@ -2293,20 +2324,34 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return "";
     }
 
+    function cleanQuickNoteContent(content, name) {
+      let text = String(content || "").trim();
+      const studentName = recordStudentName(name);
+      if (studentName === CLASS_NOTE_NAME) return text;
+      text = text.replace(new RegExp(`^${escapeRegExp(studentName)}[，,:：\\s]*`), "");
+      const familyName = Array.from(studentName)[0];
+      if (familyName) {
+        text = text.replace(new RegExp(`^${escapeRegExp(familyName)}同学[，,:：\\s]*`), "");
+        text = text.replace(new RegExp(`^${escapeRegExp(familyName)}同[，,:：\\s]*`), "");
+      }
+      return text || String(content || "").trim();
+    }
+
     function buildQuickNoteData({ name, content, date, time }) {
       const classified = classifyRecordContent(content, "quick");
-      const detectedName = detectStudentNameFromContent(content, name);
+      const detectedName = detectStudentNameFromContent(content, name || CLASS_NOTE_NAME) || CLASS_NOTE_NAME;
       const followUp = extractFollowUpFromContent(content, classified.level);
+      const type = detectedName === CLASS_NOTE_NAME && classified.type === "日常记录" ? "班级提醒" : classified.type;
       return {
         id: `quick-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         date: date || today(),
         time: time || currentTimeText(),
         name: detectedName,
-        type: classified.type,
+        type,
         level: classified.level,
         status: followUp ? "需跟进" : (classified.level === "需关注" ? "需关注" : "已记录"),
         followUp,
-        content,
+        content: cleanQuickNoteContent(content, detectedName),
         createdAt: new Date().toISOString()
       };
     }
@@ -2335,7 +2380,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const student = state.students.find(studentItem => studentItem.name === item.name);
       if (student && matchesStudentSearch(student, studentNumber(item.name) - 1, text)) return true;
       return matchesSearchValues([
-        item.kind === "quick" ? "随手记" : "沟通跟进",
+        item.kind === "quick" ? "随手记" : "共同记录",
+        recordStudentName(item.name),
+        recordStudentNumber(item.name),
         item.type,
         item.content,
         item.followUp,
@@ -2410,7 +2457,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function openQuickNoteModal(name = "") {
       renderQuickNoteStudentOptions();
-      $("quickNoteStudentSelect").value = name || selectedStudent || state.students[0]?.name || "";
+      $("quickNoteStudentSelect").value = name || CLASS_NOTE_NAME;
       $("quickNoteDateInput").value = $("dateInput").value || today();
       $("quickNoteTimeInput").value = currentTimeText();
       $("quickNoteContentInput").value = "";
@@ -2425,10 +2472,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function renderQuickNoteStudentOptions() {
       const current = $("quickNoteStudentSelect")?.value || "";
-      $("quickNoteStudentSelect").innerHTML = state.students.map((student, index) => `
+      $("quickNoteStudentSelect").innerHTML = `
+        <option value="${CLASS_NOTE_NAME}">${CLASS_NOTE_NAME}</option>
+      ` + state.students.map((student, index) => `
         <option value="${escapeHtml(student.name)}">#${index + 1} ${escapeHtml(student.name)}</option>
       `).join("");
-      $("quickNoteStudentSelect").value = current || selectedStudent || state.students[0]?.name || "";
+      $("quickNoteStudentSelect").value = [...$("quickNoteStudentSelect").options].some(option => option.value === current) ? current : CLASS_NOTE_NAME;
     }
 
     function saveQuickNote() {
@@ -2468,7 +2517,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("quickNoteList").innerHTML = notes.map(note => `
         <div class="quick-note-item">
           <div>
-            <span class="badge ${note.level === "需关注" ? "warn" : note.type === "表扬鼓励" ? "ok" : "neutral"}">${escapeHtml(note.time || "")} ${escapeHtml(note.type)}</span>
+            <span class="badge ${note.level === "需关注" ? "warn" : normalizeQuickNoteType(note.type) === "表扬鼓励" ? "ok" : "neutral"}">${escapeHtml(note.time || "")} ${escapeHtml(normalizeQuickNoteType(note.type))}</span>
           </div>
           <div class="quick-note-text">
             <strong>${escapeHtml(note.name)}</strong>：${escapeHtml(note.content)}
@@ -2809,7 +2858,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         statHtml("需关注随手记", quickConcernCount),
         statHtml("单科考试次数", subjectTests.filter(test => parseScore(test.score) !== null).length),
         statHtml("单科均分", subjectAvg),
-        statHtml("正式沟通", events.length)
+        statHtml("沟通历史", events.length)
       ].join("") + `<div class="stat" style="grid-column:1/-1"><div class="label">作业累计（仅统计有作业日期，共 ${homeworkDays} 天）</div><div style="margin-top:6px;font-weight:700">${gradeCounts}</div></div>`;
     }
 
@@ -2820,7 +2869,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         <div class="ai-panel-head">
           <div>
             <h3 class="ai-panel-title">随手记</h3>
-            <div class="sub">现场小事自动归档；正式谈话和家校反馈仍放在“正式沟通”。</div>
+            <div class="sub">一句话记录后自动分类；没写具体学生时归为全班。</div>
           </div>
           <button id="profileQuickNoteBtn" class="small primary">给该生随手记</button>
         </div>
@@ -2830,7 +2879,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         <div class="quick-note-list">
           ${recent.length ? recent.map(note => `
             <div class="quick-note-item">
-              <span class="badge ${note.level === "需关注" ? "warn" : note.type === "表扬" ? "ok" : "neutral"}">${escapeHtml(note.date)} ${escapeHtml(note.time || "")} · ${escapeHtml(note.type)}</span>
+              <span class="badge ${note.level === "需关注" ? "warn" : normalizeQuickNoteType(note.type) === "表扬鼓励" ? "ok" : "neutral"}">${escapeHtml(note.date)} ${escapeHtml(note.time || "")} · ${escapeHtml(normalizeQuickNoteType(note.type))}</span>
               <div class="quick-note-text">${escapeHtml(note.content)}</div>
               <span class="badge ${note.level === "需关注" ? "warn" : "neutral"}">${escapeHtml(note.level)}</span>
             </div>
@@ -2843,7 +2892,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function quickNoteTypeStats(quickNotes) {
       const map = new Map();
       quickNotes.forEach(note => {
-        map.set(note.type, (map.get(note.type) || 0) + 1);
+        const type = normalizeQuickNoteType(note.type);
+        map.set(type, (map.get(type) || 0) + 1);
       });
       return [...map.entries()]
         .map(([type, count]) => ({ type, count }))
@@ -2857,8 +2907,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("recentEventPanel").innerHTML = `
         <div class="ai-panel-head">
           <div>
-            <h3 class="ai-panel-title">最近沟通</h3>
-            <div class="sub">自动汇总正式沟通记录；日常小现象仍放在每日录入备注里。</div>
+            <h3 class="ai-panel-title">沟通历史</h3>
+            <div class="sub">兼容之前保存的沟通记录；新内容统一从随手记进入。</div>
           </div>
           <button id="jumpEventBtn" class="small">去记录沟通</button>
         </div>
@@ -2868,7 +2918,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
               ${escapeHtml(event.date)} · ${escapeHtml(event.type)} · ${escapeHtml(shortText(event.content, 34))}
               ${event.followUp ? ` · 跟进：${escapeHtml(shortText(event.followUp, 18))}` : ""}
             </span>
-          `).join("") : `<span class="empty">暂无正式沟通记录</span>`}
+          `).join("") : `<span class="empty">暂无沟通历史</span>`}
         </div>
       `;
       $("jumpEventBtn").addEventListener("click", () => setView("eventView"));
@@ -2899,7 +2949,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         <div class="ai-panel-head">
           <div>
             <h3 class="ai-panel-title">智能分析</h3>
-            <div class="sub">基于当前日期范围内的日测、单科、作业、课堂状态、随手记和沟通跟进生成。</div>
+            <div class="sub">基于当前日期范围内的日测、单科、作业、课堂状态、随手记和沟通历史生成。</div>
           </div>
           <button id="copyAiPromptBtn" class="small primary">复制给 AI 深度分析</button>
         </div>
@@ -2958,8 +3008,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }
       if (student.source_class) judgements.push(`该生来源班级为 ${student.source_class}，合班后建议先按来源班级建立熟悉度。`);
       if (mentorText) judgements.push("已填写班主任长期备注，沟通和冲刺安排应优先参考该备注。");
-      if (eventFollowCount) judgements.push(`有 ${eventFollowCount} 条正式沟通记录仍需跟进。`);
-      if (recentEvent) judgements.push(`最近一次正式沟通：${recentEvent.date} ${recentEvent.type}，状态为${recentEvent.status || "已记录"}。`);
+      if (eventFollowCount) judgements.push(`有 ${eventFollowCount} 条沟通历史仍需跟进。`);
+      if (recentEvent) judgements.push(`最近一次沟通历史：${recentEvent.date} ${recentEvent.type}，状态为${recentEvent.status || "已记录"}。`);
       if (quickNotes.length) judgements.push(`当前日期范围内有 ${quickNotes.length} 条随手记，其中 ${quickConcernCount} 条需关注。`);
 
       const weaknesses = [];
@@ -2987,10 +3037,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (homeworkStats.issues[0]) actions.push(`连续 3 天查看 ${homeworkStats.issues[0].name}，重点看订正是否完整。`);
       if (statusStats["打盹"] || statusStats["走神"]) actions.push("课堂上安排前排提醒或课间短沟通，确认睡眠、身体状态和听课卡点。");
       if (mentorNote.sprint) actions.push(`冲刺策略参考：${mentorNote.sprint}`);
-      if (mentorNote.family) actions.push(`家校沟通参考：${mentorNote.family}`);
+      if (mentorNote.family) actions.push(`家长沟通参考：${mentorNote.family}`);
       if (lowDailyCount || scoreTrend.includes("下降")) actions.push("建议和学生做一次 5 分钟复盘：低分题型、失分原因、当天补救动作。");
-      if (eventFollowCount) actions.push("先处理待跟进正式沟通记录，避免问题记录后没有闭环。");
-      if (quickConcernCount) actions.push("优先查看需关注随手记，判断是否升级为正式沟通或家校反馈。");
+      if (eventFollowCount) actions.push("先处理待跟进沟通历史，避免问题记录后没有闭环。");
+      if (quickConcernCount) actions.push("优先查看需关注随手记，判断是否需要家长反馈或后续观察。");
       if (!actions.length) actions.push("保持当前记录节奏，每周复盘一次成绩波动和作业质量即可。");
 
       return {
@@ -3112,7 +3162,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         `随手记：`,
         quickLines.length ? quickLines.join("\n") : "暂无",
         ``,
-        `正式沟通记录：`,
+        `沟通历史：`,
         eventLines.length ? eventLines.join("\n") : "暂无"
       ].join("\n");
     }
@@ -3156,7 +3206,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <td>${escapeHtml(event.followUp || "")}</td>
           <td><span class="badge ${event.status === "需跟进" ? "warn" : event.status === "已完成" ? "ok" : "neutral"}">${escapeHtml(event.status)}</span></td>
         </tr>
-      `).join("") || `<tr><td colspan="5" class="empty">暂无正式沟通记录</td></tr>`;
+      `).join("") || `<tr><td colspan="5" class="empty">暂无沟通历史</td></tr>`;
     }
 
     function splitRosterLine(line) {
@@ -3333,7 +3383,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function importRosterRows(rows, mode) {
       if (!rows.length) return 0;
       if (mode === "replace") {
-        if (state.students.length && !confirm("清空当前名单后重建会同时清空每日记录、随手记、单科成绩和正式沟通记录，确认继续？")) return -1;
+        if (state.students.length && !confirm("清空当前名单后重建会同时清空每日记录、随手记、单科成绩和沟通历史，确认继续？")) return -1;
         state.students = [];
         state.records = {};
         state.subjectTests = {};
@@ -3373,7 +3423,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function deleteStudentFromRoster(index) {
       const student = state.students[index];
       if (!student) return;
-      const message = `确定删除 ${student.name} 吗？这会同时删除该学生的每日记录、随手记、单科成绩和正式沟通记录。`;
+      const message = `确定删除 ${student.name} 吗？这会同时删除该学生的每日记录、随手记、单科成绩和沟通历史。`;
       if (!confirm(message)) return;
       state.students.splice(index, 1);
       Object.keys(state.records || {}).forEach(key => {
@@ -3568,6 +3618,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         .replaceAll('"', "&quot;");
     }
 
+    function escapeRegExp(value) {
+      return String(value ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
     function exportJson() {
       const exportPayload = {
         ...state,
@@ -3587,7 +3641,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         ["随手记", quickNoteRowsForExport()],
         ["每日异常汇总", abnormalRowsForExport()],
         ["单科测试", subjectRowsForExport()],
-        ["正式沟通记录", eventRowsForExport()],
+        ["沟通历史", eventRowsForExport()],
         ["学生汇总", studentSummaryRowsForExport()]
       ];
       const workbook = buildXlsxWorkbook(sheets);
@@ -3778,18 +3832,18 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function quickNoteRowsForExport() {
       return [
-        ["日期", "时间", "序号", "姓名", "类型", "重要程度", "内容", "创建时间"],
+        ["日期", "序号", "姓名", "类型", "内容", "后续动作", "状态", "创建时间"],
         ...getQuickNotes()
           .sort((a, b) => `${a.date || ""}${a.time || ""}${a.createdAt || ""}`.localeCompare(`${b.date || ""}${b.time || ""}${b.createdAt || ""}`))
           .map(note => [
-            note.date,
-            note.time || "",
-            note.name ? studentNumber(note.name) : "",
-            note.name || "",
-            note.type,
-            note.level,
+            `${note.date || ""}${note.time ? ` ${note.time}` : ""}`.trim(),
+            recordStudentNumber(note.name),
+            recordStudentName(note.name),
+            normalizeQuickNoteType(note.type),
             note.content,
-            note.createdAt || ""
+            note.followUp || "",
+            quickNoteStatus(note),
+            formatRecordCreatedAt(note.createdAt)
           ])
       ];
     }
@@ -3820,13 +3874,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           .sort(compareEventsForExport)
           .map(event => [
             event.date,
-            event.name ? studentNumber(event.name) : "",
-            event.name || "未指定",
+            recordStudentNumber(event.name),
+            recordStudentName(event.name),
             event.type,
             event.content,
             event.followUp || "",
             event.status,
-            event.createdAt || ""
+            formatRecordCreatedAt(event.createdAt)
           ])
       ];
     }
@@ -3863,7 +3917,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const header = [
         "序号", "姓名", "来源班级", "标签", "日测次数", "日测平均分", "单科考试次数", "单科均分",
         ...homeworkHeaders,
-        "迟到次数", "走神次数", "打盹次数", "请假次数", "随手记次数", "需关注随手记", "正式沟通次数", "待跟进沟通"
+        "迟到次数", "走神次数", "打盹次数", "请假次数", "随手记次数", "需关注随手记", "沟通历史次数", "待跟进沟通"
       ];
       const rows = state.students.map((student, index) => {
         const daily = Object.values(state.records).filter(record => record.name === student.name);
@@ -4320,7 +4374,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         addInlineQuickNote();
       }
     });
-    $("openQuickNoteBtn").addEventListener("click", () => openQuickNoteModal(selectedStudent || state.students[0]?.name || ""));
+    $("openQuickNoteBtn").addEventListener("click", () => openQuickNoteModal(CLASS_NOTE_NAME));
     $("saveQuickNoteBtn").addEventListener("click", saveQuickNote);
     $("closeQuickNoteModalBtn").addEventListener("click", closeQuickNoteModal);
     ["quickNoteStudentSelect", "quickNoteDateInput"].forEach(id => {
