@@ -1836,7 +1836,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         statHtml("已录分数", `${filledScores}/${state.students.length}`),
         statHtml("平均分", avgScore),
         statHtml("异常人数", new Set(records.filter(r => isAbnormalRecord(r)).map(r => r.name)).size, "openAbnormal"),
-        statHtml("随手记", quickNoteCount)
+        statHtml("随手记", quickNoteCount, "openQuickNotes")
       ].join("");
       const abnormalCard = document.querySelector('[data-action="openAbnormal"]');
       if (abnormalCard) {
@@ -1845,10 +1845,15 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           setTimeout(() => $("abnormalDetailPanel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
         });
       }
+      const quickNoteCard = document.querySelector('[data-action="openQuickNotes"]');
+      if (quickNoteCard) {
+        quickNoteCard.addEventListener("click", () => openQuickNoteModal(selectedStudent || state.students[0]?.name || ""));
+      }
     }
 
     function statHtml(label, num, action = "") {
-      return `<div class="stat ${action ? "clickable" : ""}" ${action ? `data-action="${action}" title="点击查看明细"` : ""}><div class="num">${num}</div><div class="label">${label}</div></div>`;
+      const title = action === "openQuickNotes" ? "点击打开随手记" : "点击查看明细";
+      return `<div class="stat ${action ? "clickable" : ""}" ${action ? `data-action="${action}" title="${title}"` : ""}><div class="num">${num}</div><div class="label">${label}</div></div>`;
     }
 
     function isAbnormalRecord(record) {
