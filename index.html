@@ -3641,7 +3641,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         ["随手记", quickNoteRowsForExport()],
         ["每日异常汇总", abnormalRowsForExport()],
         ["单科测试", subjectRowsForExport()],
-        ["沟通历史", eventRowsForExport()],
         ["学生汇总", studentSummaryRowsForExport()]
       ];
       const workbook = buildXlsxWorkbook(sheets);
@@ -3831,20 +3830,40 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function quickNoteRowsForExport() {
+      const rows = [
+        ...getQuickNotes().map(note => ({
+          date: note.date,
+          sortTime: note.time || note.createdAt || "",
+          createdAt: note.createdAt || "",
+          name: note.name,
+          type: normalizeQuickNoteType(note.type),
+          content: note.content,
+          followUp: note.followUp || "",
+          status: quickNoteStatus(note)
+        })),
+        ...(state.events || []).map(event => ({
+          date: event.date,
+          sortTime: event.createdAt || "",
+          createdAt: event.createdAt || "",
+          name: event.name,
+          type: normalizeQuickNoteType(event.type),
+          content: event.content,
+          followUp: event.followUp || "",
+          status: event.status || "已记录"
+        }))
+      ].sort(compareSharedRecordsForExport);
       return [
         ["日期", "序号", "姓名", "类型", "内容", "后续动作", "状态", "创建时间"],
-        ...getQuickNotes()
-          .sort((a, b) => `${a.date || ""}${a.time || ""}${a.createdAt || ""}`.localeCompare(`${b.date || ""}${b.time || ""}${b.createdAt || ""}`))
-          .map(note => [
-            `${note.date || ""}${note.time ? ` ${note.time}` : ""}`.trim(),
-            recordStudentNumber(note.name),
-            recordStudentName(note.name),
-            normalizeQuickNoteType(note.type),
-            note.content,
-            note.followUp || "",
-            quickNoteStatus(note),
-            formatRecordCreatedAt(note.createdAt)
-          ])
+        ...rows.map(row => [
+          `${row.date || ""}${row.sortTime && row.sortTime.length <= 5 ? ` ${row.sortTime}` : ""}`.trim(),
+          recordStudentNumber(row.name),
+          recordStudentName(row.name),
+          row.type,
+          row.content,
+          row.followUp,
+          row.status,
+          formatRecordCreatedAt(row.createdAt)
+        ])
       ];
     }
 
@@ -3867,24 +3886,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       ];
     }
 
-    function eventRowsForExport() {
-      return [
-        ["日期", "序号", "姓名", "类型", "内容", "后续动作", "状态", "创建时间"],
-        ...(state.events || [])
-          .sort(compareEventsForExport)
-          .map(event => [
-            event.date,
-            recordStudentNumber(event.name),
-            recordStudentName(event.name),
-            event.type,
-            event.content,
-            event.followUp || "",
-            event.status,
-            formatRecordCreatedAt(event.createdAt)
-          ])
-      ];
-    }
-
     function compareRecordsByDateAndStudent(a, b) {
       return String(a.date || "").localeCompare(String(b.date || ""))
         || compareStudentNames(a.name, b.name);
@@ -3897,9 +3898,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         || Number(a.rank || 9999) - Number(b.rank || 9999);
     }
 
-    function compareEventsForExport(a, b) {
+    function compareSharedRecordsForExport(a, b) {
       return String(a.date || "").localeCompare(String(b.date || ""))
         || compareStudentNames(a.name || "", b.name || "")
+        || String(a.sortTime || "").localeCompare(String(b.sortTime || ""))
         || String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
     }
 
