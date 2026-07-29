@@ -193,6 +193,26 @@
     .note-input { width: 180px; }
     .event-content-input { width: min(520px, 100%); min-height: 72px; }
     .event-follow-input { width: min(360px, 100%); }
+    .communication-grid {
+      display: grid;
+      grid-template-columns: minmax(280px, .9fr) minmax(360px, 1.3fr);
+      gap: 12px;
+      align-items: start;
+    }
+    .communication-box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fff;
+    }
+    .communication-box h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+    }
+    .communication-box textarea {
+      width: 100%;
+      min-height: 70px;
+    }
     .homework-settings {
       padding: 10px 12px;
       border-bottom: 1px solid var(--line);
@@ -680,7 +700,7 @@
 
     @media (max-width: 860px) {
       .topbar, .panel-head { grid-template-columns: 1fr; }
-      .stats, .profile-kpis, .summary-grid, .profile-layout, .roster-grid, .ai-grid, .mentor-grid, .quick-note-grid, .quick-note-item { grid-template-columns: 1fr; }
+      .stats, .profile-kpis, .summary-grid, .profile-layout, .roster-grid, .ai-grid, .mentor-grid, .quick-note-grid, .quick-note-item, .communication-grid { grid-template-columns: 1fr; }
       .actions { justify-content: flex-start; }
       main { padding: 12px; }
     }
@@ -709,7 +729,7 @@
     <div class="tabs">
       <button class="tab active" data-view="entryView">每日录入</button>
       <button class="tab" data-view="subjectView">单科测试</button>
-      <button class="tab" data-view="eventView">正式沟通</button>
+      <button class="tab" data-view="eventView">学生动态</button>
       <button class="tab" data-view="summaryView">今日异常</button>
       <button class="tab" data-view="profileView">学生画像</button>
       <button class="tab" data-view="rosterView">学生名单</button>
@@ -886,43 +906,77 @@
       <div class="panel">
         <div class="panel-head">
           <div>
-            <h2 class="panel-title">正式沟通记录</h2>
-            <div class="sub">只记录和学生、家长发生过的正式沟通；每日录入备注只写当天现象，避免重复记录。</div>
+            <h2 class="panel-title">学生动态与沟通</h2>
+            <div class="sub">随手记负责现场小事，正式沟通负责闭环跟进；下方按时间线统一查看。</div>
           </div>
           <div class="toolbar">
-            <label>事件日期 <input id="eventDateInput" type="date"></label>
-            <label>筛选 <input id="eventSearch" type="search" placeholder="序号 / 姓名首字母 / 类型"></label>
+            <label>日期 <input id="eventDateInput" type="date"></label>
+            <label>筛选 <input id="eventSearch" type="search" placeholder="序号 / 姓名首字母 / 类型 / 内容"></label>
           </div>
         </div>
-        <div class="detail-panel">
-          <div class="toolbar">
-            <label>学生
-              <select id="eventStudentSelect"></select>
-            </label>
-            <label>类型
-              <select id="eventTypeSelect">
-                <option value="家长请假">家长请假</option>
-                <option value="家长沟通">家长沟通</option>
-                <option value="学生谈话">学生谈话</option>
-                <option value="学习反馈">学习反馈</option>
-                <option value="纪律提醒">纪律提醒</option>
-                <option value="表扬鼓励">表扬鼓励</option>
-                <option value="其他">其他</option>
-              </select>
-            </label>
-            <label>状态
-              <select id="eventStatusSelect">
-                <option value="已记录">已记录</option>
-                <option value="需跟进">需跟进</option>
-                <option value="已完成">已完成</option>
-              </select>
-            </label>
+        <div class="detail-panel communication-grid">
+          <div class="communication-box">
+            <h3>随手记快录</h3>
+            <div class="toolbar">
+              <label>学生
+                <select id="inlineQuickStudentSelect"></select>
+              </label>
+              <label>类型
+                <select id="inlineQuickTypeSelect">
+                  <option value="迟到">迟到</option>
+                  <option value="说话">说话</option>
+                  <option value="打盹">打盹</option>
+                  <option value="走神">走神</option>
+                  <option value="作业">作业</option>
+                  <option value="情绪">情绪</option>
+                  <option value="表扬">表扬</option>
+                  <option value="其他">其他</option>
+                </select>
+              </label>
+              <label>程度
+                <select id="inlineQuickLevelSelect">
+                  <option value="普通">普通</option>
+                  <option value="需关注">需关注</option>
+                </select>
+              </label>
+              <label>时间 <input id="inlineQuickTimeInput" type="time"></label>
+            </div>
+            <div class="toolbar" style="margin-top:10px; align-items:flex-start">
+              <textarea id="inlineQuickContentInput" placeholder="一句话即可，例如：第 2 节说话，提醒后收敛。"></textarea>
+              <button id="addInlineQuickNoteBtn" class="primary">保存随手记</button>
+            </div>
           </div>
-          <div class="toolbar" style="margin-top:10px; align-items:flex-start">
-            <textarea id="eventContentInput" class="event-content-input" placeholder="正式沟通内容，例如：电话沟通母亲，反馈近期上课犯困和日测低分；家长表示晚上会收手机。"></textarea>
-            <input id="eventFollowInput" class="event-follow-input" placeholder="跟进动作，可选，例如：3 天后看午休和纠错">
-            <button id="addEventBtn" class="primary">添加沟通</button>
-            <button id="cancelEventEditBtn" class="hidden">取消编辑</button>
+          <div class="communication-box">
+            <h3>正式沟通</h3>
+            <div class="toolbar">
+              <label>学生
+                <select id="eventStudentSelect"></select>
+              </label>
+              <label>类型
+                <select id="eventTypeSelect">
+                  <option value="家长请假">家长请假</option>
+                  <option value="家长沟通">家长沟通</option>
+                  <option value="学生谈话">学生谈话</option>
+                  <option value="学习反馈">学习反馈</option>
+                  <option value="纪律提醒">纪律提醒</option>
+                  <option value="表扬鼓励">表扬鼓励</option>
+                  <option value="其他">其他</option>
+                </select>
+              </label>
+              <label>状态
+                <select id="eventStatusSelect">
+                  <option value="已记录">已记录</option>
+                  <option value="需跟进">需跟进</option>
+                  <option value="已完成">已完成</option>
+                </select>
+              </label>
+            </div>
+            <div class="toolbar" style="margin-top:10px; align-items:flex-start">
+              <textarea id="eventContentInput" class="event-content-input" placeholder="正式沟通内容，例如：电话沟通母亲，反馈近期上课犯困和日测低分；家长表示晚上会收手机。"></textarea>
+              <input id="eventFollowInput" class="event-follow-input" placeholder="跟进动作，可选，例如：3 天后看午休和纠错">
+              <button id="addEventBtn" class="primary">添加沟通</button>
+              <button id="cancelEventEditBtn" class="hidden">取消编辑</button>
+            </div>
           </div>
         </div>
         <div class="table-wrap">
@@ -930,10 +984,11 @@
             <thead>
               <tr>
                 <th>日期</th>
+                <th>来源</th>
                 <th>序号</th>
                 <th>姓名</th>
                 <th>类型</th>
-                <th>沟通内容</th>
+                <th>内容</th>
                 <th>后续动作</th>
                 <th>状态</th>
                 <th>操作</th>
@@ -2263,28 +2318,51 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function renderEvents() {
       renderEventStudentOptions();
+      renderInlineQuickStudentOptions();
       const query = $("eventSearch").value.trim();
-      const events = getFilteredEvents(query);
-      $("eventBody").innerHTML = events.map(event => `
+      const items = getCommunicationTimeline(query);
+      $("eventBody").innerHTML = items.map(item => item.kind === "event" ? `
         <tr>
-          <td>${escapeHtml(event.date)}</td>
-          <td class="idx">${event.name ? studentNumber(event.name) : ""}</td>
-          <td><span class="name">${escapeHtml(event.name || "未指定")}</span></td>
-          <td><span class="badge neutral">${escapeHtml(event.type)}</span></td>
-          <td>${escapeHtml(event.content)}</td>
-          <td>${escapeHtml(event.followUp || "")}</td>
-          <td><span class="badge ${event.status === "需跟进" ? "warn" : event.status === "已完成" ? "ok" : "neutral"}">${escapeHtml(event.status)}</span></td>
+          <td>${escapeHtml(item.date)}</td>
+          <td><span class="badge neutral">正式沟通</span></td>
+          <td class="idx">${item.name ? studentNumber(item.name) : ""}</td>
+          <td><span class="name">${escapeHtml(item.name || "未指定")}</span></td>
+          <td><span class="badge neutral">${escapeHtml(item.type)}</span></td>
+          <td>${escapeHtml(item.content)}</td>
+          <td>${escapeHtml(item.followUp || "")}</td>
+          <td><span class="badge ${item.status === "需跟进" ? "warn" : item.status === "已完成" ? "ok" : "neutral"}">${escapeHtml(item.status)}</span></td>
           <td>
-            <button class="small event-edit-btn" data-id="${escapeHtml(event.id)}">编辑</button>
-            <button class="small danger event-delete-btn" data-id="${escapeHtml(event.id)}">删除</button>
+            <button class="small event-edit-btn" data-id="${escapeHtml(item.id)}">编辑</button>
+            <button class="small danger event-delete-btn" data-id="${escapeHtml(item.id)}">删除</button>
           </td>
         </tr>
-      `).join("") || `<tr><td colspan="8" class="empty">暂无正式沟通记录</td></tr>`;
+      ` : `
+        <tr>
+          <td>${escapeHtml(item.date)} ${escapeHtml(item.time || "")}</td>
+          <td><span class="badge ${item.level === "需关注" ? "warn" : "neutral"}">随手记</span></td>
+          <td class="idx">${item.name ? studentNumber(item.name) : ""}</td>
+          <td><span class="name">${escapeHtml(item.name || "")}</span></td>
+          <td><span class="badge ${item.type === "表扬" ? "ok" : "neutral"}">${escapeHtml(item.type)}</span></td>
+          <td>${escapeHtml(item.content)}</td>
+          <td><span class="muted">-</span></td>
+          <td><span class="badge ${item.level === "需关注" ? "warn" : "neutral"}">${escapeHtml(item.level || "普通")}</span></td>
+          <td>
+            <button class="small quick-promote-btn" data-id="${escapeHtml(item.id)}">转沟通</button>
+            <button class="small danger quick-timeline-delete-btn" data-id="${escapeHtml(item.id)}">删除</button>
+          </td>
+        </tr>
+      `).join("") || `<tr><td colspan="9" class="empty">暂无学生动态</td></tr>`;
       document.querySelectorAll(".event-edit-btn").forEach(btn => {
         btn.addEventListener("click", () => startEditEvent(btn.dataset.id));
       });
       document.querySelectorAll(".event-delete-btn").forEach(btn => {
         btn.addEventListener("click", () => deleteEvent(btn.dataset.id));
+      });
+      document.querySelectorAll(".quick-promote-btn").forEach(btn => {
+        btn.addEventListener("click", () => promoteQuickNoteToEvent(btn.dataset.id));
+      });
+      document.querySelectorAll(".quick-timeline-delete-btn").forEach(btn => {
+        btn.addEventListener("click", () => deleteQuickNote(btn.dataset.id));
       });
     }
 
@@ -2296,22 +2374,37 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("eventStudentSelect").value = current || "";
     }
 
-    function getFilteredEvents(query) {
-      return (state.events || [])
-        .filter(event => matchesEventSearch(event, query))
-        .sort((a, b) => `${b.date}${b.createdAt || ""}`.localeCompare(`${a.date}${a.createdAt || ""}`));
+    function renderInlineQuickStudentOptions() {
+      const select = $("inlineQuickStudentSelect");
+      if (!select) return;
+      const current = select.value;
+      select.innerHTML = state.students.map((student, index) => `
+        <option value="${escapeHtml(student.name)}">#${index + 1} ${escapeHtml(student.name)}</option>
+      `).join("");
+      select.value = current || selectedStudent || state.students[0]?.name || "";
+      if ($("inlineQuickTimeInput") && !$("inlineQuickTimeInput").value) $("inlineQuickTimeInput").value = currentTimeText();
     }
 
-    function matchesEventSearch(event, query) {
+    function getCommunicationTimeline(query) {
+      const events = (state.events || []).map(event => ({ ...event, kind: "event", sortTime: event.createdAt || "" }));
+      const quickNotes = (state.quickNotes || []).map(note => ({ ...note, kind: "quick", sortTime: note.time || note.createdAt || "" }));
+      return [...events, ...quickNotes]
+        .filter(item => matchesCommunicationSearch(item, query))
+        .sort((a, b) => `${b.date || ""}${b.sortTime || ""}${b.createdAt || ""}`.localeCompare(`${a.date || ""}${a.sortTime || ""}${a.createdAt || ""}`));
+    }
+
+    function matchesCommunicationSearch(item, query) {
       const text = String(query ?? "").trim();
       if (!text) return true;
-      const student = state.students.find(item => item.name === event.name);
-      if (student && matchesStudentSearch(student, studentNumber(event.name) - 1, text)) return true;
+      const student = state.students.find(studentItem => studentItem.name === item.name);
+      if (student && matchesStudentSearch(student, studentNumber(item.name) - 1, text)) return true;
       return matchesSearchValues([
-        event.type,
-        event.content,
-        event.followUp,
-        event.status
+        item.kind === "quick" ? "随手记" : "正式沟通",
+        item.type,
+        item.content,
+        item.followUp,
+        item.status,
+        item.level
       ], text);
     }
 
@@ -2354,6 +2447,54 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       resetEventForm();
       renderEvents();
       showToast(wasEditing ? "沟通记录已修改" : "沟通记录已保存");
+    }
+
+    function addInlineQuickNote() {
+      const name = $("inlineQuickStudentSelect").value;
+      const content = $("inlineQuickContentInput").value.trim();
+      if (!name) {
+        showToast("请先选择学生");
+        return;
+      }
+      if (!content) {
+        showToast("请写一句随手记内容");
+        return;
+      }
+      state.quickNotes = [{
+        id: `quick-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        date: $("eventDateInput").value || today(),
+        time: $("inlineQuickTimeInput").value || currentTimeText(),
+        name,
+        type: $("inlineQuickTypeSelect").value || "其他",
+        level: $("inlineQuickLevelSelect").value || "普通",
+        content,
+        createdAt: new Date().toISOString()
+      }, ...(state.quickNotes || [])];
+      saveState();
+      $("inlineQuickContentInput").value = "";
+      $("inlineQuickTimeInput").value = currentTimeText();
+      render();
+      showToast("随手记已保存");
+    }
+
+    function promoteQuickNoteToEvent(id) {
+      const note = (state.quickNotes || []).find(item => item.id === id);
+      if (!note) {
+        showToast("这条随手记没有找到");
+        return;
+      }
+      renderEventStudentOptions();
+      editingEventId = "";
+      $("eventDateInput").value = note.date || today();
+      $("eventStudentSelect").value = note.name || "";
+      $("eventTypeSelect").value = note.type === "表扬" ? "表扬鼓励" : note.type === "作业" ? "学习反馈" : "学生谈话";
+      $("eventStatusSelect").value = note.level === "需关注" ? "需跟进" : "已记录";
+      $("eventContentInput").value = `${note.time || ""} ${note.type || "随手记"}：${note.content || ""}`.trim();
+      $("eventFollowInput").value = note.level === "需关注" ? "结合后续表现跟进" : "";
+      $("addEventBtn").textContent = "添加沟通";
+      $("cancelEventEditBtn").classList.add("hidden");
+      $("eventContentInput").focus();
+      showToast("已带入正式沟通，确认后点添加沟通");
     }
 
     function startEditEvent(id) {
@@ -4322,6 +4463,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("eventDateInput").value = today();
     $("quickNoteDateInput").value = today();
     $("quickNoteTimeInput").value = currentTimeText();
+    $("inlineQuickTimeInput").value = currentTimeText();
     $("startDate").value = "2026-07-07";
     $("endDate").value = today();
     $("dateInput").addEventListener("change", render);
@@ -4345,7 +4487,15 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("entrySearch").addEventListener("input", render);
     $("subjectSearch").addEventListener("input", renderSubjectTests);
     $("renameSubjectBtn").addEventListener("click", changeCurrentSubjectName);
+    $("eventDateInput").addEventListener("change", renderEvents);
     $("eventSearch").addEventListener("input", renderEvents);
+    $("addInlineQuickNoteBtn").addEventListener("click", addInlineQuickNote);
+    $("inlineQuickContentInput").addEventListener("keydown", event => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        event.preventDefault();
+        addInlineQuickNote();
+      }
+    });
     $("addEventBtn").addEventListener("click", addEvent);
     $("cancelEventEditBtn").addEventListener("click", resetEventForm);
     $("openQuickNoteBtn").addEventListener("click", () => openQuickNoteModal(selectedStudent || state.students[0]?.name || ""));
