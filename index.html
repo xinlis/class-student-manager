@@ -698,7 +698,7 @@
     <div class="topbar">
       <div>
         <h1 id="appTitle">VIP2 班每日状态与成绩录入管理系统</h1>
-        <div class="sub" id="appSubtitle">49 人名单已导入；每日录入默认作业 A、上课正常，只需记录分数和异常。</div>
+        <div class="sub" id="appSubtitle">49 人名单已导入；每日录入按需开启作业和知识点检查，只需记录分数和异常。</div>
       </div>
       <div class="actions">
         <button id="classNameBtn">班级名称</button>
@@ -1389,7 +1389,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const title = `${classNameText()}每日状态与成绩录入管理系统`;
       document.title = title;
       if ($("appTitle")) $("appTitle").textContent = title;
-      if ($("appSubtitle")) $("appSubtitle").textContent = `${state.students.length} 人名单已导入；每日录入默认作业 A、上课正常，只需记录分数和异常。`;
+      if ($("appSubtitle")) $("appSubtitle").textContent = `${state.students.length} 人名单已导入；每日录入按需开启作业和知识点检查，只需记录分数和异常。`;
     }
 
     function editClassName() {
