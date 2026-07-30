@@ -189,6 +189,7 @@
     .name { font-weight: 700; }
     .muted { color: var(--muted); }
     .score-input { width: 80px; text-align: center; }
+    .knowledge-input { width: 86px; text-align: center; }
     .homework-select { width: 76px; }
     .note-input { width: 180px; }
     .event-content-input { width: min(520px, 100%); min-height: 72px; }
@@ -807,6 +808,8 @@
           <div class="toolbar">
             <label>日期 <input id="dateInput" type="date"></label>
             <label><input id="hasHomeworkInput" type="checkbox" checked> 今日有作业</label>
+            <label><input id="hasKnowledgeInput" type="checkbox"> 今日查知识点</label>
+            <label id="knowledgeTotalWrap" class="hidden">共 <input id="knowledgeTotalInput" class="knowledge-input" type="number" min="1" max="50" inputmode="numeric" placeholder="7"> 题</label>
             <label>搜索 <input id="entrySearch" type="search" placeholder="序号 / 姓名首字母 / 学校"></label>
             <button id="resetDefaultsBtn">补齐默认记录</button>
           </div>
@@ -826,6 +829,7 @@
                 <th>姓名</th>
                 <th>学校</th>
                 <th>日测分数</th>
+                <th id="knowledgeHeader">错题数</th>
                 <th>日测纠错</th>
                 <th id="homeworkHeader0">讲义</th>
                 <th id="homeworkHeader1">宝典</th>
@@ -999,6 +1003,7 @@
                   <tr>
                     <th>日期</th>
                     <th>日测分数</th>
+                    <th>知识点</th>
                     <th>日测纠错</th>
                     <th>作业</th>
                     <th>今日状态</th>
@@ -1178,7 +1183,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       { key: "absent", label: "请假" }
     ];
     const STATUS_LABELS = Object.fromEntries(STATUS_OPTIONS.map(item => [item.key, item.label]));
-    const HOMEWORK_GRADES = ["A+", "A", "B", "C", "D", "未交"];
+    const HOMEWORK_NOT_SUBMITTED = "未提交";
+    const HOMEWORK_GRADES = ["A+", "A", "B", "C", "D", HOMEWORK_NOT_SUBMITTED];
     const NO_HOMEWORK = "无作业";
     const DAILY_FULL_SCORE = 100;
     const DAILY_CORRECTION_OPTIONS = ["已纠错", "未纠错"];
@@ -1242,6 +1248,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         subjectTests: seed.subjectTests || {},
         events: seed.events || [],
         quickNotes: seed.quickNotes || [],
+        knowledgeDates: {},
         homeworkNames: [...DEFAULT_HOMEWORK_NAMES],
         className: DEFAULT_CLASS_NAME,
         createdAt: new Date().toISOString(),
@@ -1256,6 +1263,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         subjectTests: { ...(seed.subjectTests || {}), ...(parsed.subjectTests || {}) },
         events: Array.isArray(parsed.events) ? parsed.events : (seed.events || []),
         quickNotes: Array.isArray(parsed.quickNotes) ? parsed.quickNotes : (seed.quickNotes || []),
+        knowledgeDates: parsed.knowledgeDates && typeof parsed.knowledgeDates === "object" ? parsed.knowledgeDates : {},
         homeworkNames: Array.isArray(parsed.homeworkNames) ? parsed.homeworkNames : [...DEFAULT_HOMEWORK_NAMES],
         className: parsed.className || DEFAULT_CLASS_NAME,
         createdAt: parsed.createdAt || new Date().toISOString(),
@@ -1268,10 +1276,21 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       target.updatedAt = target.updatedAt || new Date().toISOString();
       target.students = Array.isArray(target.students) ? target.students : [];
       target.students.forEach(normalizeStudent);
+      normalizeKnowledgeDates(target);
       normalizeHomeworkNames(target);
       Object.values(target.records || {}).forEach(record => {
         if (record.homework === "A-") record.homework = "A";
         if (!record.homework) record.homework = "A";
+        record.knowledge_point = String(record.knowledge_point || "").trim();
+        const parsedKnowledge = parseKnowledgePoint(record.knowledge_point);
+        if (record.knowledge_wrong === undefined && parsedKnowledge.wrong !== "") record.knowledge_wrong = parsedKnowledge.wrong;
+        record.knowledge_wrong = String(record.knowledge_wrong ?? "").trim();
+        if (parsedKnowledge.total !== "" && record.date) {
+          target.knowledgeDates[record.date] = {
+            enabled: true,
+            total: target.knowledgeDates[record.date]?.total || parsedKnowledge.total
+          };
+        }
         normalizeRecordHomework(record, target.homeworkNames);
         normalizeDailyCorrection(record);
       });
@@ -1322,6 +1341,38 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       });
     }
 
+    function normalizeKnowledgeDates(target) {
+      const source = target.knowledgeDates && typeof target.knowledgeDates === "object" ? target.knowledgeDates : {};
+      target.knowledgeDates = {};
+      Object.entries(source).forEach(([date, config]) => {
+        if (config === true) {
+          target.knowledgeDates[date] = { enabled: true, total: "" };
+          return;
+        }
+        if (config && typeof config === "object") {
+          target.knowledgeDates[date] = {
+            enabled: Boolean(config.enabled),
+            total: String(config.total || "").trim()
+          };
+        }
+      });
+    }
+
+    function parseKnowledgePoint(value) {
+      const text = String(value || "").trim();
+      const match = text.match(/^(\d+)\s*错\s*(\d+)$/);
+      if (!match) return { total: "", wrong: "" };
+      return { total: match[1], wrong: match[2] };
+    }
+
+    function normalizePositiveInteger(value, { min = 0, max = Infinity, allowBlank = true } = {}) {
+      const text = String(value ?? "").trim();
+      if (!text && allowBlank) return "";
+      const number = Math.trunc(Number(text));
+      if (!Number.isFinite(number)) return allowBlank ? "" : String(min);
+      return String(Math.min(max, Math.max(min, number)));
+    }
+
     function classNameText() {
       return String(state.className || DEFAULT_CLASS_NAME).trim() || DEFAULT_CLASS_NAME;
     }
@@ -1356,15 +1407,28 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function normalizeRecordHomework(record, names = homeworkNames()) {
-      const legacyGrade = HOMEWORK_GRADES.includes(record.homework) || record.homework === NO_HOMEWORK ? record.homework : "A";
+      if (record.homework === "未交") record.homework = HOMEWORK_NOT_SUBMITTED;
+      const legacyGrade = HOMEWORK_GRADES.includes(record.homework) || record.homework === NO_HOMEWORK ? record.homework : NO_HOMEWORK;
+      const parsedSummary = parseHomeworkSummary(record.homework);
       const source = Array.isArray(record.homeworks) && record.homeworks.length
         ? record.homeworks
+        : parsedSummary.length
+          ? parsedSummary
         : [legacyGrade, legacyGrade];
       record.homeworks = names.map((_, index) => {
-        const grade = source[index] || legacyGrade || "A";
+        let grade = source[index] || legacyGrade || NO_HOMEWORK;
+        if (grade === "未交") grade = HOMEWORK_NOT_SUBMITTED;
         return grade === "A-" ? "A" : grade;
       });
       record.homework = homeworkSummaryText(record, names);
+    }
+
+    function parseHomeworkSummary(value) {
+      return String(value || "")
+        .split("/")
+        .map(part => part.split(":").pop()?.trim())
+        .filter(Boolean)
+        .map(grade => grade === "未交" ? HOMEWORK_NOT_SUBMITTED : grade);
     }
 
     function migrateSubjectTestDate(target, fromDate, toDate, subject) {
@@ -1427,7 +1491,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function snapshotSummary(target) {
-      const dailyCount = Object.values(target.records || {}).filter(record => parseScore(record.score) !== null || record.status?.length || record.homework).length;
+      const dailyCount = Object.values(target.records || {}).filter(record => parseScore(record.score) !== null || record.knowledge_point || record.knowledge_wrong || record.status?.length || record.homework).length;
       const subjectCount = Object.values(target.subjectTests || {}).filter(test => parseScore(test.score) !== null || test.note).length;
       const eventCount = (target.events || []).length;
       const quickCount = (target.quickNotes || []).length;
@@ -1441,8 +1505,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           date,
           name: student.name,
           score: "",
-          homework: "讲义:A / 宝典:A",
-          homeworks: homeworkNames().map(() => "A"),
+          knowledge_point: "",
+          knowledge_wrong: "",
+          homework: homeworkNames().map(name => `${name}:${NO_HOMEWORK}`).join(" / "),
+          homeworks: homeworkNames().map(() => NO_HOMEWORK),
           correction: "已纠错",
           status: [],
           note: ""
@@ -1471,11 +1537,72 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       getDateRecords(date).forEach(record => {
         homeworkNames().forEach((_, index) => {
           const grade = getHomeworkGrade(record, index);
-          if (hasHomework && grade === NO_HOMEWORK) setHomeworkGrade(record, index, "A");
+          if (hasHomework && grade === NO_HOMEWORK) setHomeworkGrade(record, index, HOMEWORK_NOT_SUBMITTED);
           if (!hasHomework) setHomeworkGrade(record, index, NO_HOMEWORK);
         });
       });
       saveState();
+    }
+
+    function knowledgeConfigForDate(date) {
+      state.knowledgeDates = state.knowledgeDates || {};
+      const config = state.knowledgeDates[date];
+      if (config === true) return { enabled: true, total: "" };
+      if (config && typeof config === "object") return { enabled: Boolean(config.enabled), total: String(config.total || "").trim() };
+      return { enabled: false, total: "" };
+    }
+
+    function knowledgeTotalForDate(date) {
+      const config = knowledgeConfigForDate(date);
+      if (config.total) return config.total;
+      const firstParsed = getDateRecords(date)
+        .map(record => parseKnowledgePoint(record.knowledge_point))
+        .find(parsed => parsed.total);
+      return firstParsed?.total || "";
+    }
+
+    function hasKnowledgeForDate(date) {
+      const config = knowledgeConfigForDate(date);
+      return config.enabled || getDateRecords(date).some(record => record.knowledge_point || record.knowledge_wrong);
+    }
+
+    function setKnowledgeForDate(date, hasKnowledge) {
+      state.knowledgeDates = state.knowledgeDates || {};
+      if (hasKnowledge) {
+        const config = knowledgeConfigForDate(date);
+        state.knowledgeDates[date] = { enabled: true, total: config.total };
+      } else {
+        delete state.knowledgeDates[date];
+        getDateRecords(date).forEach(record => {
+          record.knowledge_point = "";
+          record.knowledge_wrong = "";
+        });
+      }
+      saveState();
+    }
+
+    function setKnowledgeTotalForDate(date, value) {
+      const text = normalizePositiveInteger(value, { min: 1, max: 50 });
+      state.knowledgeDates = state.knowledgeDates || {};
+      state.knowledgeDates[date] = { enabled: true, total: text };
+      getDateRecords(date).forEach(record => {
+        record.knowledge_wrong = normalizeKnowledgeWrongForDate(date, record.knowledge_wrong);
+      });
+      saveState();
+    }
+
+    function normalizeKnowledgeWrongForDate(date, value) {
+      const total = Number(knowledgeTotalForDate(date));
+      const max = Number.isFinite(total) && total > 0 ? total : Infinity;
+      return normalizePositiveInteger(value, { min: 0, max });
+    }
+
+    function knowledgePointText(record) {
+      if (!record) return "";
+      const wrong = normalizeKnowledgeWrongForDate(record?.date, record?.knowledge_wrong);
+      const total = knowledgeTotalForDate(record?.date);
+      if (total && wrong !== "") return `${total}错${wrong}`;
+      return String(record?.knowledge_point || "").trim();
     }
 
     function homeworkNames() {
@@ -1484,18 +1611,18 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function getHomeworkGrade(record, index) {
       normalizeRecordHomework(record);
-      return record.homeworks[index] || "A";
+      return record.homeworks[index] || NO_HOMEWORK;
     }
 
     function setHomeworkGrade(record, index, value) {
       normalizeRecordHomework(record);
-      record.homeworks[index] = value || "A";
+      record.homeworks[index] = value || HOMEWORK_NOT_SUBMITTED;
       record.homework = homeworkSummaryText(record);
     }
 
     function homeworkSummaryText(record, names = homeworkNames()) {
-      const source = Array.isArray(record.homeworks) ? record.homeworks : [record.homework || "A", record.homework || "A"];
-      return names.map((name, index) => `${name}:${source[index] || "A"}`).join(" / ");
+      const source = Array.isArray(record.homeworks) ? record.homeworks : [record.homework || NO_HOMEWORK, record.homework || NO_HOMEWORK];
+      return names.map((name, index) => `${name}:${source[index] || NO_HOMEWORK}`).join(" / ");
     }
 
     function homeworkIssueText(record) {
@@ -1794,6 +1921,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       ensureDate(date);
       renderHeader();
       if ($("hasHomeworkInput")) $("hasHomeworkInput").checked = hasHomeworkForDate(date);
+      const hasKnowledge = hasKnowledgeForDate(date);
+      if ($("hasKnowledgeInput")) $("hasKnowledgeInput").checked = hasKnowledge;
+      if ($("knowledgeTotalWrap")) $("knowledgeTotalWrap").classList.toggle("hidden", !hasKnowledge);
+      if ($("knowledgeTotalInput")) $("knowledgeTotalInput").value = knowledgeTotalForDate(date);
       renderHomeworkSettings();
       renderEntryStats(date);
       if (activeView === "entryView") renderEntry(date);
@@ -1998,29 +2129,36 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function renderEntry(date) {
       const query = $("entrySearch").value.trim();
       const names = homeworkNames();
+      const hasHomework = hasHomeworkForDate(date);
+      const hasKnowledge = hasKnowledgeForDate(date);
+      const knowledgeTotal = knowledgeTotalForDate(date);
       const rows = state.students
         .map((student, idx) => ({ student, idx, record: ensureRecord(date, student) }))
         .filter(item => matchesStudentSearch(item.student, item.idx, query));
       $("homeworkHeader0").textContent = names[0];
       $("homeworkHeader1").textContent = names[1];
+      $("homeworkHeader0").classList.toggle("hidden", !hasHomework);
+      $("homeworkHeader1").classList.toggle("hidden", !hasHomework);
+      $("knowledgeHeader").classList.toggle("hidden", !hasKnowledge);
       $("entryBody").innerHTML = rows.map(({ student, idx, record }) => `
         <tr>
           <td class="idx">${idx + 1}</td>
           <td><span class="name">${student.name}</span><span class="student-meta">${[student.source_class, student.gender, student.phone].filter(Boolean).join(" ")}</span></td>
           <td class="muted">${student.school}</td>
           <td><input class="score-input" data-name="${student.name}" type="number" min="0" max="150" inputmode="decimal" value="${escapeHtml(record.score)}"></td>
+          ${hasKnowledge ? `<td><input class="knowledge-input" data-name="${student.name}" type="number" min="0" ${knowledgeTotal ? `max="${escapeHtml(knowledgeTotal)}"` : ""} inputmode="numeric" placeholder="错几题" value="${escapeHtml(record.knowledge_wrong ?? parseKnowledgePoint(record.knowledge_point).wrong)}"></td>` : ""}
           <td>
             <select class="daily-correction-select" data-name="${student.name}" ${isDailyFullScore(record) ? "disabled title=\"满分不需要纠错\"" : ""}>
               ${dailyCorrectionOptionsFor(record)}
             </select>
           </td>
-          ${names.map((_, homeworkIndex) => `
+          ${hasHomework ? names.map((_, homeworkIndex) => `
             <td>
               <select class="homework-select" data-name="${student.name}" data-homework-index="${homeworkIndex}">
                 ${homeworkOptionsFor(record, homeworkIndex)}
               </select>
             </td>
-          `).join("")}
+          `).join("") : ""}
           <td>
             <div class="tag-row">
               ${STATUS_OPTIONS.map(status => `
@@ -2040,6 +2178,24 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             select.disabled = isDailyFullScore(record);
             select.title = isDailyFullScore(record) ? "满分不需要纠错" : "";
           }
+        });
+        input.addEventListener("keydown", event => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            const next = inputs[visibleIndex + 1];
+            if (next) {
+              next.focus();
+              next.select();
+            }
+          }
+        });
+      });
+      document.querySelectorAll(".knowledge-input").forEach((input, visibleIndex, inputs) => {
+        input.addEventListener("input", () => {
+          const before = input.value;
+          const record = updateRecordField(date, input.dataset.name, "knowledge_wrong", input.value);
+          if (record) input.value = record.knowledge_wrong || "";
+          if (before && record && before !== record.knowledge_wrong && knowledgeTotalForDate(date)) showToast("错题数不能超过当天总题数");
         });
         input.addEventListener("keydown", event => {
           if (event.key === "Enter") {
@@ -2087,7 +2243,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const student = state.students.find(item => item.name === name);
       if (!student) return;
       const record = ensureRecord(date, student);
+      if (field === "knowledge_wrong") value = normalizeKnowledgeWrongForDate(date, value);
       record[field] = value;
+      if (field === "knowledge_wrong") record.knowledge_point = "";
       if (field === "score" || field === "correction") normalizeDailyCorrection(record);
       saveState();
       renderEntryStats(date);
@@ -2932,11 +3090,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         <tr>
           <td>${record.date}</td>
           <td>${escapeHtml(record.score)}</td>
+          <td>${escapeHtml(knowledgePointText(record))}</td>
           <td><span class="badge ${dailyCorrectionBadgeClass(record)}">${escapeHtml(dailyCorrectionText(record))}</span></td>
           <td>${homeworkBadgesHtml(record)}</td>
           <td>${record.status?.length ? record.status.map(key => `<span class="badge bad">${STATUS_LABELS[key]}</span>`).join(" ") : "<span class='muted'>正常</span>"}</td>
         </tr>
-      `).join("") || `<tr><td colspan="5" class="empty">暂无记录</td></tr>`;
+      `).join("") || `<tr><td colspan="6" class="empty">暂无记录</td></tr>`;
     }
 
     function renderAiAnalysis(student, records, subjectTests, events, quickNotes = []) {
@@ -3015,7 +3174,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (!weaknesses.length && (scores.length || subjectStats.scoredCount)) weaknesses.push("暂未发现明显低分科目，后续重点看波动和错题复盘质量。");
 
       const habits = [];
-      homeworkStats.issues.forEach(item => habits.push(`${item.name} 出现 ${item.count} 次 B/C/D/未交，作业质量需要盯紧。`));
+      homeworkStats.issues.forEach(item => habits.push(`${item.name} 出现 ${item.count} 次 B/C/D/未提交，作业质量需要盯紧。`));
       if (correctionStats.uncorrected) habits.push(`日测未纠错 ${correctionStats.uncorrected} 次，错题闭环需要重点盯。`);
       if (correctionStats.unchecked) habits.push(`日测纠错未检查 ${correctionStats.unchecked} 次，建议补查错题订正。`);
       Object.entries(statusStats).forEach(([label, count]) => {
@@ -3134,7 +3293,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function buildAiPrompt(student, records, subjectTests, events, quickNotes, analysis) {
-      const dailyLines = records.map(record => `${record.date} 日测:${record.score || "未填"} 纠错:${dailyCorrectionText(record)} 作业:${homeworkSummaryText(record)} 状态:${statusText(record.status) || "正常"}`);
+      const dailyLines = records.map(record => `${record.date} 日测:${record.score || "未填"} 知识点:${knowledgePointText(record) || "未填"} 纠错:${dailyCorrectionText(record)} 作业:${homeworkSummaryText(record)} 状态:${statusText(record.status) || "正常"}`);
       const subjectLines = subjectTests.map(test => `${test.date} ${test.subject} 分数:${test.score || "未填"} 排名:${test.rank || "无"} 纠错:${test.correction || "无"} 备注:${test.note || "无"}`);
       const quickLines = quickNotes.map(note => `${note.date} ${note.time || ""} ${note.type} ${note.level}：${note.content || ""}`);
       const eventLines = events.map(event => `${event.date} ${event.type} ${event.content || ""} 后续:${event.followUp || "无"} 状态:${event.status || "已记录"}`);
@@ -3632,6 +3791,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const sheets = [
         ["家长群发送版", parentShareRowsForExport()],
         ["每日一测总表", dailyScoreboardRowsForExport()],
+        ["每日一测知识点打表", dailyKnowledgeRowsForExport()],
         ["单科成绩总表", subjectScoreboardRowsForExport()],
         ["学生名单", studentRowsForExport()],
         ["每日录入明细", dailyRowsForExport()],
@@ -3668,6 +3828,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const dates = parentShareDates();
       const header = ["姓名", ...dates.flatMap(date => [
         `${formatShortDate(date)}每日一测`,
+        `${formatShortDate(date)}知识点`,
         ...names.map(name => `${formatShortDate(date)}${name}`)
       ])];
       const rows = state.students.map(student => [
@@ -3677,6 +3838,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           const score = parseScore(record?.score);
           return [
             score === null ? "未测试" : score,
+            knowledgePointText(record),
             ...names.map((_, index) => record ? getHomeworkGrade(record, index) : "")
           ];
         })
@@ -3686,7 +3848,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function parentShareDates() {
       return [...new Set(Object.values(state.records || {})
-        .filter(record => parseScore(record.score) !== null || homeworkNames().some((_, index) => getHomeworkGrade(record, index) !== NO_HOMEWORK))
+        .filter(record => parseScore(record.score) !== null || knowledgePointText(record) || homeworkNames().some((_, index) => getHomeworkGrade(record, index) !== NO_HOMEWORK))
         .map(record => record.date)
         .filter(Boolean))]
         .sort();
@@ -3705,6 +3867,25 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         .map(record => record.date)
         .filter(Boolean))]
         .sort();
+    }
+
+    function dailyKnowledgeRowsForExport() {
+      return [
+        ["日期", "序号", "姓名", "知识点", "习题"],
+        ...Object.values(state.records || {})
+          .filter(record => parseScore(record.score) !== null || knowledgePointText(record))
+          .sort(compareRecordsByDateAndStudent)
+          .map(record => {
+            const score = parseScore(record.score);
+            return [
+              record.date,
+              studentNumber(record.name),
+              record.name,
+              knowledgePointText(record),
+              score === null ? "未测试" : score
+            ];
+          })
+      ];
     }
 
     function formatShortDate(dateText) {
@@ -3795,7 +3976,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function dailyRowsForExport() {
       const names = homeworkNames();
       return [
-        ["日期", "序号", "姓名", "日测分数", "日测纠错", ...names, "今日状态", "随手记条数"],
+        ["日期", "序号", "姓名", "日测分数", "知识点", "日测纠错", ...names, "今日状态", "随手记条数"],
         ...Object.values(state.records)
           .sort(compareRecordsByDateAndStudent)
           .map(record => [
@@ -3803,6 +3984,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             studentNumber(record.name),
             record.name,
             record.score,
+            knowledgePointText(record),
             dailyCorrectionText(record),
             ...names.map((_, index) => getHomeworkGrade(record, index)),
             statusText(record.status),
@@ -4356,7 +4538,18 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("hasHomeworkInput").addEventListener("change", () => {
       setHomeworkForDate($("dateInput").value || today(), $("hasHomeworkInput").checked);
       render();
-      showToast($("hasHomeworkInput").checked ? "当天作业已恢复为默认 A" : "当天已标记为无作业");
+      showToast($("hasHomeworkInput").checked ? "当天作业已开启，默认未提交" : "当天已标记为无作业");
+    });
+    $("hasKnowledgeInput").addEventListener("change", () => {
+      setKnowledgeForDate($("dateInput").value || today(), $("hasKnowledgeInput").checked);
+      render();
+      showToast($("hasKnowledgeInput").checked ? "当天已开启知识点检查" : "当天已关闭知识点检查");
+    });
+    $("knowledgeTotalInput").addEventListener("input", () => {
+      const date = $("dateInput").value || today();
+      setKnowledgeTotalForDate(date, $("knowledgeTotalInput").value);
+      $("knowledgeTotalInput").value = knowledgeTotalForDate(date);
+      renderEntry(date);
     });
     $("subjectDateInput").addEventListener("change", renderSubjectTests);
     $("entrySubjectSelect").addEventListener("change", renderSubjectTests);
