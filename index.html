@@ -829,7 +829,7 @@
                 <th>姓名</th>
                 <th>学校</th>
                 <th>日测分数</th>
-                <th id="knowledgeHeader">知识点</th>
+                <th id="knowledgeHeader">错题数</th>
                 <th>日测纠错</th>
                 <th id="homeworkHeader0">讲义</th>
                 <th id="homeworkHeader1">宝典</th>
@@ -1364,6 +1364,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return { total: match[1], wrong: match[2] };
     }
 
+    function normalizePositiveInteger(value, { min = 0, max = Infinity, allowBlank = true } = {}) {
+      const text = String(value ?? "").trim();
+      if (!text && allowBlank) return "";
+      const number = Math.trunc(Number(text));
+      if (!Number.isFinite(number)) return allowBlank ? "" : String(min);
+      return String(Math.min(max, Math.max(min, number)));
+    }
+
     function classNameText() {
       return String(state.className || DEFAULT_CLASS_NAME).trim() || DEFAULT_CLASS_NAME;
     }
@@ -1560,14 +1568,24 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function setKnowledgeTotalForDate(date, value) {
-      const text = String(value || "").trim();
+      const text = normalizePositiveInteger(value, { min: 1, max: 50 });
       state.knowledgeDates = state.knowledgeDates || {};
       state.knowledgeDates[date] = { enabled: true, total: text };
+      getDateRecords(date).forEach(record => {
+        record.knowledge_wrong = normalizeKnowledgeWrongForDate(date, record.knowledge_wrong);
+      });
       saveState();
     }
 
+    function normalizeKnowledgeWrongForDate(date, value) {
+      const total = Number(knowledgeTotalForDate(date));
+      const max = Number.isFinite(total) && total > 0 ? total : Infinity;
+      return normalizePositiveInteger(value, { min: 0, max });
+    }
+
     function knowledgePointText(record) {
-      const wrong = String(record?.knowledge_wrong ?? "").trim();
+      if (!record) return "";
+      const wrong = normalizeKnowledgeWrongForDate(record?.date, record?.knowledge_wrong);
       const total = knowledgeTotalForDate(record?.date);
       if (total && wrong !== "") return `${total}错${wrong}`;
       return String(record?.knowledge_point || "").trim();
@@ -2156,7 +2174,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         });
       });
       document.querySelectorAll(".knowledge-input").forEach((input, visibleIndex, inputs) => {
-        input.addEventListener("input", () => updateRecordField(date, input.dataset.name, "knowledge_wrong", input.value));
+        input.addEventListener("input", () => {
+          const before = input.value;
+          const record = updateRecordField(date, input.dataset.name, "knowledge_wrong", input.value);
+          if (record) input.value = record.knowledge_wrong || "";
+          if (before && record && before !== record.knowledge_wrong && knowledgeTotalForDate(date)) showToast("错题数不能超过当天总题数");
+        });
         input.addEventListener("keydown", event => {
           if (event.key === "Enter") {
             event.preventDefault();
@@ -2203,6 +2226,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const student = state.students.find(item => item.name === name);
       if (!student) return;
       const record = ensureRecord(date, student);
+      if (field === "knowledge_wrong") value = normalizeKnowledgeWrongForDate(date, value);
       record[field] = value;
       if (field === "knowledge_wrong") record.knowledge_point = "";
       if (field === "score" || field === "correction") normalizeDailyCorrection(record);
@@ -3750,6 +3774,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const sheets = [
         ["家长群发送版", parentShareRowsForExport()],
         ["每日一测总表", dailyScoreboardRowsForExport()],
+        ["每日一测知识点打表", dailyKnowledgeRowsForExport()],
         ["单科成绩总表", subjectScoreboardRowsForExport()],
         ["学生名单", studentRowsForExport()],
         ["每日录入明细", dailyRowsForExport()],
@@ -3825,6 +3850,25 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         .map(record => record.date)
         .filter(Boolean))]
         .sort();
+    }
+
+    function dailyKnowledgeRowsForExport() {
+      return [
+        ["日期", "序号", "姓名", "知识点", "习题"],
+        ...Object.values(state.records || {})
+          .filter(record => parseScore(record.score) !== null || knowledgePointText(record))
+          .sort(compareRecordsByDateAndStudent)
+          .map(record => {
+            const score = parseScore(record.score);
+            return [
+              record.date,
+              studentNumber(record.name),
+              record.name,
+              knowledgePointText(record),
+              score === null ? "未测试" : score
+            ];
+          })
+      ];
     }
 
     function formatShortDate(dateText) {
@@ -4485,8 +4529,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       showToast($("hasKnowledgeInput").checked ? "当天已开启知识点检查" : "当天已关闭知识点检查");
     });
     $("knowledgeTotalInput").addEventListener("input", () => {
-      setKnowledgeTotalForDate($("dateInput").value || today(), $("knowledgeTotalInput").value);
-      renderEntry($("dateInput").value || today());
+      const date = $("dateInput").value || today();
+      setKnowledgeTotalForDate(date, $("knowledgeTotalInput").value);
+      $("knowledgeTotalInput").value = knowledgeTotalForDate(date);
+      renderEntry(date);
     });
     $("subjectDateInput").addEventListener("change", renderSubjectTests);
     $("entrySubjectSelect").addEventListener("change", renderSubjectTests);
