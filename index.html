@@ -189,6 +189,7 @@
     .name { font-weight: 700; }
     .muted { color: var(--muted); }
     .score-input { width: 80px; text-align: center; }
+    .knowledge-input { width: 86px; text-align: center; }
     .homework-select { width: 76px; }
     .note-input { width: 180px; }
     .event-content-input { width: min(520px, 100%); min-height: 72px; }
@@ -826,6 +827,7 @@
                 <th>姓名</th>
                 <th>学校</th>
                 <th>日测分数</th>
+                <th>知识点</th>
                 <th>日测纠错</th>
                 <th id="homeworkHeader0">讲义</th>
                 <th id="homeworkHeader1">宝典</th>
@@ -999,6 +1001,7 @@
                   <tr>
                     <th>日期</th>
                     <th>日测分数</th>
+                    <th>知识点</th>
                     <th>日测纠错</th>
                     <th>作业</th>
                     <th>今日状态</th>
@@ -1272,6 +1275,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       Object.values(target.records || {}).forEach(record => {
         if (record.homework === "A-") record.homework = "A";
         if (!record.homework) record.homework = "A";
+        record.knowledge_point = String(record.knowledge_point || "").trim();
         normalizeRecordHomework(record, target.homeworkNames);
         normalizeDailyCorrection(record);
       });
@@ -1427,7 +1431,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function snapshotSummary(target) {
-      const dailyCount = Object.values(target.records || {}).filter(record => parseScore(record.score) !== null || record.status?.length || record.homework).length;
+      const dailyCount = Object.values(target.records || {}).filter(record => parseScore(record.score) !== null || record.knowledge_point || record.status?.length || record.homework).length;
       const subjectCount = Object.values(target.subjectTests || {}).filter(test => parseScore(test.score) !== null || test.note).length;
       const eventCount = (target.events || []).length;
       const quickCount = (target.quickNotes || []).length;
@@ -1441,6 +1445,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           date,
           name: student.name,
           score: "",
+          knowledge_point: "",
           homework: "讲义:A / 宝典:A",
           homeworks: homeworkNames().map(() => "A"),
           correction: "已纠错",
@@ -2009,6 +2014,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <td><span class="name">${student.name}</span><span class="student-meta">${[student.source_class, student.gender, student.phone].filter(Boolean).join(" ")}</span></td>
           <td class="muted">${student.school}</td>
           <td><input class="score-input" data-name="${student.name}" type="number" min="0" max="150" inputmode="decimal" value="${escapeHtml(record.score)}"></td>
+          <td><input class="knowledge-input" data-name="${student.name}" type="text" inputmode="text" placeholder="6错1" value="${escapeHtml(record.knowledge_point || "")}"></td>
           <td>
             <select class="daily-correction-select" data-name="${student.name}" ${isDailyFullScore(record) ? "disabled title=\"满分不需要纠错\"" : ""}>
               ${dailyCorrectionOptionsFor(record)}
@@ -2041,6 +2047,19 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             select.title = isDailyFullScore(record) ? "满分不需要纠错" : "";
           }
         });
+        input.addEventListener("keydown", event => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            const next = inputs[visibleIndex + 1];
+            if (next) {
+              next.focus();
+              next.select();
+            }
+          }
+        });
+      });
+      document.querySelectorAll(".knowledge-input").forEach((input, visibleIndex, inputs) => {
+        input.addEventListener("input", () => updateRecordField(date, input.dataset.name, "knowledge_point", input.value));
         input.addEventListener("keydown", event => {
           if (event.key === "Enter") {
             event.preventDefault();
@@ -2932,11 +2951,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         <tr>
           <td>${record.date}</td>
           <td>${escapeHtml(record.score)}</td>
+          <td>${escapeHtml(record.knowledge_point || "")}</td>
           <td><span class="badge ${dailyCorrectionBadgeClass(record)}">${escapeHtml(dailyCorrectionText(record))}</span></td>
           <td>${homeworkBadgesHtml(record)}</td>
           <td>${record.status?.length ? record.status.map(key => `<span class="badge bad">${STATUS_LABELS[key]}</span>`).join(" ") : "<span class='muted'>正常</span>"}</td>
         </tr>
-      `).join("") || `<tr><td colspan="5" class="empty">暂无记录</td></tr>`;
+      `).join("") || `<tr><td colspan="6" class="empty">暂无记录</td></tr>`;
     }
 
     function renderAiAnalysis(student, records, subjectTests, events, quickNotes = []) {
@@ -3134,7 +3154,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function buildAiPrompt(student, records, subjectTests, events, quickNotes, analysis) {
-      const dailyLines = records.map(record => `${record.date} 日测:${record.score || "未填"} 纠错:${dailyCorrectionText(record)} 作业:${homeworkSummaryText(record)} 状态:${statusText(record.status) || "正常"}`);
+      const dailyLines = records.map(record => `${record.date} 日测:${record.score || "未填"} 知识点:${record.knowledge_point || "未填"} 纠错:${dailyCorrectionText(record)} 作业:${homeworkSummaryText(record)} 状态:${statusText(record.status) || "正常"}`);
       const subjectLines = subjectTests.map(test => `${test.date} ${test.subject} 分数:${test.score || "未填"} 排名:${test.rank || "无"} 纠错:${test.correction || "无"} 备注:${test.note || "无"}`);
       const quickLines = quickNotes.map(note => `${note.date} ${note.time || ""} ${note.type} ${note.level}：${note.content || ""}`);
       const eventLines = events.map(event => `${event.date} ${event.type} ${event.content || ""} 后续:${event.followUp || "无"} 状态:${event.status || "已记录"}`);
@@ -3668,6 +3688,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const dates = parentShareDates();
       const header = ["姓名", ...dates.flatMap(date => [
         `${formatShortDate(date)}每日一测`,
+        `${formatShortDate(date)}知识点`,
         ...names.map(name => `${formatShortDate(date)}${name}`)
       ])];
       const rows = state.students.map(student => [
@@ -3677,6 +3698,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           const score = parseScore(record?.score);
           return [
             score === null ? "未测试" : score,
+            record?.knowledge_point || "",
             ...names.map((_, index) => record ? getHomeworkGrade(record, index) : "")
           ];
         })
@@ -3686,7 +3708,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function parentShareDates() {
       return [...new Set(Object.values(state.records || {})
-        .filter(record => parseScore(record.score) !== null || homeworkNames().some((_, index) => getHomeworkGrade(record, index) !== NO_HOMEWORK))
+        .filter(record => parseScore(record.score) !== null || record.knowledge_point || homeworkNames().some((_, index) => getHomeworkGrade(record, index) !== NO_HOMEWORK))
         .map(record => record.date)
         .filter(Boolean))]
         .sort();
@@ -3795,7 +3817,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function dailyRowsForExport() {
       const names = homeworkNames();
       return [
-        ["日期", "序号", "姓名", "日测分数", "日测纠错", ...names, "今日状态", "随手记条数"],
+        ["日期", "序号", "姓名", "日测分数", "知识点", "日测纠错", ...names, "今日状态", "随手记条数"],
         ...Object.values(state.records)
           .sort(compareRecordsByDateAndStudent)
           .map(record => [
@@ -3803,6 +3825,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             studentNumber(record.name),
             record.name,
             record.score,
+            record.knowledge_point || "",
             dailyCorrectionText(record),
             ...names.map((_, index) => getHomeworkGrade(record, index)),
             statusText(record.status),
