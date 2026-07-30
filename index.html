@@ -808,6 +808,9 @@
           <div class="toolbar">
             <label>日期 <input id="dateInput" type="date"></label>
             <label><input id="hasHomeworkInput" type="checkbox" checked> 今日有作业</label>
+            <label><input id="hasKnowledgeInput" type="checkbox"> 今日查知识点</label>
+            <label id="knowledgeDefaultWrap" class="hidden">默认 <input id="knowledgeDefaultInput" class="knowledge-input" type="text" placeholder="6错1"></label>
+            <button id="fillKnowledgeBtn" class="small hidden">补齐知识点</button>
             <label>搜索 <input id="entrySearch" type="search" placeholder="序号 / 姓名首字母 / 学校"></label>
             <button id="resetDefaultsBtn">补齐默认记录</button>
           </div>
@@ -827,7 +830,7 @@
                 <th>姓名</th>
                 <th>学校</th>
                 <th>日测分数</th>
-                <th>知识点</th>
+                <th id="knowledgeHeader">知识点</th>
                 <th>日测纠错</th>
                 <th id="homeworkHeader0">讲义</th>
                 <th id="homeworkHeader1">宝典</th>
@@ -1245,6 +1248,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         subjectTests: seed.subjectTests || {},
         events: seed.events || [],
         quickNotes: seed.quickNotes || [],
+        knowledgeDates: {},
         homeworkNames: [...DEFAULT_HOMEWORK_NAMES],
         className: DEFAULT_CLASS_NAME,
         createdAt: new Date().toISOString(),
@@ -1259,6 +1263,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         subjectTests: { ...(seed.subjectTests || {}), ...(parsed.subjectTests || {}) },
         events: Array.isArray(parsed.events) ? parsed.events : (seed.events || []),
         quickNotes: Array.isArray(parsed.quickNotes) ? parsed.quickNotes : (seed.quickNotes || []),
+        knowledgeDates: parsed.knowledgeDates && typeof parsed.knowledgeDates === "object" ? parsed.knowledgeDates : {},
         homeworkNames: Array.isArray(parsed.homeworkNames) ? parsed.homeworkNames : [...DEFAULT_HOMEWORK_NAMES],
         className: parsed.className || DEFAULT_CLASS_NAME,
         createdAt: parsed.createdAt || new Date().toISOString(),
@@ -1271,6 +1276,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       target.updatedAt = target.updatedAt || new Date().toISOString();
       target.students = Array.isArray(target.students) ? target.students : [];
       target.students.forEach(normalizeStudent);
+      target.knowledgeDates = target.knowledgeDates && typeof target.knowledgeDates === "object" ? target.knowledgeDates : {};
       normalizeHomeworkNames(target);
       Object.values(target.records || {}).forEach(record => {
         if (record.homework === "A-") record.homework = "A";
@@ -1481,6 +1487,38 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         });
       });
       saveState();
+    }
+
+    function hasKnowledgeForDate(date) {
+      return Boolean(state.knowledgeDates?.[date]) || getDateRecords(date).some(record => record.knowledge_point);
+    }
+
+    function setKnowledgeForDate(date, hasKnowledge) {
+      state.knowledgeDates = state.knowledgeDates || {};
+      if (hasKnowledge) {
+        state.knowledgeDates[date] = true;
+      } else {
+        delete state.knowledgeDates[date];
+        getDateRecords(date).forEach(record => {
+          record.knowledge_point = "";
+        });
+      }
+      saveState();
+    }
+
+    function fillKnowledgeDefaults(date, value) {
+      const text = String(value || "").trim();
+      if (!text) {
+        showToast("先填写默认知识点，例如 6错1");
+        return false;
+      }
+      state.knowledgeDates = state.knowledgeDates || {};
+      state.knowledgeDates[date] = true;
+      getDateRecords(date).forEach(record => {
+        if (!record.knowledge_point) record.knowledge_point = text;
+      });
+      saveState();
+      return true;
     }
 
     function homeworkNames() {
@@ -1799,6 +1837,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       ensureDate(date);
       renderHeader();
       if ($("hasHomeworkInput")) $("hasHomeworkInput").checked = hasHomeworkForDate(date);
+      const hasKnowledge = hasKnowledgeForDate(date);
+      if ($("hasKnowledgeInput")) $("hasKnowledgeInput").checked = hasKnowledge;
+      if ($("knowledgeDefaultWrap")) $("knowledgeDefaultWrap").classList.toggle("hidden", !hasKnowledge);
+      if ($("fillKnowledgeBtn")) $("fillKnowledgeBtn").classList.toggle("hidden", !hasKnowledge);
       renderHomeworkSettings();
       renderEntryStats(date);
       if (activeView === "entryView") renderEntry(date);
@@ -2003,18 +2045,20 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function renderEntry(date) {
       const query = $("entrySearch").value.trim();
       const names = homeworkNames();
+      const hasKnowledge = hasKnowledgeForDate(date);
       const rows = state.students
         .map((student, idx) => ({ student, idx, record: ensureRecord(date, student) }))
         .filter(item => matchesStudentSearch(item.student, item.idx, query));
       $("homeworkHeader0").textContent = names[0];
       $("homeworkHeader1").textContent = names[1];
+      $("knowledgeHeader").classList.toggle("hidden", !hasKnowledge);
       $("entryBody").innerHTML = rows.map(({ student, idx, record }) => `
         <tr>
           <td class="idx">${idx + 1}</td>
           <td><span class="name">${student.name}</span><span class="student-meta">${[student.source_class, student.gender, student.phone].filter(Boolean).join(" ")}</span></td>
           <td class="muted">${student.school}</td>
           <td><input class="score-input" data-name="${student.name}" type="number" min="0" max="150" inputmode="decimal" value="${escapeHtml(record.score)}"></td>
-          <td><input class="knowledge-input" data-name="${student.name}" type="text" inputmode="text" placeholder="6错1" value="${escapeHtml(record.knowledge_point || "")}"></td>
+          ${hasKnowledge ? `<td><input class="knowledge-input" data-name="${student.name}" type="text" inputmode="text" placeholder="6错1" value="${escapeHtml(record.knowledge_point || "")}"></td>` : ""}
           <td>
             <select class="daily-correction-select" data-name="${student.name}" ${isDailyFullScore(record) ? "disabled title=\"满分不需要纠错\"" : ""}>
               ${dailyCorrectionOptionsFor(record)}
@@ -4380,6 +4424,26 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       setHomeworkForDate($("dateInput").value || today(), $("hasHomeworkInput").checked);
       render();
       showToast($("hasHomeworkInput").checked ? "当天作业已恢复为默认 A" : "当天已标记为无作业");
+    });
+    $("hasKnowledgeInput").addEventListener("change", () => {
+      setKnowledgeForDate($("dateInput").value || today(), $("hasKnowledgeInput").checked);
+      render();
+      showToast($("hasKnowledgeInput").checked ? "当天已开启知识点检查" : "当天已关闭知识点检查");
+    });
+    $("fillKnowledgeBtn").addEventListener("click", () => {
+      if (fillKnowledgeDefaults($("dateInput").value || today(), $("knowledgeDefaultInput").value)) {
+        render();
+        showToast("已给空白学生补齐默认知识点");
+      }
+    });
+    $("knowledgeDefaultInput").addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        if (fillKnowledgeDefaults($("dateInput").value || today(), $("knowledgeDefaultInput").value)) {
+          render();
+          showToast("已给空白学生补齐默认知识点");
+        }
+      }
     });
     $("subjectDateInput").addEventListener("change", renderSubjectTests);
     $("entrySubjectSelect").addEventListener("change", renderSubjectTests);
