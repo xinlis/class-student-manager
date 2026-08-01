@@ -1224,19 +1224,19 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         const restored = latestSnapshotState(seed);
         const initial = restored || makeSeedState(seed);
         normalizeState(initial);
-        persistState(initial);
+        persistState(initial, { snapshot: false });
         return initial;
       }
       try {
         const parsed = JSON.parse(saved);
         const state = mergeWithSeed(parsed, seed);
         normalizeState(state);
-        persistState(state);
+        persistState(state, { snapshot: false });
         return state;
       } catch {
         const state = latestSnapshotState(seed) || makeSeedState(seed);
         normalizeState(state);
-        persistState(state);
+        persistState(state, { snapshot: false });
         return state;
       }
     }
@@ -1448,12 +1448,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (saved !== false) queueAutoCloudUpload();
     }
 
-    function persistState(target) {
+    function persistState(target, options = {}) {
       normalizeState(target);
       target.updatedAt = new Date().toISOString();
       const payload = JSON.stringify(target);
       if (!safeSetMainState(payload)) return false;
-      writeSnapshot(payload, target);
+      if (options.snapshot !== false) writeSnapshot(payload, target);
       return true;
     }
 
@@ -1522,6 +1522,17 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         } catch {
           localStorage.removeItem(BACKUP_KEY);
         }
+      }
+    }
+
+    function tryWriteSnapshot(payload, target) {
+      try {
+        writeSnapshot(payload, target);
+      } catch (error) {
+        console.warn("跳过历史快照：", error);
+        try {
+          localStorage.removeItem(BACKUP_KEY);
+        } catch {}
       }
     }
 
@@ -1920,11 +1931,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             return;
           }
         }
-        writeSnapshot(JSON.stringify(state), state);
+        tryWriteSnapshot(JSON.stringify(state), state);
         const seed = window.CLASSROOM_SEED_DATA || { students: [], records: {}, subjectTests: {}, events: [] };
         state = mergeWithSeed(cloudState, seed);
         normalizeState(state);
-        persistState(state);
+        persistState(state, { snapshot: false });
         selectedStudent = state.students[0]?.name || "";
         render();
         setCloudStatus(`已读取：${formatDateTime(cloudUpdatedAt)}`, "ok");
@@ -4492,7 +4503,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           imported.subjectTests = imported.subjectTests || {};
           state = imported;
           delete state.localSnapshots;
-          saveState();
+          if (persistState(state, { snapshot: false }) === false) return;
           selectedStudent = state.students[0]?.name || "";
           render();
           showToast("备份已导入");
@@ -4529,11 +4540,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         return;
       }
       try {
-        writeSnapshot(JSON.stringify(state), state);
+        tryWriteSnapshot(JSON.stringify(state), state);
         const seed = window.CLASSROOM_SEED_DATA || { students: [], records: {}, subjectTests: {} };
         state = mergeWithSeed(JSON.parse(snapshot.payload), seed);
         normalizeState(state);
-        persistState(state);
+        persistState(state, { snapshot: false });
         selectedStudent = state.students[0]?.name || "";
         closeBackupModal();
         render();
