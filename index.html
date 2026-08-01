@@ -124,6 +124,10 @@
       box-shadow: 0 12px 28px rgba(37, 99, 235, .14);
       transform: translateY(-1px);
     }
+    .stat.clickable.active {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, .14), var(--shadow);
+    }
     .stat .num { font-size: 24px; font-weight: 780; }
     .stat .label { color: var(--muted); font-size: 12px; margin-top: 2px; }
     .stat-select {
@@ -343,6 +347,63 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 10px;
       margin-bottom: 12px;
+    }
+    .chart-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 12px 0 8px;
+      flex-wrap: wrap;
+    }
+    .chart-mode {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .chart-mode button {
+      border: 0;
+      border-radius: 0;
+      min-height: 36px;
+      padding: 0 14px;
+    }
+    .chart-mode button.active {
+      background: var(--ink);
+      color: #fff;
+    }
+    .chart-subject-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .profile-detail-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+      margin: 0 0 12px;
+    }
+    .profile-detail-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .profile-detail-head h3 {
+      margin: 0;
+      font-size: 15px;
+    }
+    .profile-detail-table {
+      overflow: auto;
+      max-height: 360px;
+      border: 1px solid #edf0f4;
+      border-radius: 8px;
+    }
+    .profile-detail-table table {
+      min-width: 760px;
     }
     .ai-panel {
       border: 1px solid var(--line);
@@ -990,10 +1051,20 @@
           <h2 class="panel-title" id="profileTitle">学生画像</h2>
           <div class="sub" id="profileSub"></div>
           <div class="profile-kpis" id="profileKpis"></div>
+          <div class="profile-detail-panel" id="profileDetailPanel"></div>
           <div class="mentor-panel" id="mentorNotePanel"></div>
           <div class="ai-panel" id="recentQuickNotePanel"></div>
           <div class="ai-panel" id="recentEventPanel"></div>
           <div class="ai-panel" id="aiAnalysisPanel"></div>
+          <div class="chart-toolbar">
+            <div class="chart-mode" role="group" aria-label="成绩折线切换">
+              <button id="dailyChartBtn" class="active" type="button">日测</button>
+              <button id="subjectChartBtn" type="button">单科</button>
+            </div>
+            <label class="chart-subject-control hidden" id="chartSubjectControl">科目
+              <select id="profileChartSubjectSelect"></select>
+            </label>
+          </div>
           <canvas id="scoreChart" width="900" height="300"></canvas>
           <details class="history-fold" open>
             <summary>每日记录</summary>
@@ -1189,6 +1260,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     let selectedStudent = state.students[0]?.name || "";
     let editingStudentIndex = -1;
     let currentAiPrompt = "";
+    let profileChartMode = "daily";
+    let profileChartSubject = "电路";
     let cloudSaveTimer = null;
     let cloudBusy = false;
 
@@ -2852,7 +2925,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       renderRecentQuickNotes(quickNotes);
       renderRecentEvents(events);
       renderAiAnalysis(student, records, subjectTests, events, quickNotes);
-      drawChart(records);
+      renderProfileChart(records, subjectTests);
       renderHistory(records);
       renderSubjectHistory(subjectTests);
       renderEventHistory(events);
@@ -3010,15 +3083,174 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const napCount = records.filter(r => r.status?.includes("sleep")).length;
       const correctionStats = dailyCorrectionStats(records);
       $("profileKpis").innerHTML = [
-        statHtml("记录天数", records.length),
-        statHtml("平均分", avg),
-        statHtml("最近分数", latest),
-        statHtml("打盹次数", napCount),
-        statHtml("未纠错", correctionStats.uncorrected),
-        statHtml("单科考试次数", subjectTests.filter(test => parseScore(test.score) !== null).length),
-        statHtml("单科均分", subjectAvg),
-        statHtml("沟通历史", events.length)
-      ].join("") + `<div class="stat" style="grid-column:1/-1"><div class="label">作业累计（仅统计有作业日期，共 ${homeworkDays} 天）</div><div style="margin-top:6px;font-weight:700">${gradeCounts}</div></div>`;
+        statHtml("记录天数", records.length, "profileDaily"),
+        statHtml("平均分", avg, "profileDailyScores"),
+        statHtml("最近分数", latest, "profileLatestScore"),
+        statHtml("打盹次数", napCount, "profileNap"),
+        statHtml("未纠错", correctionStats.uncorrected, "profileUncorrected"),
+        statHtml("单科考试次数", subjectTests.filter(test => parseScore(test.score) !== null).length, "profileSubject"),
+        statHtml("单科均分", subjectAvg, "profileSubject"),
+        statHtml("沟通历史", events.length, "profileEvents")
+      ].join("") + `<div class="stat clickable" style="grid-column:1/-1" data-action="profileHomework" title="点击查看作业明细"><div class="label">作业累计（仅统计有作业日期，共 ${homeworkDays} 天）</div><div style="margin-top:6px;font-weight:700">${gradeCounts}</div></div>`;
+      bindProfileKpiDetails(records, subjectTests, events, quickNotes);
+      renderProfileDetail("profileDaily", records, subjectTests, events, quickNotes, false);
+    }
+
+    function bindProfileKpiDetails(records, subjectTests, events, quickNotes = []) {
+      document.querySelectorAll("#profileKpis .stat.clickable").forEach(card => {
+        card.addEventListener("click", () => {
+          renderProfileDetail(card.dataset.action, records, subjectTests, events, quickNotes, true);
+        });
+      });
+    }
+
+    function setActiveProfileKpi(action) {
+      document.querySelectorAll("#profileKpis .stat.clickable").forEach(card => {
+        card.classList.toggle("active", card.dataset.action === action);
+      });
+    }
+
+    function renderProfileDetail(action, records, subjectTests, events, quickNotes = [], shouldScroll = false) {
+      setActiveProfileKpi(action);
+      const panel = $("profileDetailPanel");
+      const detail = profileDetailContent(action, records, subjectTests, events, quickNotes);
+      panel.innerHTML = `
+        <div class="profile-detail-head">
+          <div>
+            <h3>${escapeHtml(detail.title)}</h3>
+            <div class="sub">${escapeHtml(detail.sub)}</div>
+          </div>
+          <button class="small" id="closeProfileDetailBtn">收起</button>
+        </div>
+        <div class="profile-detail-table">
+          <table>
+            <thead>${detail.head}</thead>
+            <tbody>${detail.body}</tbody>
+          </table>
+        </div>
+      `;
+      $("closeProfileDetailBtn").addEventListener("click", () => {
+        setActiveProfileKpi("");
+        panel.innerHTML = `<div class="sub">点击上方统计卡片，可查看该项的具体记录。</div>`;
+      });
+      if (shouldScroll) panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function profileDetailContent(action, records, subjectTests, events, quickNotes = []) {
+      const scoredRecords = records.filter(record => parseScore(record.score) !== null);
+      const latestRecord = scoredRecords[scoredRecords.length - 1];
+      const subjectScored = subjectTests.filter(test => parseScore(test.score) !== null);
+      const mapRows = (items, emptyText, mapper) => items.length ? items.map(mapper).join("") : `<tr><td colspan="6" class="empty">${emptyText}</td></tr>`;
+      if (action === "profileDailyScores") {
+        return {
+          title: "日测分数明细",
+          sub: "用于查看平均分由哪些日测组成。",
+          head: `<tr><th>日期</th><th>分数</th><th>知识点</th><th>纠错</th><th>作业</th><th>状态</th></tr>`,
+          body: mapRows(scoredRecords, "暂无日测分数", profileDailyRowHtml)
+        };
+      }
+      if (action === "profileLatestScore") {
+        return {
+          title: "最近一次日测",
+          sub: latestRecord ? `${latestRecord.date} 的最近有效分数。` : "暂无有效日测分数。",
+          head: `<tr><th>日期</th><th>分数</th><th>知识点</th><th>纠错</th><th>作业</th><th>状态</th></tr>`,
+          body: latestRecord ? profileDailyRowHtml(latestRecord) : `<tr><td colspan="6" class="empty">暂无最近分数</td></tr>`
+        };
+      }
+      if (action === "profileNap") {
+        const naps = records.filter(record => record.status?.includes("sleep"));
+        return {
+          title: "打盹记录",
+          sub: "用于快速查看打盹出现在哪些日期。",
+          head: `<tr><th>日期</th><th>分数</th><th>知识点</th><th>纠错</th><th>作业</th><th>状态</th></tr>`,
+          body: mapRows(naps, "暂无打盹记录", profileDailyRowHtml)
+        };
+      }
+      if (action === "profileUncorrected") {
+        const uncorrected = scoredRecords.filter(record => !isDailyFullScore(record) && record.correction === "未纠错");
+        return {
+          title: "未纠错明细",
+          sub: "只列出有分数且不是满分、并标记为未纠错的日测。",
+          head: `<tr><th>日期</th><th>分数</th><th>知识点</th><th>纠错</th><th>作业</th><th>状态</th></tr>`,
+          body: mapRows(uncorrected, "暂无未纠错记录", profileDailyRowHtml)
+        };
+      }
+      if (action === "profileSubject") {
+        return {
+          title: "单科考试明细",
+          sub: "用于查看单科考试次数、均分和具体科目表现。",
+          head: `<tr><th>日期</th><th>科目</th><th>分数</th><th>排名</th><th>纠错</th><th>备注</th></tr>`,
+          body: mapRows(subjectScored, "暂无单科考试记录", test => `
+            <tr>
+              <td>${escapeHtml(test.date)}</td>
+              <td>${escapeHtml(test.subject)}</td>
+              <td>${escapeHtml(test.score)}</td>
+              <td>${escapeHtml(test.rank || "")}</td>
+              <td>${escapeHtml(test.correction || "")}</td>
+              <td>${escapeHtml(test.note || "")}</td>
+            </tr>
+          `)
+        };
+      }
+      if (action === "profileEvents") {
+        return {
+          title: "沟通历史明细",
+          sub: "用于查看正式沟通记录及后续跟进状态。",
+          head: `<tr><th>日期</th><th>类型</th><th>内容</th><th>后续动作</th><th>状态</th></tr>`,
+          body: events.length ? events.map(event => `
+            <tr>
+              <td>${escapeHtml(event.date)}</td>
+              <td>${escapeHtml(event.type)}</td>
+              <td>${escapeHtml(event.content)}</td>
+              <td>${escapeHtml(event.followUp || "")}</td>
+              <td><span class="badge ${event.status === "需跟进" ? "warn" : event.status === "已完成" ? "ok" : "neutral"}">${escapeHtml(event.status || "已记录")}</span></td>
+            </tr>
+          `).join("") : `<tr><td colspan="5" class="empty">暂无沟通历史</td></tr>`
+        };
+      }
+      if (action === "profileHomework") {
+        const homeworkRows = records.filter(record => homeworkNames().some((_, index) => getHomeworkGrade(record, index) !== NO_HOMEWORK));
+        return {
+          title: "作业明细",
+          sub: "只列出当天有作业的日期，方便查看 A/B/C/D/未提交来源。",
+          head: `<tr><th>日期</th><th>日测分数</th><th>知识点</th><th>作业</th><th>纠错</th><th>状态</th></tr>`,
+          body: mapRows(homeworkRows, "暂无作业记录", record => `
+            <tr>
+              <td>${escapeHtml(record.date)}</td>
+              <td>${escapeHtml(record.score || "")}</td>
+              <td>${escapeHtml(knowledgePointText(record))}</td>
+              <td>${homeworkBadgesHtml(record)}</td>
+              <td><span class="badge ${dailyCorrectionBadgeClass(record)}">${escapeHtml(dailyCorrectionText(record))}</span></td>
+              <td>${statusBadgesHtml(record)}</td>
+            </tr>
+          `)
+        };
+      }
+      return {
+        title: "每日记录明细",
+        sub: "当前日期范围内该学生的全部每日记录。",
+        head: `<tr><th>日期</th><th>分数</th><th>知识点</th><th>纠错</th><th>作业</th><th>状态</th></tr>`,
+        body: mapRows(records, "暂无每日记录", profileDailyRowHtml)
+      };
+    }
+
+    function profileDailyRowHtml(record) {
+      return `
+        <tr>
+          <td>${escapeHtml(record.date)}</td>
+          <td>${escapeHtml(record.score || "")}</td>
+          <td>${escapeHtml(knowledgePointText(record))}</td>
+          <td><span class="badge ${dailyCorrectionBadgeClass(record)}">${escapeHtml(dailyCorrectionText(record))}</span></td>
+          <td>${homeworkBadgesHtml(record)}</td>
+          <td>${statusBadgesHtml(record)}</td>
+        </tr>
+      `;
+    }
+
+    function statusBadgesHtml(record) {
+      return record.status?.length
+        ? record.status.map(key => `<span class="badge bad">${STATUS_LABELS[key]}</span>`).join(" ")
+        : "<span class='muted'>正常</span>";
     }
 
     function renderRecentQuickNotes(quickNotes) {
@@ -3710,7 +3942,43 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       });
     }
 
-    function drawChart(records) {
+    function renderProfileChart(records, subjectTests) {
+      const subjectSelect = $("profileChartSubjectSelect");
+      if (subjectSelect) {
+        const current = SUBJECTS.includes(profileChartSubject) ? profileChartSubject : "电路";
+        subjectSelect.innerHTML = SUBJECTS.map(subject => `<option value="${escapeHtml(subject)}" ${subject === current ? "selected" : ""}>${escapeHtml(subject)}</option>`).join("");
+        profileChartSubject = subjectSelect.value || current;
+      }
+      $("dailyChartBtn").classList.toggle("active", profileChartMode === "daily");
+      $("subjectChartBtn").classList.toggle("active", profileChartMode === "subject");
+      $("chartSubjectControl").classList.toggle("hidden", profileChartMode !== "subject");
+      $("dailyChartBtn").onclick = () => {
+        profileChartMode = "daily";
+        renderProfileChart(records, subjectTests);
+      };
+      $("subjectChartBtn").onclick = () => {
+        profileChartMode = "subject";
+        renderProfileChart(records, subjectTests);
+      };
+      if (subjectSelect) {
+        subjectSelect.onchange = () => {
+          profileChartSubject = subjectSelect.value || "电路";
+          profileChartMode = "subject";
+          renderProfileChart(records, subjectTests);
+        };
+      }
+      const points = profileChartMode === "subject"
+        ? subjectTests
+          .filter(test => test.subject === profileChartSubject)
+          .map(test => ({ date: test.date.slice(5), score: parseScore(test.score), meta: test.subject }))
+          .filter(item => item.score !== null)
+        : records
+          .map(record => ({ date: record.date.slice(5), score: parseScore(record.score), meta: "日测" }))
+          .filter(item => item.score !== null);
+      drawChart(points, profileChartMode === "subject" ? `${profileChartSubject}暂无可绘制分数` : "暂无可绘制分数");
+    }
+
+    function drawChart(points, emptyText = "暂无可绘制分数") {
       const canvas = $("scoreChart");
       const ctx = canvas.getContext("2d");
       const dpr = window.devicePixelRatio || 1;
@@ -3722,10 +3990,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const pad = { left: 42, right: 18, top: 24, bottom: 42 };
       const width = rect.width - pad.left - pad.right;
       const height = 300 - pad.top - pad.bottom;
-      const points = records
-        .map(record => ({ date: record.date.slice(5), score: parseScore(record.score) }))
-        .filter(item => item.score !== null);
-
       ctx.strokeStyle = "#d9dee7";
       ctx.lineWidth = 1;
       ctx.fillStyle = "#6b7280";
@@ -3740,7 +4004,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       });
       if (!points.length) {
         ctx.fillStyle = "#6b7280";
-        ctx.fillText("暂无可绘制分数", pad.left + 8, pad.top + 28);
+        ctx.fillText(emptyText, pad.left + 8, pad.top + 28);
         return;
       }
       const maxScore = Math.max(100, ...points.map(p => p.score));
