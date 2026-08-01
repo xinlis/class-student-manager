@@ -1081,18 +1081,6 @@
       <div class="quick-note-list" id="quickNoteList"></div>
     </div>
   </div>
-  <div class="modal hidden" id="backupModal">
-    <div class="modal-box">
-      <h3>恢复历史快照</h3>
-      <div class="sub">这是浏览器里的临时保存点；空间不足时可清理，不影响你手动导出的 JSON 备份。</div>
-      <select id="backupSelect"></select>
-      <div class="actions">
-        <button id="restoreSelectedBackupBtn" class="primary">恢复这个版本</button>
-        <button id="clearSnapshotsBtn">清理快照</button>
-        <button id="closeBackupModalBtn">取消</button>
-      </div>
-    </div>
-  </div>
   <div class="modal hidden" id="cloudSyncModal">
     <div class="modal-box sync-modal-box">
       <h3>云同步设置</h3>
@@ -1176,8 +1164,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const BACKUP_KEY = "vip2_classroom_manager_v1_snapshots";
     const CLOUD_CONFIG_KEY = "vip2_classroom_manager_cloud_config";
     const CLOUD_TABLE = "classroom_sync";
-    const MAX_SNAPSHOTS = 3;
-    const MAX_SNAPSHOT_BYTES = 700000;
     const STATUS_OPTIONS = [
       { key: "late", label: "迟到" },
       { key: "distracted", label: "走神" },
@@ -1226,19 +1212,21 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         const restored = latestSnapshotState(seed);
         const initial = restored || makeSeedState(seed);
         normalizeState(initial);
-        persistState(initial, { snapshot: false });
+        persistState(initial);
+        if (restored) localStorage.removeItem(BACKUP_KEY);
         return initial;
       }
       try {
         const parsed = JSON.parse(saved);
         const state = mergeWithSeed(parsed, seed);
         normalizeState(state);
-        persistState(state, { snapshot: false });
+        persistState(state);
         return state;
       } catch {
         const state = latestSnapshotState(seed) || makeSeedState(seed);
         normalizeState(state);
-        persistState(state, { snapshot: false });
+        persistState(state);
+        localStorage.removeItem(BACKUP_KEY);
         return state;
       }
     }
@@ -1450,12 +1438,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (saved !== false) queueAutoCloudUpload();
     }
 
-    function persistState(target, options = {}) {
+    function persistState(target) {
       normalizeState(target);
       target.updatedAt = new Date().toISOString();
       const payload = JSON.stringify(target);
       if (!safeSetMainState(payload)) return false;
-      if (options.snapshot !== false) writeSnapshot(payload, target);
       return true;
     }
 
@@ -1480,7 +1467,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       try {
         localStorage.removeItem(BACKUP_KEY);
         localStorage.setItem(STORE_KEY, payload);
-        showToast("本地空间不足，已清理历史快照并保存当前数据");
+        showToast("本地空间不足，已清理临时缓存并保存当前数据");
         return true;
       } catch (error) {
         console.error(error);
@@ -1506,63 +1493,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       } catch {
         return null;
       }
-    }
-
-    function writeSnapshot(payload, target) {
-      if (payload.length > MAX_SNAPSHOT_BYTES) {
-        localStorage.removeItem(BACKUP_KEY);
-        return;
-      }
-      const snapshots = readSnapshots();
-      if (snapshots[0]?.payload === payload) return;
-      const next = [{
-        savedAt: new Date().toISOString(),
-        summary: snapshotSummary(target),
-        payload
-      }, ...snapshots].slice(0, MAX_SNAPSHOTS);
-      try {
-        localStorage.setItem(BACKUP_KEY, JSON.stringify(next));
-      } catch {
-        try {
-          localStorage.setItem(BACKUP_KEY, JSON.stringify(next.slice(0, 1)));
-        } catch {
-          localStorage.removeItem(BACKUP_KEY);
-        }
-      }
-    }
-
-    function tryWriteSnapshot(payload, target) {
-      try {
-        writeSnapshot(payload, target);
-      } catch (error) {
-        console.warn("跳过历史快照：", error);
-        try {
-          localStorage.removeItem(BACKUP_KEY);
-        } catch {}
-      }
-    }
-
-    function compactSnapshots() {
-      const snapshots = readSnapshots()
-        .filter(item => item?.payload && String(item.payload).length <= MAX_SNAPSHOT_BYTES)
-        .slice(0, MAX_SNAPSHOTS);
-      try {
-        if (snapshots.length) {
-          localStorage.setItem(BACKUP_KEY, JSON.stringify(snapshots));
-        } else {
-          localStorage.removeItem(BACKUP_KEY);
-        }
-      } catch {
-        localStorage.removeItem(BACKUP_KEY);
-      }
-    }
-
-    function snapshotSummary(target) {
-      const dailyCount = Object.values(target.records || {}).filter(record => parseScore(record.score) !== null || record.knowledge_point || record.knowledge_wrong || record.status?.length || record.homework).length;
-      const subjectCount = Object.values(target.subjectTests || {}).filter(test => parseScore(test.score) !== null || test.note).length;
-      const eventCount = (target.events || []).length;
-      const quickCount = (target.quickNotes || []).length;
-      return `${dailyCount}条每日记录 / ${quickCount}条随手记 / ${subjectCount}条单科记录 / ${eventCount}条沟通历史`;
     }
 
     function ensureRecord(date, student) {
@@ -1810,7 +1740,15 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function saveCloudConfig(config) {
-      localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(config));
+      const payload = JSON.stringify(config);
+      try {
+        localStorage.setItem(CLOUD_CONFIG_KEY, payload);
+      } catch (error) {
+        if (!isStorageQuotaError(error)) throw error;
+        localStorage.removeItem(BACKUP_KEY);
+        localStorage.setItem(CLOUD_CONFIG_KEY, payload);
+        showToast("本地空间不足，已清理临时缓存并保存配置");
+      }
     }
 
     function getCloudConfigFromInputs() {
@@ -1952,11 +1890,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             return;
           }
         }
-        tryWriteSnapshot(JSON.stringify(state), state);
         const seed = window.CLASSROOM_SEED_DATA || { students: [], records: {}, subjectTests: {}, events: [] };
         state = mergeWithSeed(cloudState, seed);
         normalizeState(state);
-        persistState(state, { snapshot: false });
+        persistState(state);
         selectedStudent = state.students[0]?.name || "";
         render();
         setCloudStatus(`已读取：${formatDateTime(cloudUpdatedAt)}`, "ok");
@@ -4525,7 +4462,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           state = imported;
           delete state.localSnapshots;
           localStorage.removeItem(BACKUP_KEY);
-          if (persistState(state, { snapshot: false }) === false) return;
+          if (persistState(state) === false) return;
           selectedStudent = state.students[0]?.name || "";
           render();
           showToast("备份已导入");
@@ -4534,53 +4471,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         }
       };
       reader.readAsText(file, "utf-8");
-    }
-
-    function openBackupModal() {
-      compactSnapshots();
-      const snapshots = readSnapshots();
-      const select = $("backupSelect");
-      select.innerHTML = snapshots.map((snapshot, index) => {
-        const time = formatDateTime(snapshot.savedAt);
-        return `<option value="${index}">${time}　${escapeHtml(snapshot.summary || "")}</option>`;
-      }).join("");
-      if (!snapshots.length) {
-        select.innerHTML = `<option value="">暂无可恢复快照</option>`;
-      }
-      $("backupModal").classList.remove("hidden");
-    }
-
-    function closeBackupModal() {
-      $("backupModal").classList.add("hidden");
-    }
-
-    function clearSnapshots() {
-      localStorage.removeItem(BACKUP_KEY);
-      openBackupModal();
-      showToast("历史快照已清理");
-    }
-
-    function restoreSelectedBackup() {
-      const snapshots = readSnapshots();
-      const index = Number($("backupSelect").value);
-      const snapshot = snapshots[index];
-      if (!snapshot?.payload) {
-        showToast("没有可恢复的历史快照");
-        return;
-      }
-      try {
-        tryWriteSnapshot(JSON.stringify(state), state);
-        const seed = window.CLASSROOM_SEED_DATA || { students: [], records: {}, subjectTests: {} };
-        state = mergeWithSeed(JSON.parse(snapshot.payload), seed);
-        normalizeState(state);
-        persistState(state, { snapshot: false });
-        selectedStudent = state.students[0]?.name || "";
-        closeBackupModal();
-        render();
-        showToast("已恢复历史快照");
-      } catch (error) {
-        alert(`恢复失败：${error.message}`);
-      }
     }
 
     function formatDateTime(value) {
@@ -4684,13 +4574,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("cloudSyncBtn").addEventListener("click", openCloudSyncModal);
     $("exportJsonBtn").addEventListener("click", exportJson);
     $("exportWorkbookBtn").addEventListener("click", exportWorkbook);
-    if ($("restoreBackupBtn")) $("restoreBackupBtn").addEventListener("click", openBackupModal);
-    if ($("restoreSelectedBackupBtn")) $("restoreSelectedBackupBtn").addEventListener("click", restoreSelectedBackup);
-    if ($("clearSnapshotsBtn")) $("clearSnapshotsBtn").addEventListener("click", clearSnapshots);
-    if ($("closeBackupModalBtn")) $("closeBackupModalBtn").addEventListener("click", closeBackupModal);
-    if ($("backupModal")) $("backupModal").addEventListener("click", event => {
-      if (event.target.id === "backupModal") closeBackupModal();
-    });
     $("quickNoteModal").addEventListener("click", event => {
       if (event.target.id === "quickNoteModal") closeQuickNoteModal();
     });
