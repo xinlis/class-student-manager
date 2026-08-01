@@ -1084,10 +1084,11 @@
   <div class="modal hidden" id="backupModal">
     <div class="modal-box">
       <h3>恢复历史快照</h3>
-      <div class="sub">选择一个最近保存点恢复。恢复前系统会自动再保存一次当前状态快照。</div>
+      <div class="sub">这是浏览器里的临时保存点；空间不足时可清理，不影响你手动导出的 JSON 备份。</div>
       <select id="backupSelect"></select>
       <div class="actions">
         <button id="restoreSelectedBackupBtn" class="primary">恢复这个版本</button>
+        <button id="clearSnapshotsBtn">清理快照</button>
         <button id="closeBackupModalBtn">取消</button>
       </div>
     </div>
@@ -1175,7 +1176,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const BACKUP_KEY = "vip2_classroom_manager_v1_snapshots";
     const CLOUD_CONFIG_KEY = "vip2_classroom_manager_cloud_config";
     const CLOUD_TABLE = "classroom_sync";
-    const MAX_SNAPSHOTS = 30;
+    const MAX_SNAPSHOTS = 3;
+    const MAX_SNAPSHOT_BYTES = 700000;
     const STATUS_OPTIONS = [
       { key: "late", label: "迟到" },
       { key: "distracted", label: "走神" },
@@ -1507,6 +1509,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function writeSnapshot(payload, target) {
+      if (payload.length > MAX_SNAPSHOT_BYTES) {
+        localStorage.removeItem(BACKUP_KEY);
+        return;
+      }
       const snapshots = readSnapshots();
       if (snapshots[0]?.payload === payload) return;
       const next = [{
@@ -1518,7 +1524,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         localStorage.setItem(BACKUP_KEY, JSON.stringify(next));
       } catch {
         try {
-          localStorage.setItem(BACKUP_KEY, JSON.stringify(next.slice(0, 5)));
+          localStorage.setItem(BACKUP_KEY, JSON.stringify(next.slice(0, 1)));
         } catch {
           localStorage.removeItem(BACKUP_KEY);
         }
@@ -1533,6 +1539,21 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         try {
           localStorage.removeItem(BACKUP_KEY);
         } catch {}
+      }
+    }
+
+    function compactSnapshots() {
+      const snapshots = readSnapshots()
+        .filter(item => item?.payload && String(item.payload).length <= MAX_SNAPSHOT_BYTES)
+        .slice(0, MAX_SNAPSHOTS);
+      try {
+        if (snapshots.length) {
+          localStorage.setItem(BACKUP_KEY, JSON.stringify(snapshots));
+        } else {
+          localStorage.removeItem(BACKUP_KEY);
+        }
+      } catch {
+        localStorage.removeItem(BACKUP_KEY);
       }
     }
 
@@ -3827,9 +3848,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function exportJson() {
       const exportPayload = {
         ...state,
-        exportedAt: new Date().toISOString(),
-        localSnapshots: readSnapshots().map(({ savedAt, summary, payload }) => ({ savedAt, summary, payload }))
+        exportedAt: new Date().toISOString()
       };
+      delete exportPayload.localSnapshots;
       download(`${safeFileClassName()}每日管理备份-${today()}.json`, JSON.stringify(exportPayload, null, 2), "application/json");
     }
 
@@ -4503,6 +4524,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           imported.subjectTests = imported.subjectTests || {};
           state = imported;
           delete state.localSnapshots;
+          localStorage.removeItem(BACKUP_KEY);
           if (persistState(state, { snapshot: false }) === false) return;
           selectedStudent = state.students[0]?.name || "";
           render();
@@ -4515,6 +4537,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function openBackupModal() {
+      compactSnapshots();
       const snapshots = readSnapshots();
       const select = $("backupSelect");
       select.innerHTML = snapshots.map((snapshot, index) => {
@@ -4529,6 +4552,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function closeBackupModal() {
       $("backupModal").classList.add("hidden");
+    }
+
+    function clearSnapshots() {
+      localStorage.removeItem(BACKUP_KEY);
+      openBackupModal();
+      showToast("历史快照已清理");
     }
 
     function restoreSelectedBackup() {
@@ -4657,6 +4686,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("exportWorkbookBtn").addEventListener("click", exportWorkbook);
     if ($("restoreBackupBtn")) $("restoreBackupBtn").addEventListener("click", openBackupModal);
     if ($("restoreSelectedBackupBtn")) $("restoreSelectedBackupBtn").addEventListener("click", restoreSelectedBackup);
+    if ($("clearSnapshotsBtn")) $("clearSnapshotsBtn").addEventListener("click", clearSnapshots);
     if ($("closeBackupModalBtn")) $("closeBackupModalBtn").addEventListener("click", closeBackupModal);
     if ($("backupModal")) $("backupModal").addEventListener("click", event => {
       if (event.target.id === "backupModal") closeBackupModal();
