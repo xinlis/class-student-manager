@@ -1261,6 +1261,17 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const keyFor = (date, name) => `${date}__${name}`;
     const subjectKeyFor = (date, subject, name) => `${date}__${subject}__${name}`;
 
+    function normalizeDateKey(value) {
+      const text = String(value || "").trim().replaceAll("/", "-");
+      const match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (!match) return text;
+      return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
+    }
+
+    function normalizeLookupText(value) {
+      return String(value || "").trim().replace(/\s+/g, "");
+    }
+
     function parseScore(value) {
       if (value === null || value === undefined) return null;
       const text = String(value).trim();
@@ -1349,9 +1360,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         normalizeDailyCorrection(record);
       });
       migrateSubjectTestDate(target, "2026-07-14", "2026-07-12", "电路");
-      Object.values(target.subjectTests || {}).forEach(test => {
-        if (!test.correction) test.correction = "已纠错";
-      });
+      normalizeSubjectTests(target);
       if (!Array.isArray(target.events)) target.events = [];
       target.events.forEach(event => {
         if (!event.id) event.id = `event-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -1369,6 +1378,30 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         note.name = String(note.name || "").trim() || CLASS_NOTE_NAME;
         note.content = String(note.content || "").trim();
       });
+    }
+
+    function normalizeSubjectTests(target) {
+      const next = {};
+      Object.values(target.subjectTests || {}).forEach(test => {
+        const date = normalizeDateKey(test.date);
+        const matchedSubject = SUBJECTS.find(subject => normalizeLookupText(subject) === normalizeLookupText(test.subject));
+        const matchedStudent = target.students.find(student => normalizeLookupText(student.name) === normalizeLookupText(test.name));
+        const subject = matchedSubject || String(test.subject || "").trim();
+        const name = matchedStudent?.name || String(test.name || "").trim();
+        if (!date || !subject || !name) return;
+        const key = subjectKeyFor(date, subject, name);
+        const normalized = {
+          date,
+          subject,
+          name,
+          score: test.score ?? "",
+          rank: test.rank ?? "",
+          correction: test.correction || "已纠错",
+          note: test.note || ""
+        };
+        next[key] = mergeSubjectTests(next[key], normalized, { date, subject, name });
+      });
+      target.subjectTests = next;
     }
 
     function normalizeStudent(student) {
@@ -1744,12 +1777,20 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function ensureSubjectTest(date, subject, student) {
       state.subjectTests = state.subjectTests || {};
-      const key = subjectKeyFor(date, subject, student.name);
+      const cleanDate = normalizeDateKey(date);
+      const cleanSubject = String(subject || "").trim();
+      const cleanName = student.name;
+      const key = subjectKeyFor(cleanDate, cleanSubject, cleanName);
+      const existing = findBestSubjectTest(cleanDate, cleanSubject, cleanName);
+      if (existing && existing.key !== key) {
+        state.subjectTests[key] = mergeSubjectTests(state.subjectTests[key], existing.test, { date: cleanDate, subject: cleanSubject, name: cleanName });
+        if (!isMeaningfulSubjectTest(state.subjectTests[existing.key]) || existing.key !== key) delete state.subjectTests[existing.key];
+      }
       if (!state.subjectTests[key]) {
         state.subjectTests[key] = {
-          date,
-          subject,
-          name: student.name,
+          date: cleanDate,
+          subject: cleanSubject,
+          name: cleanName,
           score: "",
           rank: "",
           correction: "已纠错",
@@ -1757,6 +1798,45 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         };
       }
       return state.subjectTests[key];
+    }
+
+    function findBestSubjectTest(date, subject, name) {
+      const cleanDate = normalizeDateKey(date);
+      const cleanSubject = normalizeLookupText(subject);
+      const cleanName = normalizeLookupText(name);
+      const exactKey = subjectKeyFor(cleanDate, String(subject || "").trim(), name);
+      const exact = state.subjectTests?.[exactKey];
+      const matches = Object.entries(state.subjectTests || {})
+        .filter(([, test]) => normalizeDateKey(test.date) === cleanDate)
+        .filter(([, test]) => normalizeLookupText(test.subject) === cleanSubject)
+        .filter(([, test]) => normalizeLookupText(test.name) === cleanName)
+        .map(([key, test]) => ({ key, test }));
+      if (exact) matches.unshift({ key: exactKey, test: exact });
+      return matches
+        .sort((a, b) => subjectTestWeight(b.test) - subjectTestWeight(a.test))
+        [0] || null;
+    }
+
+    function subjectTestWeight(test) {
+      let weight = 0;
+      if (parseScore(test?.score) !== null) weight += 8;
+      if (test?.rank) weight += 2;
+      if (test?.note?.trim()) weight += 2;
+      if (test?.correction && test.correction !== "已纠错") weight += 1;
+      return weight;
+    }
+
+    function mergeSubjectTests(current, incoming, defaults) {
+      const preferred = subjectTestWeight(incoming) >= subjectTestWeight(current) ? incoming : current;
+      return {
+        date: defaults.date,
+        subject: defaults.subject,
+        name: defaults.name,
+        score: preferred?.score ?? current?.score ?? "",
+        rank: preferred?.rank ?? current?.rank ?? "",
+        correction: preferred?.correction || current?.correction || "已纠错",
+        note: preferred?.note ?? current?.note ?? ""
+      };
     }
 
     function getSubjectTests(date, subject) {
@@ -2397,7 +2477,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       document.querySelectorAll(".subject-note-input").forEach(input => {
         input.addEventListener("input", () => updateSubjectField(date, subject, input.dataset.name, "note", input.value));
       });
-      saveState();
     }
 
     function renderSubjectStats(date, subject) {
