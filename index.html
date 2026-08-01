@@ -1810,7 +1810,15 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function saveCloudConfig(config) {
-      localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(config));
+      const payload = JSON.stringify(config);
+      try {
+        localStorage.setItem(CLOUD_CONFIG_KEY, payload);
+      } catch (error) {
+        if (!isStorageQuotaError(error)) throw error;
+        localStorage.removeItem(BACKUP_KEY);
+        localStorage.setItem(CLOUD_CONFIG_KEY, payload);
+        showToast("本地空间不足，已清理历史快照并保存配置");
+      }
     }
 
     function getCloudConfigFromInputs() {
