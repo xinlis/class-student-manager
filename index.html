@@ -1444,16 +1444,47 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function saveState() {
-      persistState(state);
-      queueAutoCloudUpload();
+      const saved = persistState(state);
+      if (saved !== false) queueAutoCloudUpload();
     }
 
     function persistState(target) {
       normalizeState(target);
       target.updatedAt = new Date().toISOString();
       const payload = JSON.stringify(target);
-      localStorage.setItem(STORE_KEY, payload);
+      if (!safeSetMainState(payload)) return false;
       writeSnapshot(payload, target);
+      return true;
+    }
+
+    function isStorageQuotaError(error) {
+      return error?.name === "QuotaExceededError"
+        || error?.name === "NS_ERROR_DOM_QUOTA_REACHED"
+        || error?.code === 22
+        || error?.code === 1014;
+    }
+
+    function safeSetMainState(payload) {
+      try {
+        localStorage.setItem(STORE_KEY, payload);
+        return true;
+      } catch (error) {
+        if (!isStorageQuotaError(error)) {
+          console.error(error);
+          showToast("本地保存失败，请刷新后重试");
+          return false;
+        }
+      }
+      try {
+        localStorage.removeItem(BACKUP_KEY);
+        localStorage.setItem(STORE_KEY, payload);
+        showToast("本地空间不足，已清理历史快照并保存当前数据");
+        return true;
+      } catch (error) {
+        console.error(error);
+        alert("本地存储空间不足，当前操作没有保存。请先导出备份JSON，再清理浏览器站点数据或开启云同步。");
+        return false;
+      }
     }
 
     function readSnapshots() {
@@ -1486,7 +1517,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       try {
         localStorage.setItem(BACKUP_KEY, JSON.stringify(next));
       } catch {
-        localStorage.setItem(BACKUP_KEY, JSON.stringify(next.slice(0, 10)));
+        try {
+          localStorage.setItem(BACKUP_KEY, JSON.stringify(next.slice(0, 5)));
+        } catch {
+          localStorage.removeItem(BACKUP_KEY);
+        }
       }
     }
 
