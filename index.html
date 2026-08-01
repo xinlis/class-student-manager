@@ -348,6 +348,36 @@
       gap: 10px;
       margin-bottom: 12px;
     }
+    .chart-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 12px 0 8px;
+      flex-wrap: wrap;
+    }
+    .chart-mode {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .chart-mode button {
+      border: 0;
+      border-radius: 0;
+      min-height: 36px;
+      padding: 0 14px;
+    }
+    .chart-mode button.active {
+      background: var(--ink);
+      color: #fff;
+    }
+    .chart-subject-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
     .profile-detail-panel {
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -1026,6 +1056,15 @@
           <div class="ai-panel" id="recentQuickNotePanel"></div>
           <div class="ai-panel" id="recentEventPanel"></div>
           <div class="ai-panel" id="aiAnalysisPanel"></div>
+          <div class="chart-toolbar">
+            <div class="chart-mode" role="group" aria-label="成绩折线切换">
+              <button id="dailyChartBtn" class="active" type="button">日测</button>
+              <button id="subjectChartBtn" type="button">单科</button>
+            </div>
+            <label class="chart-subject-control hidden" id="chartSubjectControl">科目
+              <select id="profileChartSubjectSelect"></select>
+            </label>
+          </div>
           <canvas id="scoreChart" width="900" height="300"></canvas>
           <details class="history-fold" open>
             <summary>每日记录</summary>
@@ -1221,6 +1260,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     let selectedStudent = state.students[0]?.name || "";
     let editingStudentIndex = -1;
     let currentAiPrompt = "";
+    let profileChartMode = "daily";
+    let profileChartSubject = "电路";
     let cloudSaveTimer = null;
     let cloudBusy = false;
 
@@ -2884,7 +2925,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       renderRecentQuickNotes(quickNotes);
       renderRecentEvents(events);
       renderAiAnalysis(student, records, subjectTests, events, quickNotes);
-      drawChart(records);
+      renderProfileChart(records, subjectTests);
       renderHistory(records);
       renderSubjectHistory(subjectTests);
       renderEventHistory(events);
@@ -3901,7 +3942,43 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       });
     }
 
-    function drawChart(records) {
+    function renderProfileChart(records, subjectTests) {
+      const subjectSelect = $("profileChartSubjectSelect");
+      if (subjectSelect) {
+        const current = SUBJECTS.includes(profileChartSubject) ? profileChartSubject : "电路";
+        subjectSelect.innerHTML = SUBJECTS.map(subject => `<option value="${escapeHtml(subject)}" ${subject === current ? "selected" : ""}>${escapeHtml(subject)}</option>`).join("");
+        profileChartSubject = subjectSelect.value || current;
+      }
+      $("dailyChartBtn").classList.toggle("active", profileChartMode === "daily");
+      $("subjectChartBtn").classList.toggle("active", profileChartMode === "subject");
+      $("chartSubjectControl").classList.toggle("hidden", profileChartMode !== "subject");
+      $("dailyChartBtn").onclick = () => {
+        profileChartMode = "daily";
+        renderProfileChart(records, subjectTests);
+      };
+      $("subjectChartBtn").onclick = () => {
+        profileChartMode = "subject";
+        renderProfileChart(records, subjectTests);
+      };
+      if (subjectSelect) {
+        subjectSelect.onchange = () => {
+          profileChartSubject = subjectSelect.value || "电路";
+          profileChartMode = "subject";
+          renderProfileChart(records, subjectTests);
+        };
+      }
+      const points = profileChartMode === "subject"
+        ? subjectTests
+          .filter(test => test.subject === profileChartSubject)
+          .map(test => ({ date: test.date.slice(5), score: parseScore(test.score), meta: test.subject }))
+          .filter(item => item.score !== null)
+        : records
+          .map(record => ({ date: record.date.slice(5), score: parseScore(record.score), meta: "日测" }))
+          .filter(item => item.score !== null);
+      drawChart(points, profileChartMode === "subject" ? `${profileChartSubject}暂无可绘制分数` : "暂无可绘制分数");
+    }
+
+    function drawChart(points, emptyText = "暂无可绘制分数") {
       const canvas = $("scoreChart");
       const ctx = canvas.getContext("2d");
       const dpr = window.devicePixelRatio || 1;
@@ -3913,10 +3990,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const pad = { left: 42, right: 18, top: 24, bottom: 42 };
       const width = rect.width - pad.left - pad.right;
       const height = 300 - pad.top - pad.bottom;
-      const points = records
-        .map(record => ({ date: record.date.slice(5), score: parseScore(record.score) }))
-        .filter(item => item.score !== null);
-
       ctx.strokeStyle = "#d9dee7";
       ctx.lineWidth = 1;
       ctx.fillStyle = "#6b7280";
@@ -3931,7 +4004,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       });
       if (!points.length) {
         ctx.fillStyle = "#6b7280";
-        ctx.fillText("暂无可绘制分数", pad.left + 8, pad.top + 28);
+        ctx.fillText(emptyText, pad.left + 8, pad.top + 28);
         return;
       }
       const maxScore = Math.max(100, ...points.map(p => p.score));
