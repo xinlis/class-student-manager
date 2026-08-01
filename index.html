@@ -373,11 +373,6 @@
       background: var(--ink);
       color: #fff;
     }
-    .chart-subject-control {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
     .profile-detail-panel {
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -1061,9 +1056,6 @@
               <button id="dailyChartBtn" class="active" type="button">日测</button>
               <button id="subjectChartBtn" type="button">单科</button>
             </div>
-            <label class="chart-subject-control hidden" id="chartSubjectControl">科目
-              <select id="profileChartSubjectSelect"></select>
-            </label>
           </div>
           <canvas id="scoreChart" width="900" height="300"></canvas>
           <details class="history-fold" open>
@@ -1261,7 +1253,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     let editingStudentIndex = -1;
     let currentAiPrompt = "";
     let profileChartMode = "daily";
-    let profileChartSubject = "电路";
     let cloudSaveTimer = null;
     let cloudBusy = false;
 
@@ -3943,15 +3934,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function renderProfileChart(records, subjectTests) {
-      const subjectSelect = $("profileChartSubjectSelect");
-      if (subjectSelect) {
-        const current = SUBJECTS.includes(profileChartSubject) ? profileChartSubject : "电路";
-        subjectSelect.innerHTML = SUBJECTS.map(subject => `<option value="${escapeHtml(subject)}" ${subject === current ? "selected" : ""}>${escapeHtml(subject)}</option>`).join("");
-        profileChartSubject = subjectSelect.value || current;
-      }
       $("dailyChartBtn").classList.toggle("active", profileChartMode === "daily");
       $("subjectChartBtn").classList.toggle("active", profileChartMode === "subject");
-      $("chartSubjectControl").classList.toggle("hidden", profileChartMode !== "subject");
       $("dailyChartBtn").onclick = () => {
         profileChartMode = "daily";
         renderProfileChart(records, subjectTests);
@@ -3960,22 +3944,31 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         profileChartMode = "subject";
         renderProfileChart(records, subjectTests);
       };
-      if (subjectSelect) {
-        subjectSelect.onchange = () => {
-          profileChartSubject = subjectSelect.value || "电路";
-          profileChartMode = "subject";
-          renderProfileChart(records, subjectTests);
-        };
-      }
       const points = profileChartMode === "subject"
-        ? subjectTests
-          .filter(test => test.subject === profileChartSubject)
-          .map(test => ({ date: test.date.slice(5), score: parseScore(test.score), meta: test.subject }))
-          .filter(item => item.score !== null)
+        ? subjectChartPoints(subjectTests)
         : records
-          .map(record => ({ date: record.date.slice(5), score: parseScore(record.score), meta: "日测" }))
+          .map(record => ({ label: record.date.slice(5), score: parseScore(record.score), meta: "日测" }))
           .filter(item => item.score !== null);
-      drawChart(points, profileChartMode === "subject" ? `${profileChartSubject}暂无可绘制分数` : "暂无可绘制分数");
+      drawChart(points, profileChartMode === "subject" ? "暂无单科成绩可绘制" : "暂无可绘制分数");
+    }
+
+    function subjectChartPoints(subjectTests) {
+      return SUBJECTS
+        .filter(subject => subject !== "其他")
+        .map(subject => {
+          const scores = subjectTests
+            .filter(test => test.subject === subject)
+            .map(test => parseScore(test.score))
+            .filter(score => score !== null);
+          if (!scores.length) return null;
+          const avg = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+          return {
+            label: subject,
+            score: Number(avg.toFixed(1)),
+            meta: `${scores.length}次`
+          };
+        })
+        .filter(Boolean);
     }
 
     function drawChart(points, emptyText = "暂无可绘制分数") {
@@ -4028,9 +4021,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         ctx.arc(x, y, 4, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = "#111827";
-        ctx.fillText(String(point.score), x - 8, y - 10);
+        ctx.textAlign = "center";
+        ctx.fillText(String(point.score), x, y - 10);
         ctx.fillStyle = "#6b7280";
-        ctx.fillText(point.date, x - 14, 284);
+        ctx.fillText(point.label, x, 284);
+        ctx.textAlign = "left";
       });
     }
 
