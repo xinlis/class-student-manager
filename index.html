@@ -1308,6 +1308,41 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const DEFAULT_CLASS_NAME = "VIP2 班";
     const SUBJECTS = ["电路", "电机", "稳态", "暂态", "继保", "高电压", "发电厂", "行测", "其他"];
 
+    function reportStartupError(error) {
+      console.error(error);
+      if (document.getElementById("startupErrorBanner")) return;
+      const banner = document.createElement("div");
+      banner.id = "startupErrorBanner";
+      banner.style.cssText = "position:fixed;left:16px;right:16px;bottom:16px;z-index:9999;background:#991b1b;color:#fff;border-radius:8px;padding:12px 14px;font-size:14px;line-height:1.6;box-shadow:0 18px 48px rgba(17,24,39,.24)";
+      banner.textContent = `页面启动时遇到浏览器存储限制：${error?.message || error}。请先使用“从电脑恢复”导入备份，或清理该网站的浏览器数据。`;
+      document.body.appendChild(banner);
+    }
+
+    window.addEventListener("error", event => reportStartupError(event.error || event.message));
+    window.addEventListener("unhandledrejection", event => reportStartupError(event.reason));
+
+    function safeLocalGet(key, fallback = null) {
+      try {
+        return localStorage.getItem(key);
+      } catch (error) {
+        console.warn("浏览器本地存储读取失败：", error);
+        return fallback;
+      }
+    }
+
+    function safeLocalSet(key, value) {
+      localStorage.setItem(key, value);
+      return localStorage.getItem(key) === value;
+    }
+
+    function safeLocalRemove(key) {
+      try {
+        localStorage.removeItem(key);
+      } catch (error) {
+        console.warn("浏览器本地存储清理失败：", error);
+      }
+    }
+
     let state = loadState();
     let activeView = state.students.length ? "entryView" : "rosterView";
     let selectedStudent = state.students[0]?.name || "";
@@ -1343,13 +1378,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function loadState() {
       const seed = window.CLASSROOM_SEED_DATA || { students: [], records: {}, subjectTests: {}, events: [], quickNotes: [] };
-      const saved = localStorage.getItem(STORE_KEY);
+      const saved = safeLocalGet(STORE_KEY);
       if (!saved) {
         const restored = latestSnapshotState(seed);
         const initial = restored || makeSeedState(seed);
         normalizeState(initial);
         if (restored) persistState(initial);
-        if (restored) localStorage.removeItem(BACKUP_KEY);
+        if (restored) safeLocalRemove(BACKUP_KEY);
         return initial;
       }
       try {
@@ -1362,7 +1397,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         const state = latestSnapshotState(seed) || makeSeedState(seed);
         normalizeState(state);
         persistState(state);
-        localStorage.removeItem(BACKUP_KEY);
+        safeLocalRemove(BACKUP_KEY);
         return state;
       }
     }
@@ -1721,7 +1756,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (!restored?.students?.length) return false;
       const currentWeight = dataWeight(state);
       const restoredWeight = dataWeight(restored);
-      if (!localStorage.getItem(STORE_KEY)) return restoredWeight >= currentWeight;
+      if (!safeLocalGet(STORE_KEY)) return restoredWeight >= currentWeight;
       if (restoredWeight > currentWeight) return true;
       const currentTime = new Date(state.updatedAt || state.createdAt || 0).getTime();
       const restoredTime = new Date(restored.updatedAt || restored.createdAt || 0).getTime();
@@ -1733,7 +1768,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       let localOk = false;
       let idbOk = false;
       try {
-        localOk = dataWeight(JSON.parse(localStorage.getItem(STORE_KEY) || "{}")) >= expectedWeight;
+        localOk = dataWeight(JSON.parse(safeLocalGet(STORE_KEY, "{}") || "{}")) >= expectedWeight;
       } catch {
         localOk = false;
       }
@@ -1773,8 +1808,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function safeSetMainState(payload) {
       try {
-        localStorage.setItem(STORE_KEY, payload);
-        if (localStorage.getItem(STORE_KEY) !== payload) throw new Error("保存校验失败");
+        if (!safeLocalSet(STORE_KEY, payload)) throw new Error("保存校验失败");
         return true;
       } catch (error) {
         if (!isStorageQuotaError(error)) {
@@ -1784,9 +1818,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         }
       }
       try {
-        localStorage.removeItem(BACKUP_KEY);
-        localStorage.setItem(STORE_KEY, payload);
-        if (localStorage.getItem(STORE_KEY) !== payload) throw new Error("保存校验失败");
+        safeLocalRemove(BACKUP_KEY);
+        if (!safeLocalSet(STORE_KEY, payload)) throw new Error("保存校验失败");
         showToast("本地空间不足，已清理临时缓存并保存当前数据");
         return true;
       } catch (error) {
@@ -1818,7 +1851,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function readSnapshots() {
       try {
-        const snapshots = JSON.parse(localStorage.getItem(BACKUP_KEY) || "[]");
+        const snapshots = JSON.parse(safeLocalGet(BACKUP_KEY, "[]") || "[]");
         return Array.isArray(snapshots) ? snapshots : [];
       } catch {
         return [];
@@ -2114,7 +2147,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function loadCloudConfig() {
       try {
-        const parsed = JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY) || "{}");
+        const parsed = JSON.parse(safeLocalGet(CLOUD_CONFIG_KEY, "{}") || "{}");
         return {
           supabaseUrl: String(parsed.supabaseUrl || "").trim().replace(/\/+$/, ""),
           supabaseKey: String(parsed.supabaseKey || "").trim(),
@@ -2129,11 +2162,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function saveCloudConfig(config) {
       const payload = JSON.stringify(config);
       try {
-        localStorage.setItem(CLOUD_CONFIG_KEY, payload);
+        safeLocalSet(CLOUD_CONFIG_KEY, payload);
       } catch (error) {
         if (!isStorageQuotaError(error)) throw error;
-        localStorage.removeItem(BACKUP_KEY);
-        localStorage.setItem(CLOUD_CONFIG_KEY, payload);
+        safeLocalRemove(BACKUP_KEY);
+        safeLocalSet(CLOUD_CONFIG_KEY, payload);
         showToast("本地空间不足，已清理临时缓存并保存配置");
       }
     }
@@ -5058,7 +5091,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           imported.subjectTests = imported.subjectTests || {};
           state = imported;
           delete state.localSnapshots;
-          localStorage.removeItem(BACKUP_KEY);
+          safeLocalRemove(BACKUP_KEY);
           const payload = JSON.stringify(state);
           const mirrored = await mirrorStateToIndexedDb(payload);
           if (persistState(state) === false) return;
