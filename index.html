@@ -56,7 +56,7 @@
       color: var(--muted);
       font-size: 12px;
     }
-    .actions, .tabs, .toolbar, .quick-row, .profile-controls {
+    .actions, .tabs, .toolbar, .quick-row, .profile-controls, .workbench-actions {
       display: flex;
       gap: 8px;
       align-items: center;
@@ -101,6 +101,16 @@
     }
     .tabs {
       margin-bottom: 12px;
+      position: sticky;
+      top: 69px;
+      z-index: 12;
+      padding: 8px 0;
+      background: rgba(246, 247, 249, .94);
+      backdrop-filter: blur(10px);
+    }
+    .tab {
+      min-width: 92px;
+      font-weight: 700;
     }
     .stats {
       display: grid;
@@ -130,6 +140,25 @@
     }
     .stat .num { font-size: 24px; font-weight: 780; }
     .stat .label { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .today-workbench {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+    .today-workbench strong {
+      display: block;
+      font-size: 16px;
+    }
+    .workbench-actions {
+      justify-content: flex-end;
+    }
     .stat-select {
       width: 100%;
       max-width: 150px;
@@ -235,6 +264,20 @@
       font-size: 12px;
     }
     .homework-name-input { width: 116px; }
+    .config-fold {
+      border-bottom: 1px solid var(--line);
+      background: #fbfcff;
+    }
+    .config-fold summary {
+      cursor: pointer;
+      padding: 10px 12px;
+      font-weight: 750;
+      list-style-position: inside;
+    }
+    .config-fold .homework-settings {
+      border-bottom: 0;
+      border-top: 1px solid #edf0f4;
+    }
     .subject-input { width: 86px; text-align: center; }
     .compact-date { width: 132px; min-width: 132px; }
     .rank-cell { font-weight: 750; color: var(--blue); }
@@ -742,9 +785,11 @@
     }
 
     @media (max-width: 860px) {
-      .topbar, .panel-head { grid-template-columns: 1fr; }
+      .topbar, .panel-head, .today-workbench { grid-template-columns: 1fr; }
       .stats, .profile-kpis, .summary-grid, .profile-layout, .roster-grid, .ai-grid, .mentor-grid, .quick-note-grid, .quick-note-item, .communication-grid { grid-template-columns: 1fr; }
-      .actions { justify-content: flex-start; }
+      .actions, .workbench-actions { justify-content: flex-start; }
+      .tabs { top: 0; overflow-x: auto; flex-wrap: nowrap; }
+      .tab { flex: 0 0 auto; }
       main { padding: 12px; }
     }
   </style>
@@ -759,7 +804,7 @@
       <div class="actions">
         <button id="classNameBtn">班级名称</button>
         <button id="cloudSyncBtn">云同步</button>
-        <button id="openQuickNoteBtn" class="primary">随手记</button>
+        <button id="openQuickNoteBtn" class="primary">快速随手记</button>
         <button id="exportJsonBtn">保存到电脑</button>
         <button id="exportWorkbookBtn">导出Excel</button>
         <button id="importBtn">从电脑恢复</button>
@@ -855,6 +900,17 @@
 
     <section id="entryView">
       <div class="stats" id="entryStats"></div>
+      <div class="today-workbench">
+        <div>
+          <strong id="todayWorkbenchTitle">今日工作台</strong>
+          <div class="sub" id="todayWorkbenchSub">今日进度、异常和随手记会在这里汇总。</div>
+        </div>
+        <div class="workbench-actions">
+          <button id="workbenchQuickBtn" class="primary">记一条</button>
+          <button id="workbenchSummaryBtn">看今日异常</button>
+          <button id="workbenchExportBtn">导出Excel</button>
+        </div>
+      </div>
       <div class="panel">
         <div class="panel-head">
           <div>
@@ -870,13 +926,15 @@
             <button id="resetDefaultsBtn">补齐默认记录</button>
           </div>
         </div>
-        <div class="homework-settings">
-          <strong>作业设置</strong>
-          <label>作业 1 <input id="homeworkName0" class="homework-name-input" type="text" maxlength="12"></label>
-          <label>作业 2 <input id="homeworkName1" class="homework-name-input" type="text" maxlength="12"></label>
-          <button id="saveHomeworkNamesBtn" class="small">保存名称</button>
-          <span class="sub">默认讲义、宝典；修改后历史记录和导出表头会同步显示新名称。</span>
-        </div>
+        <details class="config-fold">
+          <summary>作业名称设置</summary>
+          <div class="homework-settings">
+            <label>作业 1 <input id="homeworkName0" class="homework-name-input" type="text" maxlength="12"></label>
+            <label>作业 2 <input id="homeworkName1" class="homework-name-input" type="text" maxlength="12"></label>
+            <button id="saveHomeworkNamesBtn" class="small">保存名称</button>
+            <span class="sub">默认讲义、宝典；修改后历史记录和导出表头会同步显示新名称。</span>
+          </div>
+        </details>
         <div class="table-wrap">
           <table>
             <thead>
@@ -1251,7 +1309,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const SUBJECTS = ["电路", "电机", "稳态", "暂态", "继保", "高电压", "发电厂", "行测", "其他"];
 
     let state = loadState();
-    let activeView = "entryView";
+    let activeView = state.students.length ? "entryView" : "rosterView";
     let selectedStudent = state.students[0]?.name || "";
     let editingStudentIndex = -1;
     let currentAiPrompt = "";
@@ -2244,12 +2302,17 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function setView(viewId) {
       activeView = viewId;
-      ["entryView", "subjectView", "eventView", "summaryView", "profileView", "rosterView"].forEach(id => $(id).classList.toggle("hidden", id !== viewId));
-      document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.view === viewId));
+      syncActiveView();
       render();
     }
 
+    function syncActiveView() {
+      ["entryView", "subjectView", "eventView", "summaryView", "profileView", "rosterView"].forEach(id => $(id).classList.toggle("hidden", id !== activeView));
+      document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.view === activeView));
+    }
+
     function render() {
+      syncActiveView();
       const date = $("dateInput").value || today();
       ensureDate(date);
       renderHeader();
@@ -2260,6 +2323,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if ($("knowledgeTotalInput")) $("knowledgeTotalInput").value = knowledgeTotalForDate(date);
       renderHomeworkSettings();
       renderEntryStats(date);
+      renderTodayWorkbench(date);
       if (activeView === "entryView") renderEntry(date);
       if (activeView === "subjectView") renderSubjectTests();
       if (activeView === "eventView") renderEvents();
@@ -2296,6 +2360,16 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (quickNoteCard) {
         quickNoteCard.addEventListener("click", () => openQuickNoteModal(selectedStudent || state.students[0]?.name || ""));
       }
+    }
+
+    function renderTodayWorkbench(date) {
+      if (!$("todayWorkbenchTitle") || !$("todayWorkbenchSub")) return;
+      const records = getDateRecords(date);
+      const scored = records.filter(record => parseScore(record.score) !== null).length;
+      const abnormal = new Set(records.filter(isAbnormalRecord).map(record => record.name)).size;
+      const quickNotes = getQuickNotes({ date }).length;
+      $("todayWorkbenchTitle").textContent = `${formatShortDate(date)} 今日工作台`;
+      $("todayWorkbenchSub").textContent = `已录 ${scored}/${state.students.length} 人；异常 ${abnormal} 人；随手记 ${quickNotes} 条。`;
     }
 
     function statHtml(label, num, action = "") {
@@ -5063,6 +5137,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }
     });
     $("openQuickNoteBtn").addEventListener("click", () => openQuickNoteModal(CLASS_NOTE_NAME));
+    $("workbenchQuickBtn").addEventListener("click", () => openQuickNoteModal(CLASS_NOTE_NAME));
+    $("workbenchSummaryBtn").addEventListener("click", () => setView("summaryView"));
+    $("workbenchExportBtn").addEventListener("click", exportWorkbook);
     $("saveQuickNoteBtn").addEventListener("click", saveQuickNote);
     $("closeQuickNoteModalBtn").addEventListener("click", closeQuickNoteModal);
     ["quickNoteStudentSelect", "quickNoteDateInput"].forEach(id => {
