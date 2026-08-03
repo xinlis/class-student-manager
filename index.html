@@ -1230,7 +1230,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const IDB_NAME = "vip2_classroom_manager_store";
     const IDB_STORE = "state";
     const IDB_STATE_KEY = "latest";
-    const LOCAL_FILE_MODE = ["127.0.0.1", "localhost"].includes(location.hostname);
     const STATUS_OPTIONS = [
       { key: "late", label: "迟到" },
       { key: "distracted", label: "走神" },
@@ -1259,8 +1258,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     let profileChartMode = "daily";
     let cloudSaveTimer = null;
     let cloudBusy = false;
-    let localFileSaveTimer = null;
-    let localFileLoaded = false;
 
     const $ = (id) => document.getElementById(id);
     const today = () => new Date().toISOString().slice(0, 10);
@@ -1544,7 +1541,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const saved = persistState(state);
       if (saved !== false) {
         queueAutoCloudUpload();
-        queueLocalFileSave();
       }
     }
 
@@ -1555,64 +1551,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       mirrorStateToIndexedDb(payload);
       if (!safeSetMainState(payload)) return false;
       return true;
-    }
-
-    function queueLocalFileSave() {
-      if (!LOCAL_FILE_MODE || !localFileLoaded) return;
-      clearTimeout(localFileSaveTimer);
-      localFileSaveTimer = setTimeout(() => saveStateToLocalFile(false), 500);
-    }
-
-    async function saveStateToLocalFile(showMessage = false) {
-      if (!LOCAL_FILE_MODE) return false;
-      try {
-        normalizeState(state);
-        state.updatedAt = new Date().toISOString();
-        const response = await fetch("/api/state", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(state)
-        });
-        if (!response.ok) throw new Error(await response.text());
-        if (showMessage) showToast("已保存到电脑本地文件");
-        return true;
-      } catch (error) {
-        console.error(error);
-        if (showMessage) alert(`保存到电脑失败：${error.message}`);
-        return false;
-      }
-    }
-
-    async function loadStateFromLocalFile() {
-      if (!LOCAL_FILE_MODE) return;
-      try {
-        const response = await fetch("/api/state", { cache: "no-store" });
-        if (!response.ok) throw new Error(await response.text());
-        const data = await response.json();
-        if (!data || !Array.isArray(data.students)) {
-          localFileLoaded = true;
-          showToast("本机数据文件为空，请从电脑恢复或导入名单");
-          return;
-        }
-        if (!data.students.length && state.students.length) {
-          localFileLoaded = true;
-          await saveStateToLocalFile(false);
-          showToast("已把当前数据写入电脑本地文件");
-          return;
-        }
-        const seed = window.CLASSROOM_SEED_DATA || { students: [], records: {}, subjectTests: {}, events: [], quickNotes: [] };
-        state = mergeWithSeed(data, seed);
-        normalizeState(state);
-        selectedStudent = state.students[0]?.name || "";
-        localFileLoaded = true;
-        safeSetMainState(JSON.stringify(state));
-        render();
-        showToast("已读取电脑本地数据文件");
-      } catch (error) {
-        localFileLoaded = true;
-        console.error(error);
-        showToast("本机数据文件读取失败，请检查启动脚本");
-      }
     }
 
     function openStateDb() {
@@ -5056,10 +4994,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             return;
           }
           await requestPersistentStorage(true);
-          if (LOCAL_FILE_MODE) {
-            localFileLoaded = true;
-            await saveStateToLocalFile(false);
-          }
           selectedStudent = state.students[0]?.name || "";
           render();
           showToast(mirrored ? "备份已导入，并已写入本机保险箱" : "备份已导入");
@@ -5222,7 +5156,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     requestPersistentStorage(false);
     render();
     restoreFromIndexedDbIfNeeded();
-    loadStateFromLocalFile();
   </script>
 </body>
 </html>
