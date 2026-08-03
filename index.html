@@ -5086,6 +5086,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
     }
 
+    function bindClick(id, handler) {
+      const element = $(id);
+      if (element) element.addEventListener("click", handler);
+    }
+
     document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => setView(btn.dataset.view)));
     $("dateInput").value = today();
     $("subjectDateInput").value = today();
@@ -5136,10 +5141,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         addInlineQuickNote();
       }
     });
-    $("openQuickNoteBtn").addEventListener("click", () => openQuickNoteModal(CLASS_NOTE_NAME));
-    $("workbenchQuickBtn").addEventListener("click", () => openQuickNoteModal(CLASS_NOTE_NAME));
-    $("workbenchSummaryBtn").addEventListener("click", () => setView("summaryView"));
-    $("workbenchExportBtn").addEventListener("click", exportWorkbook);
+    bindClick("openQuickNoteBtn", () => openQuickNoteModal(CLASS_NOTE_NAME));
+    bindClick("workbenchQuickBtn", () => openQuickNoteModal(CLASS_NOTE_NAME));
+    bindClick("workbenchSummaryBtn", () => setView("summaryView"));
+    bindClick("workbenchExportBtn", exportWorkbook);
     $("saveQuickNoteBtn").addEventListener("click", saveQuickNote);
     $("closeQuickNoteModalBtn").addEventListener("click", closeQuickNoteModal);
     ["quickNoteStudentSelect", "quickNoteDateInput"].forEach(id => {
@@ -5178,10 +5183,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         prompt("复制以下排名：", text);
       }
     });
-    $("classNameBtn").addEventListener("click", editClassName);
-    $("cloudSyncBtn").addEventListener("click", openCloudSyncModal);
-    $("exportJsonBtn").addEventListener("click", exportJson);
-    $("exportWorkbookBtn").addEventListener("click", exportWorkbook);
+    bindClick("classNameBtn", editClassName);
+    bindClick("cloudSyncBtn", openCloudSyncModal);
+    bindClick("exportJsonBtn", exportJson);
+    bindClick("exportWorkbookBtn", exportWorkbook);
     $("quickNoteModal").addEventListener("click", event => {
       if (event.target.id === "quickNoteModal") closeQuickNoteModal();
     });
