@@ -1308,6 +1308,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const DEFAULT_CLASS_NAME = "VIP2 班";
     const SUBJECTS = ["电路", "电机", "稳态", "暂态", "继保", "高电压", "发电厂", "行测", "其他"];
 
+    const $ = (id) => document.getElementById(id);
+    const today = () => new Date().toISOString().slice(0, 10);
+    const keyFor = (date, name) => `${date}__${name}`;
+    const subjectKeyFor = (date, subject, name) => `${date}__${subject}__${name}`;
+
     function reportStartupError(error) {
       console.error(error);
       if (document.getElementById("startupErrorBanner")) return;
@@ -1351,11 +1356,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     let profileChartMode = "daily";
     let cloudSaveTimer = null;
     let cloudBusy = false;
-
-    const $ = (id) => document.getElementById(id);
-    const today = () => new Date().toISOString().slice(0, 10);
-    const keyFor = (date, name) => `${date}__${name}`;
-    const subjectKeyFor = (date, subject, name) => `${date}__${subject}__${name}`;
 
     function normalizeDateKey(value) {
       const text = String(value || "").trim().replaceAll("/", "-");
