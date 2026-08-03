@@ -1227,6 +1227,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const BACKUP_KEY = "vip2_classroom_manager_v1_snapshots";
     const CLOUD_CONFIG_KEY = "vip2_classroom_manager_cloud_config";
     const CLOUD_TABLE = "classroom_sync";
+    const IDB_NAME = "vip2_classroom_manager_store";
+    const IDB_STORE = "state";
+    const IDB_STATE_KEY = "latest";
     const STATUS_OPTIONS = [
       { key: "late", label: "迟到" },
       { key: "distracted", label: "走神" },
@@ -1287,7 +1290,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         const restored = latestSnapshotState(seed);
         const initial = restored || makeSeedState(seed);
         normalizeState(initial);
-        persistState(initial);
+        if (restored || initial.students.length) persistState(initial);
         if (restored) localStorage.removeItem(BACKUP_KEY);
         return initial;
       }
@@ -1476,7 +1479,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const title = `${classNameText()}每日状态与成绩录入管理系统`;
       document.title = title;
       if ($("appTitle")) $("appTitle").textContent = title;
-      if ($("appSubtitle")) $("appSubtitle").textContent = `${state.students.length} 人名单已导入；每日录入按需开启作业和知识点检查，只需记录分数和异常。`;
+      if ($("appSubtitle")) {
+        $("appSubtitle").textContent = state.students.length
+          ? `${state.students.length} 人名单已导入；每日录入按需开启作业和知识点检查，只需记录分数和异常。`
+          : "当前浏览器没有本地数据，请点击“恢复JSON”导入最近一次备份。";
+      }
     }
 
     function editClassName() {
@@ -1540,7 +1547,74 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       target.updatedAt = new Date().toISOString();
       const payload = JSON.stringify(target);
       if (!safeSetMainState(payload)) return false;
+      mirrorStateToIndexedDb(payload);
       return true;
+    }
+
+    function openStateDb() {
+      if (!("indexedDB" in window)) return Promise.resolve(null);
+      return new Promise(resolve => {
+        const request = indexedDB.open(IDB_NAME, 1);
+        request.onupgradeneeded = () => {
+          request.result.createObjectStore(IDB_STORE);
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => resolve(null);
+        request.onblocked = () => resolve(null);
+      });
+    }
+
+    async function mirrorStateToIndexedDb(payload) {
+      try {
+        const db = await openStateDb();
+        if (!db) return;
+        const tx = db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).put(payload, IDB_STATE_KEY);
+        tx.oncomplete = () => db.close();
+        tx.onerror = () => db.close();
+      } catch (error) {
+        console.warn("本机保险箱写入失败：", error);
+      }
+    }
+
+    async function readStateFromIndexedDb() {
+      try {
+        const db = await openStateDb();
+        if (!db) return null;
+        return await new Promise(resolve => {
+          const tx = db.transaction(IDB_STORE, "readonly");
+          const request = tx.objectStore(IDB_STORE).get(IDB_STATE_KEY);
+          request.onsuccess = () => {
+            db.close();
+            resolve(request.result || null);
+          };
+          request.onerror = () => {
+            db.close();
+            resolve(null);
+          };
+        });
+      } catch {
+        return null;
+      }
+    }
+
+    async function restoreFromIndexedDbIfNeeded() {
+      if (state.students.length || localStorage.getItem(STORE_KEY)) return;
+      const payload = await readStateFromIndexedDb();
+      if (!payload) return;
+      try {
+        const seed = window.CLASSROOM_SEED_DATA || { students: [], records: {}, subjectTests: {}, events: [], quickNotes: [] };
+        const restored = mergeWithSeed(JSON.parse(payload), seed);
+        normalizeState(restored);
+        if (!restored.students.length) return;
+        state = restored;
+        safeSetMainState(JSON.stringify(state));
+        selectedStudent = state.students[0]?.name || "";
+        render();
+        showToast("已从本机保险箱恢复数据");
+      } catch (error) {
+        console.warn("本机保险箱恢复失败：", error);
+      }
     }
 
     function isStorageQuotaError(error) {
@@ -4960,6 +5034,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     window.addEventListener("resize", () => activeView === "profileView" && renderProfile());
 
     render();
+    restoreFromIndexedDbIfNeeded();
   </script>
 </body>
 </html>
