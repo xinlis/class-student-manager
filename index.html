@@ -760,6 +760,7 @@
         <button id="classNameBtn">班级名称</button>
         <button id="cloudSyncBtn">云同步</button>
         <button id="storageCheckBtn">存储诊断</button>
+        <button id="localArchiveBtn">本地存档</button>
         <button id="openQuickNoteBtn" class="primary">随手记</button>
         <button id="exportJsonBtn">备份JSON</button>
         <button id="exportWorkbookBtn">导出Excel</button>
@@ -1205,6 +1206,25 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       </div>
     </div>
   </div>
+  <div class="modal hidden" id="localArchiveModal">
+    <div class="modal-box sync-modal-box">
+      <h3>本地存档文件</h3>
+      <div class="sub">把数据直接写进电脑上的 JSON 文件。Chrome 清理网站数据时，电脑文件不会丢。</div>
+      <div class="sync-status">
+        <span class="sync-dot" id="archiveSyncDot"></span>
+        <span id="archiveSyncStatus">未绑定存档文件</span>
+      </div>
+      <div class="sync-help">
+        推荐建一个固定文件，例如“学生档案-本地存档.json”。以后每天打开系统后，点“打开存档文件”读入；使用过程中系统会自动写回这个文件。
+      </div>
+      <div class="actions" style="margin-top:12px">
+        <button id="openArchiveFileBtn" class="primary">打开存档文件</button>
+        <button id="bindArchiveFileBtn">另存并绑定当前数据</button>
+        <button id="writeArchiveFileBtn">立即写入存档</button>
+        <button id="closeArchiveFileBtn">关闭</button>
+      </div>
+    </div>
+  </div>
   <div class="modal hidden" id="studentEditModal">
     <div class="modal-box">
       <h3>编辑学生信息</h3>
@@ -1231,6 +1251,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const IDB_NAME = "vip2_classroom_manager_store";
     const IDB_STORE = "state";
     const IDB_STATE_KEY = "latest";
+    const ARCHIVE_HANDLE_KEY = "localArchiveHandle";
     const STATUS_OPTIONS = [
       { key: "late", label: "迟到" },
       { key: "distracted", label: "走神" },
@@ -1259,6 +1280,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     let profileChartMode = "daily";
     let cloudSaveTimer = null;
     let cloudBusy = false;
+    let archiveHandle = null;
+    let archiveSaveTimer = null;
 
     const $ = (id) => document.getElementById(id);
     const today = () => new Date().toISOString().slice(0, 10);
@@ -1540,7 +1563,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function saveState() {
       const saved = persistState(state);
-      if (saved !== false) queueAutoCloudUpload();
+      if (saved !== false) {
+        queueAutoCloudUpload();
+        queueArchiveWrite();
+      }
     }
 
     function persistState(target) {
@@ -1588,13 +1614,34 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }
     }
 
-    async function readStateFromIndexedDb() {
+    async function writeIndexedDbValue(key, value) {
+      try {
+        const db = await openStateDb();
+        if (!db) return false;
+        return await new Promise(resolve => {
+          const tx = db.transaction(IDB_STORE, "readwrite");
+          tx.objectStore(IDB_STORE).put(value, key);
+          tx.oncomplete = () => {
+            db.close();
+            resolve(true);
+          };
+          tx.onerror = () => {
+            db.close();
+            resolve(false);
+          };
+        });
+      } catch {
+        return false;
+      }
+    }
+
+    async function readIndexedDbValue(key) {
       try {
         const db = await openStateDb();
         if (!db) return null;
         return await new Promise(resolve => {
           const tx = db.transaction(IDB_STORE, "readonly");
-          const request = tx.objectStore(IDB_STORE).get(IDB_STATE_KEY);
+          const request = tx.objectStore(IDB_STORE).get(key);
           request.onsuccess = () => {
             db.close();
             resolve(request.result || null);
@@ -1607,6 +1654,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       } catch {
         return null;
       }
+    }
+
+    async function readStateFromIndexedDb() {
+      return readIndexedDbValue(IDB_STATE_KEY);
     }
 
     async function requestPersistentStorage(showWarning = false) {
@@ -1696,6 +1747,135 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             : "结论：当前页面写入正常。"
       ];
       alert(lines.join("\n"));
+    }
+
+    function archiveSupported() {
+      return Boolean(window.showOpenFilePicker && window.showSaveFilePicker);
+    }
+
+    function archivePayload() {
+      normalizeState(state);
+      state.updatedAt = new Date().toISOString();
+      return JSON.stringify(state, null, 2);
+    }
+
+    function setArchiveStatus(text, type = "") {
+      if ($("archiveSyncStatus")) $("archiveSyncStatus").textContent = text;
+      if ($("archiveSyncDot")) $("archiveSyncDot").className = `sync-dot ${type}`.trim();
+    }
+
+    async function ensureArchivePermission(handle, mode = "readwrite") {
+      if (!handle?.queryPermission || !handle?.requestPermission) return true;
+      const options = { mode };
+      const current = await handle.queryPermission(options);
+      if (current === "granted") return true;
+      const next = await handle.requestPermission(options);
+      return next === "granted";
+    }
+
+    async function rememberArchiveHandle(handle) {
+      archiveHandle = handle;
+      await writeIndexedDbValue(ARCHIVE_HANDLE_KEY, handle);
+      setArchiveStatus(`已绑定：${handle.name || "本地存档文件"}`, "ok");
+    }
+
+    async function writeArchiveFile(showMessage = false) {
+      if (!archiveHandle) {
+        if (showMessage) showToast("请先打开或绑定存档文件");
+        return false;
+      }
+      try {
+        const allowed = await ensureArchivePermission(archiveHandle, "readwrite");
+        if (!allowed) {
+          if (showMessage) alert("没有获得写入存档文件的权限，请重新打开或另存存档文件。");
+          setArchiveStatus("存档文件未授权写入", "bad");
+          return false;
+        }
+        const writable = await archiveHandle.createWritable();
+        await writable.write(archivePayload());
+        await writable.close();
+        setArchiveStatus(`已写入：${archiveHandle.name || "本地存档文件"}`, "ok");
+        if (showMessage) showToast("已写入本地存档文件");
+        return true;
+      } catch (error) {
+        console.error(error);
+        setArchiveStatus("写入失败，请重新绑定存档文件", "bad");
+        if (showMessage) alert(`写入存档失败：${error.message}`);
+        return false;
+      }
+    }
+
+    function queueArchiveWrite() {
+      if (!archiveHandle) return;
+      clearTimeout(archiveSaveTimer);
+      archiveSaveTimer = setTimeout(() => writeArchiveFile(false), 1200);
+    }
+
+    async function bindArchiveFile() {
+      if (!archiveSupported()) {
+        alert("当前浏览器不支持直接写入本地文件。请使用最新版 Chrome，或继续用“备份JSON/恢复JSON”。");
+        return;
+      }
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: `${state.className || DEFAULT_CLASS_NAME}-学生档案-本地存档.json`,
+          types: [{ description: "JSON 备份文件", accept: { "application/json": [".json"] } }]
+        });
+        await rememberArchiveHandle(handle);
+        await writeArchiveFile(true);
+      } catch (error) {
+        if (error?.name !== "AbortError") alert(`绑定存档失败：${error.message}`);
+      }
+    }
+
+    async function openArchiveFile() {
+      if (!archiveSupported()) {
+        alert("当前浏览器不支持直接读取本地存档文件。请使用“恢复JSON”导入。");
+        return;
+      }
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          multiple: false,
+          types: [{ description: "JSON 备份文件", accept: { "application/json": [".json"] } }]
+        });
+        const file = await handle.getFile();
+        const imported = JSON.parse(await file.text());
+        if (!Array.isArray(imported.students) || !imported.records) throw new Error("格式不正确");
+        imported.subjectTests = imported.subjectTests || {};
+        state = imported;
+        delete state.localSnapshots;
+        normalizeState(state);
+        persistState(state);
+        await rememberArchiveHandle(handle);
+        selectedStudent = state.students[0]?.name || "";
+        render();
+        showToast("已打开本地存档文件");
+      } catch (error) {
+        if (error?.name !== "AbortError") alert(`打开存档失败：${error.message}`);
+      }
+    }
+
+    function openLocalArchiveModal() {
+      if (!archiveSupported()) {
+        setArchiveStatus("当前浏览器不支持本地文件存档", "bad");
+      } else if (archiveHandle) {
+        setArchiveStatus(`已绑定：${archiveHandle.name || "本地存档文件"}`, "ok");
+      } else {
+        setArchiveStatus("未绑定存档文件", "warn");
+      }
+      $("localArchiveModal").classList.remove("hidden");
+    }
+
+    function closeLocalArchiveModal() {
+      $("localArchiveModal").classList.add("hidden");
+    }
+
+    async function restoreArchiveHandleIfPossible() {
+      const handle = await readIndexedDbValue(ARCHIVE_HANDLE_KEY);
+      if (!handle) return;
+      archiveHandle = handle;
+      const allowed = await ensureArchivePermission(handle, "readwrite").catch(() => false);
+      setArchiveStatus(allowed ? `已绑定：${handle.name || "本地存档文件"}` : "存档文件需要重新授权", allowed ? "ok" : "warn");
     }
 
     async function restoreFromIndexedDbIfNeeded() {
@@ -5004,6 +5184,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             return;
           }
           await requestPersistentStorage(true);
+          queueArchiveWrite();
           selectedStudent = state.students[0]?.name || "";
           render();
           showToast(mirrored ? "备份已导入，并已写入本机保险箱" : "备份已导入");
@@ -5114,6 +5295,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("classNameBtn").addEventListener("click", editClassName);
     $("cloudSyncBtn").addEventListener("click", openCloudSyncModal);
     $("storageCheckBtn").addEventListener("click", runStorageDiagnostic);
+    $("localArchiveBtn").addEventListener("click", openLocalArchiveModal);
     $("exportJsonBtn").addEventListener("click", exportJson);
     $("exportWorkbookBtn").addEventListener("click", exportWorkbook);
     $("quickNoteModal").addEventListener("click", event => {
@@ -5125,6 +5307,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("closeCloudSyncBtn").addEventListener("click", closeCloudSyncModal);
     $("cloudSyncModal").addEventListener("click", event => {
       if (event.target.id === "cloudSyncModal") closeCloudSyncModal();
+    });
+    $("openArchiveFileBtn").addEventListener("click", openArchiveFile);
+    $("bindArchiveFileBtn").addEventListener("click", bindArchiveFile);
+    $("writeArchiveFileBtn").addEventListener("click", () => writeArchiveFile(true));
+    $("closeArchiveFileBtn").addEventListener("click", closeLocalArchiveModal);
+    $("localArchiveModal").addEventListener("click", event => {
+      if (event.target.id === "localArchiveModal") closeLocalArchiveModal();
     });
     if ($("saveStudentEditBtn")) $("saveStudentEditBtn").addEventListener("click", saveStudentEdit);
     if ($("closeStudentEditBtn")) $("closeStudentEditBtn").addEventListener("click", closeStudentEditModal);
@@ -5165,6 +5354,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     clearLegacyOfflineCache();
     requestPersistentStorage(false);
+    restoreArchiveHandleIfPossible();
     render();
     restoreFromIndexedDbIfNeeded();
   </script>
