@@ -1290,7 +1290,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         const restored = latestSnapshotState(seed);
         const initial = restored || makeSeedState(seed);
         normalizeState(initial);
-        if (restored || initial.students.length) persistState(initial);
+        if (restored) persistState(initial);
         if (restored) localStorage.removeItem(BACKUP_KEY);
         return initial;
       }
@@ -1608,15 +1608,67 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }
     }
 
+    async function requestPersistentStorage(showWarning = false) {
+      if (!navigator.storage?.persisted || !navigator.storage?.persist) return true;
+      try {
+        const persisted = await navigator.storage.persisted();
+        if (persisted) return true;
+        const granted = await navigator.storage.persist();
+        if (!granted && showWarning) {
+          showToast("浏览器未授予持久存储，请保留每日备份JSON");
+        }
+        return granted;
+      } catch {
+        return false;
+      }
+    }
+
+    function dataWeight(target) {
+      if (!target) return 0;
+      return (target.students?.length || 0)
+        + Object.keys(target.records || {}).length * 10
+        + Object.keys(target.subjectTests || {}).length * 10
+        + (target.events?.length || 0) * 10
+        + (target.quickNotes?.length || 0) * 10;
+    }
+
+    function shouldUseIndexedDbState(restored) {
+      if (!restored?.students?.length) return false;
+      const currentWeight = dataWeight(state);
+      const restoredWeight = dataWeight(restored);
+      if (!localStorage.getItem(STORE_KEY)) return restoredWeight >= currentWeight;
+      if (restoredWeight > currentWeight) return true;
+      const currentTime = new Date(state.updatedAt || state.createdAt || 0).getTime();
+      const restoredTime = new Date(restored.updatedAt || restored.createdAt || 0).getTime();
+      return restoredWeight === currentWeight && restoredTime > currentTime;
+    }
+
+    async function verifyImportedStorage(expected) {
+      const expectedWeight = dataWeight(expected);
+      let localOk = false;
+      let idbOk = false;
+      try {
+        localOk = dataWeight(JSON.parse(localStorage.getItem(STORE_KEY) || "{}")) >= expectedWeight;
+      } catch {
+        localOk = false;
+      }
+      try {
+        const idbPayload = await readStateFromIndexedDb();
+        idbOk = dataWeight(JSON.parse(idbPayload || "{}")) >= expectedWeight;
+      } catch {
+        idbOk = false;
+      }
+      return { localOk, idbOk };
+    }
+
     async function restoreFromIndexedDbIfNeeded() {
-      if (state.students.length || localStorage.getItem(STORE_KEY)) return;
       const payload = await readStateFromIndexedDb();
       if (!payload) return;
       try {
         const seed = window.CLASSROOM_SEED_DATA || { students: [], records: {}, subjectTests: {}, events: [], quickNotes: [] };
         const restored = mergeWithSeed(JSON.parse(payload), seed);
         normalizeState(restored);
-        if (!restored.students.length) return;
+        if (!shouldUseIndexedDbState(restored)) return;
         state = restored;
         safeSetMainState(JSON.stringify(state));
         selectedStudent = state.students[0]?.name || "";
@@ -4909,6 +4961,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           const payload = JSON.stringify(state);
           const mirrored = await mirrorStateToIndexedDb(payload);
           if (persistState(state) === false) return;
+          const storage = await verifyImportedStorage(state);
+          if (!storage.localOk && !storage.idbOk) {
+            alert("导入后自检失败：浏览器没有把数据写入本地。请先导出备份JSON，再检查 Chrome 是否设置了退出时清除网站数据。");
+            return;
+          }
+          await requestPersistentStorage(true);
           selectedStudent = state.students[0]?.name || "";
           render();
           showToast(mirrored ? "备份已导入，并已写入本机保险箱" : "备份已导入");
@@ -5068,6 +5126,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     window.addEventListener("resize", () => activeView === "profileView" && renderProfile());
 
     clearLegacyOfflineCache();
+    requestPersistentStorage(false);
     render();
     restoreFromIndexedDbIfNeeded();
   </script>
