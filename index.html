@@ -1546,8 +1546,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       normalizeState(target);
       target.updatedAt = new Date().toISOString();
       const payload = JSON.stringify(target);
-      if (!safeSetMainState(payload)) return false;
       mirrorStateToIndexedDb(payload);
+      if (!safeSetMainState(payload)) return false;
       return true;
     }
 
@@ -1556,7 +1556,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return new Promise(resolve => {
         const request = indexedDB.open(IDB_NAME, 1);
         request.onupgradeneeded = () => {
-          request.result.createObjectStore(IDB_STORE);
+          const db = request.result;
+          if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
         };
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => resolve(null);
@@ -1567,13 +1568,22 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     async function mirrorStateToIndexedDb(payload) {
       try {
         const db = await openStateDb();
-        if (!db) return;
-        const tx = db.transaction(IDB_STORE, "readwrite");
-        tx.objectStore(IDB_STORE).put(payload, IDB_STATE_KEY);
-        tx.oncomplete = () => db.close();
-        tx.onerror = () => db.close();
+        if (!db) return false;
+        return await new Promise(resolve => {
+          const tx = db.transaction(IDB_STORE, "readwrite");
+          tx.objectStore(IDB_STORE).put(payload, IDB_STATE_KEY);
+          tx.oncomplete = () => {
+            db.close();
+            resolve(true);
+          };
+          tx.onerror = () => {
+            db.close();
+            resolve(false);
+          };
+        });
       } catch (error) {
         console.warn("本机保险箱写入失败：", error);
+        return false;
       }
     }
 
@@ -1627,6 +1637,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function safeSetMainState(payload) {
       try {
         localStorage.setItem(STORE_KEY, payload);
+        if (localStorage.getItem(STORE_KEY) !== payload) throw new Error("保存校验失败");
         return true;
       } catch (error) {
         if (!isStorageQuotaError(error)) {
@@ -1638,12 +1649,33 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       try {
         localStorage.removeItem(BACKUP_KEY);
         localStorage.setItem(STORE_KEY, payload);
+        if (localStorage.getItem(STORE_KEY) !== payload) throw new Error("保存校验失败");
         showToast("本地空间不足，已清理临时缓存并保存当前数据");
         return true;
       } catch (error) {
         console.error(error);
         alert("本地存储空间不足，当前操作没有保存。请先导出备份JSON，再清理浏览器站点数据或开启云同步。");
         return false;
+      }
+    }
+
+    function clearLegacyOfflineCache() {
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations()
+          .then(registrations => {
+            registrations.forEach(registration => registration.unregister());
+            if (registrations.length && navigator.serviceWorker.controller) {
+              showToast("已清理旧离线缓存，刷新一次后显示最新版");
+            }
+          })
+          .catch(error => console.warn("旧离线缓存清理失败：", error));
+      }
+      if ("caches" in window) {
+        caches.keys()
+          .then(keys => keys
+            .filter(key => /vip2|class|student|manager|classroom/i.test(key))
+            .forEach(key => caches.delete(key)))
+          .catch(error => console.warn("旧页面缓存清理失败：", error));
       }
     }
 
@@ -4866,7 +4898,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function importJson(file) {
       const reader = new FileReader();
-      reader.onload = () => {
+      reader.onload = async () => {
         try {
           const imported = JSON.parse(reader.result);
           if (!Array.isArray(imported.students) || !imported.records) throw new Error("格式不正确");
@@ -4874,10 +4906,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           state = imported;
           delete state.localSnapshots;
           localStorage.removeItem(BACKUP_KEY);
+          const payload = JSON.stringify(state);
+          const mirrored = await mirrorStateToIndexedDb(payload);
           if (persistState(state) === false) return;
           selectedStudent = state.students[0]?.name || "";
           render();
-          showToast("备份已导入");
+          showToast(mirrored ? "备份已导入，并已写入本机保险箱" : "备份已导入");
         } catch (error) {
           alert(`导入失败：${error.message}`);
         }
@@ -5033,6 +5067,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     });
     window.addEventListener("resize", () => activeView === "profileView" && renderProfile());
 
+    clearLegacyOfflineCache();
     render();
     restoreFromIndexedDbIfNeeded();
   </script>
