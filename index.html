@@ -56,7 +56,7 @@
       color: var(--muted);
       font-size: 12px;
     }
-    .actions, .tabs, .toolbar, .quick-row, .profile-controls {
+    .actions, .tabs, .toolbar, .quick-row, .profile-controls, .workbench-actions {
       display: flex;
       gap: 8px;
       align-items: center;
@@ -101,6 +101,16 @@
     }
     .tabs {
       margin-bottom: 12px;
+      position: sticky;
+      top: 69px;
+      z-index: 12;
+      padding: 8px 0;
+      background: rgba(246, 247, 249, .94);
+      backdrop-filter: blur(10px);
+    }
+    .tab {
+      min-width: 92px;
+      font-weight: 700;
     }
     .stats {
       display: grid;
@@ -130,6 +140,25 @@
     }
     .stat .num { font-size: 24px; font-weight: 780; }
     .stat .label { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .today-workbench {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+    .today-workbench strong {
+      display: block;
+      font-size: 16px;
+    }
+    .workbench-actions {
+      justify-content: flex-end;
+    }
     .stat-select {
       width: 100%;
       max-width: 150px;
@@ -166,6 +195,72 @@
       font-weight: 750;
     }
     .table-wrap { overflow: auto; max-height: calc(100vh - 260px); }
+    .subject-page-grid {
+      display: grid;
+      grid-template-columns: minmax(280px, .85fr) minmax(0, 1.35fr);
+      gap: 12px;
+      align-items: start;
+    }
+    .exam-list {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      max-height: 370px;
+      overflow: auto;
+    }
+    .exam-card {
+      height: auto;
+      min-height: 62px;
+      padding: 10px 12px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      text-align: left;
+      border-radius: 8px;
+    }
+    .exam-card.active {
+      border-color: var(--blue);
+      background: #eff6ff;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, .12);
+    }
+    .exam-card-title {
+      font-weight: 780;
+      color: var(--ink);
+    }
+    .exam-card-meta {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .exam-card-score {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+      line-height: 1.5;
+    }
+    .exam-card-actions {
+      display: grid;
+      gap: 6px;
+      justify-items: end;
+    }
+    .subject-exam-delete {
+      display: inline-flex;
+      height: 24px;
+      padding: 0 8px;
+      align-items: center;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+      background: #fff7f7;
+      color: var(--red);
+      cursor: pointer;
+    }
+    .subject-exam-delete:hover {
+      background: #fee2e2;
+    }
+    .subject-entry-panel {
+      margin-top: 12px;
+    }
     table {
       width: 100%;
       border-collapse: separate;
@@ -235,6 +330,20 @@
       font-size: 12px;
     }
     .homework-name-input { width: 116px; }
+    .config-fold {
+      border-bottom: 1px solid var(--line);
+      background: #fbfcff;
+    }
+    .config-fold summary {
+      cursor: pointer;
+      padding: 10px 12px;
+      font-weight: 750;
+      list-style-position: inside;
+    }
+    .config-fold .homework-settings {
+      border-bottom: 0;
+      border-top: 1px solid #edf0f4;
+    }
     .subject-input { width: 86px; text-align: center; }
     .compact-date { width: 132px; min-width: 132px; }
     .rank-cell { font-weight: 750; color: var(--blue); }
@@ -742,9 +851,11 @@
     }
 
     @media (max-width: 860px) {
-      .topbar, .panel-head { grid-template-columns: 1fr; }
-      .stats, .profile-kpis, .summary-grid, .profile-layout, .roster-grid, .ai-grid, .mentor-grid, .quick-note-grid, .quick-note-item, .communication-grid { grid-template-columns: 1fr; }
-      .actions { justify-content: flex-start; }
+      .topbar, .panel-head, .today-workbench { grid-template-columns: 1fr; }
+      .stats, .subject-page-grid, .profile-kpis, .summary-grid, .profile-layout, .roster-grid, .ai-grid, .mentor-grid, .quick-note-grid, .quick-note-item, .communication-grid { grid-template-columns: 1fr; }
+      .actions, .workbench-actions { justify-content: flex-start; }
+      .tabs { top: 0; overflow-x: auto; flex-wrap: nowrap; }
+      .tab { flex: 0 0 auto; }
       main { padding: 12px; }
     }
   </style>
@@ -759,7 +870,7 @@
       <div class="actions">
         <button id="classNameBtn">班级名称</button>
         <button id="cloudSyncBtn">云同步</button>
-        <button id="openQuickNoteBtn" class="primary">随手记</button>
+        <button id="openQuickNoteBtn" class="primary">快速随手记</button>
         <button id="exportJsonBtn">保存到电脑</button>
         <button id="exportWorkbookBtn">导出Excel</button>
         <button id="importBtn">从电脑恢复</button>
@@ -855,6 +966,17 @@
 
     <section id="entryView">
       <div class="stats" id="entryStats"></div>
+      <div class="today-workbench">
+        <div>
+          <strong id="todayWorkbenchTitle">今日工作台</strong>
+          <div class="sub" id="todayWorkbenchSub">今日进度、异常和随手记会在这里汇总。</div>
+        </div>
+        <div class="workbench-actions">
+          <button id="workbenchQuickBtn" class="primary">记一条</button>
+          <button id="workbenchSummaryBtn">看今日异常</button>
+          <button id="workbenchExportBtn">导出Excel</button>
+        </div>
+      </div>
       <div class="panel">
         <div class="panel-head">
           <div>
@@ -870,13 +992,15 @@
             <button id="resetDefaultsBtn">补齐默认记录</button>
           </div>
         </div>
-        <div class="homework-settings">
-          <strong>作业设置</strong>
-          <label>作业 1 <input id="homeworkName0" class="homework-name-input" type="text" maxlength="12"></label>
-          <label>作业 2 <input id="homeworkName1" class="homework-name-input" type="text" maxlength="12"></label>
-          <button id="saveHomeworkNamesBtn" class="small">保存名称</button>
-          <span class="sub">默认讲义、宝典；修改后历史记录和导出表头会同步显示新名称。</span>
-        </div>
+        <details class="config-fold">
+          <summary>作业名称设置</summary>
+          <div class="homework-settings">
+            <label>作业 1 <input id="homeworkName0" class="homework-name-input" type="text" maxlength="12"></label>
+            <label>作业 2 <input id="homeworkName1" class="homework-name-input" type="text" maxlength="12"></label>
+            <button id="saveHomeworkNamesBtn" class="small">保存名称</button>
+            <span class="sub">默认讲义、宝典；修改后历史记录和导出表头会同步显示新名称。</span>
+          </div>
+        </details>
         <div class="table-wrap">
           <table>
             <thead>
@@ -900,11 +1024,52 @@
 
     <section id="subjectView" class="hidden">
       <div class="stats" id="subjectStats"></div>
-      <div class="panel">
+      <div class="subject-page-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2 class="panel-title">已测试单科</h2>
+              <div class="sub">点一场考试查看全班成绩；需要录入时再展开录入表。</div>
+            </div>
+            <button id="openSubjectEntryBtn" class="primary">录入新测试</button>
+          </div>
+          <div class="exam-list" id="subjectExamList"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2 class="panel-title" id="subjectDetailTitle">单科成绩</h2>
+              <div class="sub" id="subjectDetailSub">选择左侧考试后显示全班成绩。</div>
+            </div>
+            <div class="toolbar">
+              <button id="copySubjectRankBtn" class="primary">复制排名</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th class="idx">#</th>
+                  <th>姓名</th>
+                  <th>学校</th>
+                  <th>分数</th>
+                  <th>排名</th>
+                  <th>纠错情况</th>
+                  <th>备注</th>
+                </tr>
+              </thead>
+              <tbody id="subjectDetailBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel subject-entry-panel hidden" id="subjectEntryPanel">
         <div class="panel-head">
           <div>
-            <h2 class="panel-title">每周单科测试</h2>
-            <div class="sub">上方可切换科目查看历史总览；下方表格只负责按当前日期登记成绩。</div>
+            <h2 class="panel-title">录入单科测试</h2>
+            <div class="sub">先填日期、科目和满分，再按名单依次录入；分数框按 Enter 跳到下一位。</div>
           </div>
           <div class="toolbar">
             <label>日期 <input id="subjectDateInput" class="compact-date" type="date"></label>
@@ -924,7 +1089,7 @@
             <label>满分 <input id="subjectMaxInput" class="subject-input" type="number" min="1" value="100"></label>
             <label>搜索 <input id="subjectSearch" type="search" placeholder="序号 / 姓名首字母 / 学校"></label>
             <button id="renameSubjectBtn">更改科目</button>
-            <button id="copySubjectRankBtn" class="primary">复制排名</button>
+            <button id="cancelSubjectEntryBtn">收起录入</button>
           </div>
         </div>
         <div class="table-wrap">
@@ -1250,19 +1415,56 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const DEFAULT_CLASS_NAME = "VIP2 班";
     const SUBJECTS = ["电路", "电机", "稳态", "暂态", "继保", "高电压", "发电厂", "行测", "其他"];
 
-    let state = loadState();
-    let activeView = "entryView";
-    let selectedStudent = state.students[0]?.name || "";
-    let editingStudentIndex = -1;
-    let currentAiPrompt = "";
-    let profileChartMode = "daily";
-    let cloudSaveTimer = null;
-    let cloudBusy = false;
-
     const $ = (id) => document.getElementById(id);
     const today = () => new Date().toISOString().slice(0, 10);
     const keyFor = (date, name) => `${date}__${name}`;
     const subjectKeyFor = (date, subject, name) => `${date}__${subject}__${name}`;
+
+    function reportStartupError(error) {
+      console.error(error);
+      if (document.getElementById("startupErrorBanner")) return;
+      const banner = document.createElement("div");
+      banner.id = "startupErrorBanner";
+      banner.style.cssText = "position:fixed;left:16px;right:16px;bottom:16px;z-index:9999;background:#991b1b;color:#fff;border-radius:8px;padding:12px 14px;font-size:14px;line-height:1.6;box-shadow:0 18px 48px rgba(17,24,39,.24)";
+      banner.textContent = `页面启动时遇到浏览器存储限制：${error?.message || error}。请先使用“从电脑恢复”导入备份，或清理该网站的浏览器数据。`;
+      document.body.appendChild(banner);
+    }
+
+    window.addEventListener("error", event => reportStartupError(event.error || event.message));
+    window.addEventListener("unhandledrejection", event => reportStartupError(event.reason));
+
+    function safeLocalGet(key, fallback = null) {
+      try {
+        return localStorage.getItem(key);
+      } catch (error) {
+        console.warn("浏览器本地存储读取失败：", error);
+        return fallback;
+      }
+    }
+
+    function safeLocalSet(key, value) {
+      localStorage.setItem(key, value);
+      return localStorage.getItem(key) === value;
+    }
+
+    function safeLocalRemove(key) {
+      try {
+        localStorage.removeItem(key);
+      } catch (error) {
+        console.warn("浏览器本地存储清理失败：", error);
+      }
+    }
+
+    let state = loadState();
+    let activeView = state.students.length ? "entryView" : "rosterView";
+    let selectedStudent = state.students[0]?.name || "";
+    let editingStudentIndex = -1;
+    let currentAiPrompt = "";
+    let profileChartMode = "daily";
+    let selectedSubjectExamKey = "";
+    let subjectEntryOpen = false;
+    let cloudSaveTimer = null;
+    let cloudBusy = false;
 
     function normalizeDateKey(value) {
       const text = String(value || "").trim().replaceAll("/", "-");
@@ -1285,13 +1487,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function loadState() {
       const seed = window.CLASSROOM_SEED_DATA || { students: [], records: {}, subjectTests: {}, events: [], quickNotes: [] };
-      const saved = localStorage.getItem(STORE_KEY);
+      const saved = safeLocalGet(STORE_KEY);
       if (!saved) {
         const restored = latestSnapshotState(seed);
         const initial = restored || makeSeedState(seed);
         normalizeState(initial);
         if (restored) persistState(initial);
-        if (restored) localStorage.removeItem(BACKUP_KEY);
+        if (restored) safeLocalRemove(BACKUP_KEY);
         return initial;
       }
       try {
@@ -1304,7 +1506,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         const state = latestSnapshotState(seed) || makeSeedState(seed);
         normalizeState(state);
         persistState(state);
-        localStorage.removeItem(BACKUP_KEY);
+        safeLocalRemove(BACKUP_KEY);
         return state;
       }
     }
@@ -1663,7 +1865,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (!restored?.students?.length) return false;
       const currentWeight = dataWeight(state);
       const restoredWeight = dataWeight(restored);
-      if (!localStorage.getItem(STORE_KEY)) return restoredWeight >= currentWeight;
+      if (!safeLocalGet(STORE_KEY)) return restoredWeight >= currentWeight;
       if (restoredWeight > currentWeight) return true;
       const currentTime = new Date(state.updatedAt || state.createdAt || 0).getTime();
       const restoredTime = new Date(restored.updatedAt || restored.createdAt || 0).getTime();
@@ -1675,7 +1877,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       let localOk = false;
       let idbOk = false;
       try {
-        localOk = dataWeight(JSON.parse(localStorage.getItem(STORE_KEY) || "{}")) >= expectedWeight;
+        localOk = dataWeight(JSON.parse(safeLocalGet(STORE_KEY, "{}") || "{}")) >= expectedWeight;
       } catch {
         localOk = false;
       }
@@ -1715,8 +1917,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function safeSetMainState(payload) {
       try {
-        localStorage.setItem(STORE_KEY, payload);
-        if (localStorage.getItem(STORE_KEY) !== payload) throw new Error("保存校验失败");
+        if (!safeLocalSet(STORE_KEY, payload)) throw new Error("保存校验失败");
         return true;
       } catch (error) {
         if (!isStorageQuotaError(error)) {
@@ -1726,9 +1927,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         }
       }
       try {
-        localStorage.removeItem(BACKUP_KEY);
-        localStorage.setItem(STORE_KEY, payload);
-        if (localStorage.getItem(STORE_KEY) !== payload) throw new Error("保存校验失败");
+        safeLocalRemove(BACKUP_KEY);
+        if (!safeLocalSet(STORE_KEY, payload)) throw new Error("保存校验失败");
         showToast("本地空间不足，已清理临时缓存并保存当前数据");
         return true;
       } catch (error) {
@@ -1760,7 +1960,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function readSnapshots() {
       try {
-        const snapshots = JSON.parse(localStorage.getItem(BACKUP_KEY) || "[]");
+        const snapshots = JSON.parse(safeLocalGet(BACKUP_KEY, "[]") || "[]");
         return Array.isArray(snapshots) ? snapshots : [];
       } catch {
         return [];
@@ -2056,7 +2256,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function loadCloudConfig() {
       try {
-        const parsed = JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY) || "{}");
+        const parsed = JSON.parse(safeLocalGet(CLOUD_CONFIG_KEY, "{}") || "{}");
         return {
           supabaseUrl: String(parsed.supabaseUrl || "").trim().replace(/\/+$/, ""),
           supabaseKey: String(parsed.supabaseKey || "").trim(),
@@ -2071,11 +2271,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function saveCloudConfig(config) {
       const payload = JSON.stringify(config);
       try {
-        localStorage.setItem(CLOUD_CONFIG_KEY, payload);
+        safeLocalSet(CLOUD_CONFIG_KEY, payload);
       } catch (error) {
         if (!isStorageQuotaError(error)) throw error;
-        localStorage.removeItem(BACKUP_KEY);
-        localStorage.setItem(CLOUD_CONFIG_KEY, payload);
+        safeLocalRemove(BACKUP_KEY);
+        safeLocalSet(CLOUD_CONFIG_KEY, payload);
         showToast("本地空间不足，已清理临时缓存并保存配置");
       }
     }
@@ -2244,12 +2444,17 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function setView(viewId) {
       activeView = viewId;
-      ["entryView", "subjectView", "eventView", "summaryView", "profileView", "rosterView"].forEach(id => $(id).classList.toggle("hidden", id !== viewId));
-      document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.view === viewId));
+      syncActiveView();
       render();
     }
 
+    function syncActiveView() {
+      ["entryView", "subjectView", "eventView", "summaryView", "profileView", "rosterView"].forEach(id => $(id).classList.toggle("hidden", id !== activeView));
+      document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.view === activeView));
+    }
+
     function render() {
+      syncActiveView();
       const date = $("dateInput").value || today();
       ensureDate(date);
       renderHeader();
@@ -2260,6 +2465,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if ($("knowledgeTotalInput")) $("knowledgeTotalInput").value = knowledgeTotalForDate(date);
       renderHomeworkSettings();
       renderEntryStats(date);
+      renderTodayWorkbench(date);
       if (activeView === "entryView") renderEntry(date);
       if (activeView === "subjectView") renderSubjectTests();
       if (activeView === "eventView") renderEvents();
@@ -2296,6 +2502,16 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (quickNoteCard) {
         quickNoteCard.addEventListener("click", () => openQuickNoteModal(selectedStudent || state.students[0]?.name || ""));
       }
+    }
+
+    function renderTodayWorkbench(date) {
+      if (!$("todayWorkbenchTitle") || !$("todayWorkbenchSub")) return;
+      const records = getDateRecords(date);
+      const scored = records.filter(record => parseScore(record.score) !== null).length;
+      const abnormal = new Set(records.filter(isAbnormalRecord).map(record => record.name)).size;
+      const quickNotes = getQuickNotes({ date }).length;
+      $("todayWorkbenchTitle").textContent = `${formatShortDate(date)} 今日工作台`;
+      $("todayWorkbenchSub").textContent = `已录 ${scored}/${state.students.length} 人；异常 ${abnormal} 人；随手记 ${quickNotes} 条。`;
     }
 
     function statHtml(label, num, action = "") {
@@ -2606,11 +2822,146 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       render();
     }
 
+    function subjectExamKeyFor(date, subject) {
+      return `${normalizeDateKey(date)}__${String(subject || "").trim()}`;
+    }
+
+    function subjectExamGroups() {
+      const groups = new Map();
+      Object.values(state.subjectTests || {})
+        .filter(isMeaningfulSubjectTest)
+        .forEach(test => {
+          const date = normalizeDateKey(test.date);
+          const subject = String(test.subject || "").trim();
+          if (!date || !subject) return;
+          const key = subjectExamKeyFor(date, subject);
+          if (!groups.has(key)) groups.set(key, { key, date, subject, tests: [] });
+          groups.get(key).tests.push(test);
+        });
+
+      return [...groups.values()].map(group => {
+        calculateSubjectRanks(group.date, group.subject);
+        const scores = group.tests
+          .map(test => parseScore(test.score))
+          .filter(score => score !== null);
+        return {
+          ...group,
+          scoredCount: scores.length,
+          average: scores.length ? averageNumber(scores).toFixed(1) : "-",
+          highest: scores.length ? Math.max(...scores) : "-",
+          excellentCount: scores.filter(score => score >= (Number($("subjectMaxInput")?.value) || 100) * 0.85).length
+        };
+      }).sort((a, b) => b.date.localeCompare(a.date) || SUBJECTS.indexOf(a.subject) - SUBJECTS.indexOf(b.subject));
+    }
+
+    function selectedSubjectExamGroup(groups = subjectExamGroups()) {
+      if (!groups.length) return null;
+      const current = groups.find(group => group.key === selectedSubjectExamKey);
+      if (current) return current;
+      selectedSubjectExamKey = groups[0].key;
+      return groups[0];
+    }
+
     function renderSubjectTests() {
-      const date = $("subjectDateInput").value || today();
-      const subject = $("entrySubjectSelect").value || "电路";
+      const groups = subjectExamGroups();
+      const selected = selectedSubjectExamGroup(groups);
+      renderSubjectStats(selected, groups);
+      renderSubjectExamList(groups);
+      renderSubjectExamDetail(selected);
+
+      $("subjectEntryPanel").classList.toggle("hidden", !subjectEntryOpen);
+      if (subjectEntryOpen) {
+        const date = $("subjectDateInput").value || today();
+        const subject = $("entrySubjectSelect").value || "电路";
+        renderSubjectEntryTable(date, subject);
+      }
+    }
+
+    function renderSubjectExamList(groups) {
+      $("subjectExamList").innerHTML = groups.map(group => `
+        <button class="exam-card ${group.key === selectedSubjectExamKey ? "active" : ""}" data-key="${escapeHtml(group.key)}">
+          <span>
+            <span class="exam-card-title">${escapeHtml(group.subject)} · ${escapeHtml(formatShortDate(group.date))}</span>
+            <span class="exam-card-meta">${group.scoredCount}/${state.students.length} 人已录 · 均分 ${group.average}</span>
+          </span>
+          <span class="exam-card-actions">
+            <span class="exam-card-score">最高 ${escapeHtml(group.highest)}<br>85%+ ${group.excellentCount}</span>
+            <span class="small danger subject-exam-delete" data-date="${escapeHtml(group.date)}" data-subject="${escapeHtml(group.subject)}">删除</span>
+          </span>
+        </button>
+      `).join("") || `<div class="empty">暂无单科测试。点“录入新测试”开始登记。</div>`;
+
+      document.querySelectorAll(".exam-card").forEach(btn => {
+        btn.addEventListener("click", () => {
+          selectedSubjectExamKey = btn.dataset.key;
+          subjectEntryOpen = false;
+          renderSubjectTests();
+        });
+      });
+      document.querySelectorAll(".subject-exam-delete").forEach(btn => {
+        btn.addEventListener("click", event => {
+          event.stopPropagation();
+          deleteSubjectExam(btn.dataset.date, btn.dataset.subject);
+        });
+      });
+    }
+
+    function deleteSubjectExam(date, subject) {
+      const cleanDate = normalizeDateKey(date);
+      const cleanSubject = String(subject || "").trim();
+      if (!cleanDate || !cleanSubject) return;
+      const count = Object.values(state.subjectTests || {})
+        .filter(test => normalizeDateKey(test.date) === cleanDate && String(test.subject || "").trim() === cleanSubject)
+        .length;
+      if (!count) {
+        showToast("这场考试已经没有记录");
+        renderSubjectTests();
+        return;
+      }
+      const ok = confirm(`确定删除 ${cleanDate} ${cleanSubject} 这场单科测试吗？\\n会删除这场考试下所有学生的分数、排名、纠错和备注。`);
+      if (!ok) return;
+      Object.keys(state.subjectTests || {}).forEach(key => {
+        const test = state.subjectTests[key];
+        if (normalizeDateKey(test?.date) === cleanDate && String(test?.subject || "").trim() === cleanSubject) {
+          delete state.subjectTests[key];
+        }
+      });
+      if (selectedSubjectExamKey === subjectExamKeyFor(cleanDate, cleanSubject)) selectedSubjectExamKey = "";
+      saveState();
+      renderSubjectTests();
+      showToast("单科测试已删除");
+    }
+
+    function renderSubjectExamDetail(group) {
+      if (!group) {
+        $("subjectDetailTitle").textContent = "单科成绩";
+        $("subjectDetailSub").textContent = "选择左侧考试后显示全班成绩。";
+        $("subjectDetailBody").innerHTML = `<tr><td colspan="7" class="empty">还没有已录入的单科测试</td></tr>`;
+        return;
+      }
+
+      calculateSubjectRanks(group.date, group.subject);
+      $("subjectDetailTitle").textContent = `${group.subject} · ${formatShortDate(group.date)}`;
+      $("subjectDetailSub").textContent = `全班 ${state.students.length} 人，已录 ${group.scoredCount} 人，均分 ${group.average}，最高 ${group.highest}。`;
+      $("subjectDetailBody").innerHTML = state.students.map((student, idx) => {
+        const test = state.subjectTests?.[subjectKeyFor(group.date, group.subject, student.name)] || {};
+        const score = parseScore(test.score) === null ? "" : test.score;
+        return `
+          <tr>
+            <td class="idx">${idx + 1}</td>
+            <td><span class="name">${escapeHtml(student.name)}</span><span class="student-meta">${[student.source_class, student.gender, student.phone].filter(Boolean).join(" ")}</span></td>
+            <td class="muted">${escapeHtml(student.school || "")}</td>
+            <td>${score === "" ? `<span class="muted">未录</span>` : escapeHtml(score)}</td>
+            <td class="rank-cell">${escapeHtml(test.rank || "")}</td>
+            <td><span class="badge ${test.correction === "未纠错" ? "warn" : test.correction === "需面谈" ? "bad" : "ok"}">${escapeHtml(test.correction || "已纠错")}</span></td>
+            <td>${escapeHtml(test.note || "")}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function renderSubjectEntryTable(date, subject) {
       calculateSubjectRanks(date, subject);
-      renderSubjectStats(date, currentOverviewSubject(subject));
       const query = $("subjectSearch").value.trim();
       const rows = state.students
         .map((student, idx) => ({ student, idx, test: ensureSubjectTest(date, subject, student) }))
@@ -2633,11 +2984,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
       document.querySelectorAll(".subject-score-input").forEach((input, visibleIndex, inputs) => {
         input.addEventListener("input", () => {
+          selectedSubjectExamKey = subjectExamKeyFor(date, subject);
           updateSubjectField(date, subject, input.dataset.name, "score", input.value);
           calculateSubjectRanks(date, subject);
           saveState();
-          renderSubjectStats(date, currentOverviewSubject(subject));
-          document.querySelectorAll(".subject-score-input").forEach((scoreInput, idx) => {
+          renderSubjectStats(selectedSubjectExamGroup(subjectExamGroups()), subjectExamGroups());
+          document.querySelectorAll(".subject-score-input").forEach(scoreInput => {
             const row = scoreInput.closest("tr");
             const rankCell = row?.querySelector(".rank-cell");
             const studentName = scoreInput.dataset.name;
@@ -2657,45 +3009,39 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         });
       });
       document.querySelectorAll(".subject-correction-select").forEach(select => {
-        select.addEventListener("change", () => updateSubjectField(date, subject, select.dataset.name, "correction", select.value));
+        select.addEventListener("change", () => {
+          selectedSubjectExamKey = subjectExamKeyFor(date, subject);
+          updateSubjectField(date, subject, select.dataset.name, "correction", select.value);
+          renderSubjectTests();
+        });
       });
       document.querySelectorAll(".subject-note-input").forEach(input => {
-        input.addEventListener("input", () => updateSubjectField(date, subject, input.dataset.name, "note", input.value));
+        input.addEventListener("input", () => {
+          selectedSubjectExamKey = subjectExamKeyFor(date, subject);
+          updateSubjectField(date, subject, input.dataset.name, "note", input.value);
+        });
       });
     }
 
-    function renderSubjectStats(date, subject) {
-      const maxScore = Number($("subjectMaxInput").value) || 100;
-      const overview = subjectOverviewStats(subject, maxScore);
-      const subjectDateLabel = overview.latestDate ? `最近考试 ${formatShortDate(overview.latestDate)}` : "暂无考试日期";
+    function renderSubjectStats(group, groups = subjectExamGroups()) {
+      if (!group) {
+        $("subjectStats").innerHTML = [
+          statHtml("已测试场次", 0),
+          statHtml("学生总数", state.students.length),
+          statHtml("已测人数", `0/${state.students.length}`),
+          statHtml("平均分", "-"),
+          statHtml("最高分", "-")
+        ].join("");
+        return;
+      }
       $("subjectStats").innerHTML = [
-        subjectOverviewSelectHtml(subject, subjectDateLabel),
-        statHtml("已测人数", `${overview.studentCount}/${state.students.length}`),
-        statHtml("考试次数", overview.examCount),
-        statHtml("最近均分", overview.latestAvg),
-        statHtml("最高分", overview.maxScore),
-        statHtml("85%+累计", overview.excellentCount)
+        statHtml("当前考试", `${group.subject}`),
+        statHtml("考试日期", group.date),
+        statHtml("已测人数", `${group.scoredCount}/${state.students.length}`),
+        statHtml("平均分", group.average),
+        statHtml("最高分", group.highest),
+        statHtml("已测试场次", groups.length)
       ].join("");
-      $("overviewSubjectSelect").addEventListener("change", () => renderSubjectStats($("subjectDateInput").value || today(), $("overviewSubjectSelect").value || "电路"));
-    }
-
-    function subjectOverviewStats(subject, maxScore = 100) {
-      const tests = Object.values(state.subjectTests || {})
-        .filter(test => test.subject === subject)
-        .map(test => ({ ...test, scoreNum: parseScore(test.score) }))
-        .filter(test => test.scoreNum !== null);
-      const dates = [...new Set(tests.map(test => test.date).filter(Boolean))].sort();
-      const latestDate = dates[dates.length - 1] || "";
-      const latestScores = tests.filter(test => test.date === latestDate).map(test => test.scoreNum);
-      const max = tests.length ? Math.max(...tests.map(test => test.scoreNum)) : null;
-      return {
-        studentCount: new Set(tests.map(test => test.name)).size,
-        examCount: dates.length,
-        latestDate,
-        latestAvg: latestScores.length ? averageNumber(latestScores).toFixed(1) : "-",
-        maxScore: max === null ? "-" : max,
-        excellentCount: tests.filter(test => test.scoreNum >= maxScore * 0.85).length
-      };
     }
 
     function renderEvents() {
@@ -4984,7 +5330,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           imported.subjectTests = imported.subjectTests || {};
           state = imported;
           delete state.localSnapshots;
-          localStorage.removeItem(BACKUP_KEY);
+          safeLocalRemove(BACKUP_KEY);
           const payload = JSON.stringify(state);
           const mirrored = await mirrorStateToIndexedDb(payload);
           if (persistState(state) === false) return;
@@ -5010,6 +5356,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (Number.isNaN(date.getTime())) return value;
       const pad = number => String(number).padStart(2, "0");
       return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    }
+
+    function bindClick(id, handler) {
+      const element = $(id);
+      if (element) element.addEventListener("click", handler);
     }
 
     document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => setView(btn.dataset.view)));
@@ -5047,12 +5398,27 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("knowledgeTotalInput").value = knowledgeTotalForDate(date);
       renderEntry(date);
     });
-    $("subjectDateInput").addEventListener("change", renderSubjectTests);
-    $("entrySubjectSelect").addEventListener("change", renderSubjectTests);
-    $("subjectMaxInput").addEventListener("input", () => renderSubjectStats($("subjectDateInput").value || today(), currentOverviewSubject($("entrySubjectSelect").value || "电路")));
+    $("subjectDateInput").addEventListener("change", () => {
+      subjectEntryOpen = true;
+      renderSubjectTests();
+    });
+    $("entrySubjectSelect").addEventListener("change", () => {
+      subjectEntryOpen = true;
+      renderSubjectTests();
+    });
+    $("subjectMaxInput").addEventListener("input", renderSubjectTests);
     $("entrySearch").addEventListener("input", render);
     $("subjectSearch").addEventListener("input", renderSubjectTests);
     $("renameSubjectBtn").addEventListener("click", changeCurrentSubjectName);
+    bindClick("openSubjectEntryBtn", () => {
+      subjectEntryOpen = true;
+      renderSubjectTests();
+      setTimeout(() => $("subjectDateInput")?.focus(), 0);
+    });
+    bindClick("cancelSubjectEntryBtn", () => {
+      subjectEntryOpen = false;
+      renderSubjectTests();
+    });
     $("eventDateInput").addEventListener("change", renderEvents);
     $("eventSearch").addEventListener("input", renderEvents);
     $("addInlineQuickNoteBtn").addEventListener("click", addInlineQuickNote);
@@ -5062,7 +5428,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         addInlineQuickNote();
       }
     });
-    $("openQuickNoteBtn").addEventListener("click", () => openQuickNoteModal(CLASS_NOTE_NAME));
+    bindClick("openQuickNoteBtn", () => openQuickNoteModal(CLASS_NOTE_NAME));
+    bindClick("workbenchQuickBtn", () => openQuickNoteModal(CLASS_NOTE_NAME));
+    bindClick("workbenchSummaryBtn", () => setView("summaryView"));
+    bindClick("workbenchExportBtn", exportWorkbook);
     $("saveQuickNoteBtn").addEventListener("click", saveQuickNote);
     $("closeQuickNoteModalBtn").addEventListener("click", closeQuickNoteModal);
     ["quickNoteStudentSelect", "quickNoteDateInput"].forEach(id => {
@@ -5093,7 +5462,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }
     });
     $("copySubjectRankBtn").addEventListener("click", async () => {
-      const text = subjectRankText($("subjectDateInput").value || today(), $("entrySubjectSelect").value || "电路");
+      const group = selectedSubjectExamGroup();
+      const date = subjectEntryOpen ? $("subjectDateInput").value || today() : group?.date || $("subjectDateInput").value || today();
+      const subject = subjectEntryOpen ? $("entrySubjectSelect").value || "电路" : group?.subject || $("entrySubjectSelect").value || "电路";
+      const text = subjectRankText(date, subject);
       try {
         await navigator.clipboard.writeText(text);
         showToast("单科排名已复制");
@@ -5101,10 +5473,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         prompt("复制以下排名：", text);
       }
     });
-    $("classNameBtn").addEventListener("click", editClassName);
-    $("cloudSyncBtn").addEventListener("click", openCloudSyncModal);
-    $("exportJsonBtn").addEventListener("click", exportJson);
-    $("exportWorkbookBtn").addEventListener("click", exportWorkbook);
+    bindClick("classNameBtn", editClassName);
+    bindClick("cloudSyncBtn", openCloudSyncModal);
+    bindClick("exportJsonBtn", exportJson);
+    bindClick("exportWorkbookBtn", exportWorkbook);
     $("quickNoteModal").addEventListener("click", event => {
       if (event.target.id === "quickNoteModal") closeQuickNoteModal();
     });
