@@ -1759,6 +1759,19 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return JSON.stringify(state, null, 2);
     }
 
+    function archiveFileName() {
+      const className = String(state.className || DEFAULT_CLASS_NAME).replace(/[\\/:*?"<>|]/g, "").trim() || "学生档案";
+      return `${className}-本地存档-${today()}.json`;
+    }
+
+    function downloadArchiveFallback(showMessage = true) {
+      download(archiveFileName(), archivePayload(), "application/json;charset=utf-8");
+      if (showMessage) {
+        alert("当前浏览器不支持直接绑定电脑文件，已改为下载一个 JSON 存档。\n\n以后如果浏览器数据清空：点击“本地存档”里的“打开存档文件”，或顶部“恢复JSON”，选择这个文件即可恢复。");
+      }
+      return true;
+    }
+
     function setArchiveStatus(text, type = "") {
       if ($("archiveSyncStatus")) $("archiveSyncStatus").textContent = text;
       if ($("archiveSyncDot")) $("archiveSyncDot").className = `sync-dot ${type}`.trim();
@@ -1780,6 +1793,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     async function writeArchiveFile(showMessage = false) {
+      if (!archiveSupported()) {
+        return downloadArchiveFallback(showMessage);
+      }
       if (!archiveHandle) {
         if (showMessage) showToast("请先打开或绑定存档文件");
         return false;
@@ -1813,8 +1829,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     async function bindArchiveFile() {
       if (!archiveSupported()) {
-        alert("当前浏览器不支持直接写入本地文件。请使用最新版 Chrome，或继续用“备份JSON/恢复JSON”。");
-        return;
+        downloadArchiveFallback(true);
+        setArchiveStatus("已下载本地存档，请妥善保存", "warn");
+        return true;
       }
       try {
         const handle = await window.showSaveFilePicker({
@@ -1830,7 +1847,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     async function openArchiveFile() {
       if (!archiveSupported()) {
-        alert("当前浏览器不支持直接读取本地存档文件。请使用“恢复JSON”导入。");
+        alert("当前浏览器不支持直接打开本地存档文件，将改用普通“恢复JSON”导入。请选择之前下载的本地存档 JSON。");
+        closeLocalArchiveModal();
+        $("importFile").click();
         return;
       }
       try {
@@ -1857,7 +1876,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function openLocalArchiveModal() {
       if (!archiveSupported()) {
-        setArchiveStatus("当前浏览器不支持本地文件存档", "bad");
+        setArchiveStatus("当前浏览器使用下载存档模式", "warn");
       } else if (archiveHandle) {
         setArchiveStatus(`已绑定：${archiveHandle.name || "本地存档文件"}`, "ok");
       } else {
@@ -1871,6 +1890,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     async function restoreArchiveHandleIfPossible() {
+      if (!archiveSupported()) return;
       const handle = await readIndexedDbValue(ARCHIVE_HANDLE_KEY);
       if (!handle) return;
       archiveHandle = handle;
