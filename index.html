@@ -28,37 +28,238 @@
       font-size: 14px;
       overflow-x: hidden;
     }
+    .admin-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 160px minmax(0, 1fr);
+      background: #f5f7fb;
+    }
+    .admin-shell.sidebar-collapsed {
+      grid-template-columns: 64px minmax(0, 1fr);
+    }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      background: #fff;
+      border-right: 1px solid #eef1f5;
+      box-shadow: 6px 0 18px rgba(17, 24, 39, .03);
+      z-index: 30;
+      overflow: auto;
+    }
+    .brand {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      border-bottom: 1px solid #f1f3f6;
+      font-size: 16px;
+      font-weight: 800;
+      color: #111827;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .admin-shell.sidebar-collapsed .brand {
+      padding: 0;
+      justify-content: center;
+      font-size: 0;
+    }
+    .admin-shell.sidebar-collapsed .brand::before {
+      content: "天行";
+      font-size: 14px;
+    }
+    .side-nav {
+      padding: 12px 0;
+      display: grid;
+      gap: 2px;
+    }
+    .nav-group-title {
+      padding: 12px 20px 6px;
+      color: #111827;
+      font-weight: 760;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .nav-item {
+      width: 100%;
+      height: 38px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: #1f2937;
+      padding: 0 20px;
+      justify-content: flex-start;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 650;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .nav-item:hover {
+      background: #f7fafc;
+      border-color: transparent;
+    }
+    .nav-item.active {
+      background: #eef8f6;
+      color: #2f8a7a;
+      border-right: 3px solid #2f8a7a;
+    }
+    .nav-mark {
+      width: 18px;
+      height: 18px;
+      display: inline-grid;
+      place-items: center;
+      color: currentColor;
+      font-size: 15px;
+      flex: 0 0 auto;
+    }
+    .admin-shell.sidebar-collapsed .nav-item,
+    .admin-shell.sidebar-collapsed .nav-group-title {
+      padding-left: 0;
+      padding-right: 0;
+      justify-content: center;
+      font-size: 0;
+    }
+    .admin-shell.sidebar-collapsed .nav-mark {
+      font-size: 15px;
+    }
+    .admin-main {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
     header {
       position: sticky;
       top: 0;
       z-index: 20;
-      background: rgba(255, 255, 255, .94);
-      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, .96);
+      border-bottom: 1px solid #eef1f5;
+      box-shadow: 0 3px 12px rgba(17, 24, 39, .04);
       backdrop-filter: blur(10px);
     }
     .topbar {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 14px 18px;
+      min-height: 52px;
+      padding: 0 24px;
       display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 16px;
+      grid-template-columns: auto minmax(240px, 1fr) auto;
+      gap: 12px;
       align-items: center;
+    }
+    .menu-button {
+      width: 34px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      font-size: 22px;
+      color: #111827;
+    }
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #8a94a6;
+      font-size: 13px;
+      min-width: 0;
+    }
+    .breadcrumb strong {
+      color: #374151;
+      font-weight: 720;
+    }
+    .top-title {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+    .top-title h1 {
+      font-size: 17px;
+      line-height: 1.25;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .top-title .sub {
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .top-tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .top-search {
+      width: 220px;
+      height: 36px;
+      color: #9ca3af;
+    }
+    .teacher-name {
+      color: #374151;
+      white-space: nowrap;
+      font-weight: 650;
+    }
+    .data-tools {
+      position: relative;
+    }
+    .data-tools summary {
+      list-style: none;
+      height: 30px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 650;
+    }
+    .data-tools summary::-webkit-details-marker { display: none; }
+    .data-tools summary::after {
+      content: "⌄";
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .data-tools[open] summary {
+      border-color: #9aa6b8;
+      background: #f9fafb;
+    }
+    .data-tool-menu {
+      position: absolute;
+      right: 0;
+      top: 38px;
+      width: 176px;
+      padding: 8px;
+      display: grid;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 18px 36px rgba(17, 24, 39, .14);
+      z-index: 60;
+    }
+    .data-tool-menu button {
+      width: 100%;
+      justify-content: flex-start;
+      text-align: left;
     }
     h1 {
       margin: 0;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 760;
       letter-spacing: 0;
     }
     .sub {
-      margin-top: 4px;
+      margin-top: 3px;
       color: var(--muted);
       font-size: 12px;
     }
     .actions, .tabs, .toolbar, .quick-row, .profile-controls, .workbench-actions {
       display: flex;
-      gap: 8px;
+      gap: 7px;
       align-items: center;
       flex-wrap: wrap;
     }
@@ -69,8 +270,8 @@
       border: 1px solid var(--line);
       background: #fff;
       color: var(--ink);
-      height: 34px;
-      padding: 0 12px;
+      height: 30px;
+      padding: 0 10px;
       border-radius: 6px;
       cursor: pointer;
       transition: .15s ease;
@@ -78,15 +279,15 @@
     button:hover { border-color: #9aa6b8; background: #f9fafb; }
     button.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
     button.danger { color: var(--red); border-color: #fecaca; background: #fff7f7; }
-    button.small { height: 28px; padding: 0 9px; font-size: 12px; }
+    button.small { height: 26px; padding: 0 9px; font-size: 12px; }
     button.active { background: #111827; border-color: #111827; color: #fff; }
     input, select, textarea {
       border: 1px solid var(--line);
       border-radius: 6px;
       background: #fff;
       color: var(--text);
-      min-height: 34px;
-      padding: 6px 9px;
+      min-height: 30px;
+      padding: 5px 8px;
       outline: none;
     }
     input:focus, select:focus, textarea:focus {
@@ -95,34 +296,27 @@
     }
     input[type="date"] { min-width: 152px; }
     main {
-      max-width: 1280px;
+      width: 100%;
+      max-width: 1480px;
       margin: 0 auto;
-      padding: 16px 18px 40px;
+      padding: 18px 26px 42px;
     }
-    .tabs {
-      margin-bottom: 12px;
-      position: sticky;
-      top: 69px;
-      z-index: 12;
-      padding: 8px 0;
-      background: rgba(246, 247, 249, .94);
-      backdrop-filter: blur(10px);
-    }
+    .tabs { display: contents; }
     .tab {
-      min-width: 92px;
-      font-weight: 700;
+      min-width: 0;
+      font-weight: 650;
     }
     .stats {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 10px;
-      margin-bottom: 12px;
+      gap: 8px;
+      margin-bottom: 10px;
     }
     .stat {
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 12px;
+      padding: 10px 12px;
       box-shadow: var(--shadow);
     }
     .stat.clickable {
@@ -138,15 +332,15 @@
       border-color: var(--blue);
       box-shadow: 0 0 0 2px rgba(37, 99, 235, .14), var(--shadow);
     }
-    .stat .num { font-size: 24px; font-weight: 780; }
+    .stat .num { font-size: 22px; font-weight: 780; }
     .stat .label { color: var(--muted); font-size: 12px; margin-top: 2px; }
     .today-workbench {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 12px;
+      gap: 10px;
       align-items: center;
-      margin-bottom: 12px;
-      padding: 12px;
+      margin-bottom: 10px;
+      padding: 9px 12px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: #fff;
@@ -154,7 +348,7 @@
     }
     .today-workbench strong {
       display: block;
-      font-size: 16px;
+      font-size: 15px;
     }
     .workbench-actions {
       justify-content: flex-end;
@@ -182,19 +376,20 @@
       min-width: 0;
     }
     .panel-head {
-      padding: 12px;
+      padding: 10px 12px;
       border-bottom: 1px solid var(--line);
       display: grid;
       grid-template-columns: 1fr auto;
-      gap: 10px;
+      gap: 8px;
       align-items: center;
+      background: #fff;
     }
     .panel-title {
       margin: 0;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 750;
     }
-    .table-wrap { overflow: auto; max-height: calc(100vh - 260px); }
+    .table-wrap { overflow: auto; max-height: calc(100vh - 230px); }
     .subject-page-grid {
       display: grid;
       grid-template-columns: minmax(280px, .85fr) minmax(0, 1.35fr);
@@ -289,6 +484,17 @@
     .muted { color: var(--muted); }
     .score-input { width: 80px; text-align: center; }
     .knowledge-input { width: 86px; text-align: center; }
+    .test-config {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #f8fafc;
+      white-space: nowrap;
+    }
+    .test-config .knowledge-input { width: 72px; background: #fff; }
     .homework-select { width: 76px; }
     .note-input { width: 180px; }
     .event-content-input { width: min(520px, 100%); min-height: 72px; }
@@ -851,43 +1057,101 @@
     }
 
     @media (max-width: 860px) {
-      .topbar, .panel-head, .today-workbench { grid-template-columns: 1fr; }
+      .admin-shell, .admin-shell.sidebar-collapsed { grid-template-columns: 1fr; }
+      .sidebar {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid #eef1f5;
+      }
+      .brand { height: 48px; padding: 0 14px; }
+      .side-nav {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding: 8px 12px;
+      }
+      .nav-group-title { display: none; }
+      .nav-item {
+        width: auto;
+        flex: 0 0 auto;
+        height: 36px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 0 12px;
+      }
+      .admin-shell.sidebar-collapsed .nav-item {
+        padding: 0 12px;
+        font-size: 14px;
+      }
+      .admin-shell.sidebar-collapsed .brand {
+        padding: 0 14px;
+        justify-content: flex-start;
+        font-size: 16px;
+      }
+      .admin-shell.sidebar-collapsed .brand::before { content: ""; }
+      .topbar, .top-summary, .panel-head, .today-workbench { grid-template-columns: 1fr; }
+      .topbar { padding: 10px 12px; }
+      .top-title h1, .top-title .sub { white-space: normal; }
+      .menu-button { display: none; }
       .stats, .subject-page-grid, .profile-kpis, .summary-grid, .profile-layout, .roster-grid, .ai-grid, .mentor-grid, .quick-note-grid, .quick-note-item, .communication-grid { grid-template-columns: 1fr; }
-      .actions, .workbench-actions { justify-content: flex-start; }
-      .tabs { top: 0; overflow-x: auto; flex-wrap: nowrap; }
+      .actions, .top-summary .actions, .workbench-actions { justify-content: flex-start; }
+      .top-tools { align-items: stretch; flex-direction: column; }
+      .top-search { width: 100%; }
+      .data-tools summary { width: 100%; justify-content: center; }
+      .data-tool-menu { position: static; width: 100%; margin-top: 6px; }
       .tab { flex: 0 0 auto; }
       main { padding: 12px; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <div class="topbar">
-      <div>
-        <h1 id="appTitle">VIP2 班每日状态与成绩录入管理系统</h1>
-        <div class="sub" id="appSubtitle">49 人名单已导入；每日录入按需开启作业和知识点检查，只需记录分数和异常。</div>
-      </div>
-      <div class="actions">
-        <button id="classNameBtn">班级名称</button>
-        <button id="cloudSyncBtn">云同步</button>
-        <button id="openQuickNoteBtn" class="primary">快速随手记</button>
-        <button id="exportJsonBtn">保存到电脑</button>
-        <button id="exportWorkbookBtn">导出Excel</button>
-        <button id="importBtn">从电脑恢复</button>
-        <input class="file-input" id="importFile" type="file" accept=".json,application/json">
-      </div>
-    </div>
-  </header>
+  <div class="admin-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand" aria-label="系统导航"></div>
+      <nav class="side-nav" aria-label="系统模块">
+        <button class="tab nav-item active" data-view="profileView"><span class="nav-mark">●</span>学员管理</button>
+        <button class="tab nav-item" data-view="rosterView"><span class="nav-mark">■</span>班级管理</button>
+        <div class="nav-group-title"><span class="nav-mark">▲</span>考试管理</div>
+        <button class="tab nav-item" data-view="entryView"><span class="nav-mark">·</span>每日录入</button>
+        <button class="tab nav-item" data-view="subjectView"><span class="nav-mark">·</span>各科单科卷</button>
+        <button class="tab nav-item" data-view="eventView"><span class="nav-mark">·</span>随手记</button>
+        <button class="tab nav-item" data-view="summaryView"><span class="nav-mark">·</span>今日异常</button>
+      </nav>
+    </aside>
 
-  <main>
-    <div class="tabs">
-      <button class="tab active" data-view="entryView">每日录入</button>
-      <button class="tab" data-view="subjectView">单科测试</button>
-      <button class="tab" data-view="eventView">随手记</button>
-      <button class="tab" data-view="summaryView">今日异常</button>
-      <button class="tab" data-view="profileView">学生画像</button>
-      <button class="tab" data-view="rosterView">学生名单</button>
-    </div>
+    <div class="admin-main">
+      <header>
+        <div class="topbar">
+          <button class="menu-button" id="sidebarToggleBtn" title="展开/收起菜单">☰</button>
+          <div class="top-title">
+            <h1 id="appTitle">VIP2 班每日状态与成绩录入管理系统</h1>
+            <div class="breadcrumb">
+              <strong id="topModuleName">考试管理</strong>
+              <span>&gt;</span>
+              <span id="topPageName">每日录入</span>
+              <span class="sub" id="appSubtitle">49 人名单已导入；每日录入按需开启作业和知识点检查。</span>
+            </div>
+          </div>
+          <div class="top-tools">
+            <input id="globalSearchInput" class="top-search" type="search" placeholder="试试搜索：学生 / 学校">
+            <button id="openQuickNoteBtn" class="primary">随手记</button>
+            <details class="data-tools">
+              <summary>数据工具</summary>
+              <div class="data-tool-menu">
+                <button id="classNameBtn">班级名称</button>
+                <button id="cloudSyncBtn">云同步</button>
+                <button id="exportJsonBtn">保存到电脑</button>
+                <button id="exportWorkbookBtn">导出Excel</button>
+                <button id="importBtn">从电脑恢复</button>
+                <input class="file-input" id="importFile" type="file" accept=".json,application/json">
+              </div>
+            </details>
+          </div>
+        </div>
+      </header>
+
+      <main>
 
     <section id="rosterView" class="hidden">
       <div class="stats" id="rosterStats"></div>
@@ -981,15 +1245,13 @@
         <div class="panel-head">
           <div>
             <h2 class="panel-title">按日期录入</h2>
-            <div class="sub">每日录入只做当天总表和状态打标；具体原因、处理和跟进写进“随手记”。</div>
           </div>
           <div class="toolbar">
             <label>日期 <input id="dateInput" type="date"></label>
             <label><input id="hasHomeworkInput" type="checkbox" checked> 今日有作业</label>
-            <label><input id="hasKnowledgeInput" type="checkbox"> 今日查知识点</label>
-            <label id="knowledgeTotalWrap" class="hidden">共 <input id="knowledgeTotalInput" class="knowledge-input" type="number" min="1" max="50" inputmode="numeric" placeholder="7"> 题</label>
+            <label id="dailyTestTotalWrap" class="test-config">理解题 共 <input id="dailyTestTotalInput" class="knowledge-input" type="number" min="1" max="50" inputmode="numeric" placeholder="不录"> 题</label>
+            <label id="knowledgeTotalWrap" class="test-config">知识点 共 <input id="knowledgeTotalInput" class="knowledge-input" type="number" min="1" max="50" inputmode="numeric" placeholder="不录"> 题</label>
             <label>搜索 <input id="entrySearch" type="search" placeholder="序号 / 姓名首字母 / 学校"></label>
-            <button id="resetDefaultsBtn">补齐默认记录</button>
           </div>
         </div>
         <details class="config-fold">
@@ -1009,6 +1271,7 @@
                 <th>姓名</th>
                 <th>学校</th>
                 <th>日测分数</th>
+                <th id="dailyWrongHeader">理解题错题</th>
                 <th id="knowledgeHeader">错题数</th>
                 <th>日测纠错</th>
                 <th id="homeworkHeader0">讲义</th>
@@ -1279,7 +1542,9 @@
         </div>
       </div>
     </section>
-  </main>
+      </main>
+    </div>
+  </div>
 
   <div class="toast" id="toast"></div>
   <div class="modal hidden" id="quickNoteModal">
@@ -1465,6 +1730,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     let subjectEntryOpen = false;
     let cloudSaveTimer = null;
     let cloudBusy = false;
+    const VIEW_META = {
+      entryView: { module: "考试管理", page: "每日录入", searchId: "entrySearch" },
+      subjectView: { module: "考试管理", page: "各科单科卷", searchId: "subjectSearch" },
+      eventView: { module: "考试管理", page: "随手记", searchId: "eventSearch" },
+      summaryView: { module: "考试管理", page: "今日异常", searchId: "" },
+      profileView: { module: "学员管理", page: "学生画像", searchId: "profileSearch" },
+      rosterView: { module: "班级管理", page: "学生名单", searchId: "" }
+    };
 
     function normalizeDateKey(value) {
       const text = String(value || "").trim().replaceAll("/", "-");
@@ -1518,6 +1791,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         subjectTests: seed.subjectTests || {},
         events: seed.events || [],
         quickNotes: seed.quickNotes || [],
+        dailyTestDates: {},
         knowledgeDates: {},
         homeworkNames: [...DEFAULT_HOMEWORK_NAMES],
         className: DEFAULT_CLASS_NAME,
@@ -1533,6 +1807,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         subjectTests: { ...(seed.subjectTests || {}), ...(parsed.subjectTests || {}) },
         events: Array.isArray(parsed.events) ? parsed.events : (seed.events || []),
         quickNotes: Array.isArray(parsed.quickNotes) ? parsed.quickNotes : (seed.quickNotes || []),
+        dailyTestDates: parsed.dailyTestDates && typeof parsed.dailyTestDates === "object" ? parsed.dailyTestDates : {},
         knowledgeDates: parsed.knowledgeDates && typeof parsed.knowledgeDates === "object" ? parsed.knowledgeDates : {},
         homeworkNames: Array.isArray(parsed.homeworkNames) ? parsed.homeworkNames : [...DEFAULT_HOMEWORK_NAMES],
         className: parsed.className || DEFAULT_CLASS_NAME,
@@ -1546,11 +1821,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       target.updatedAt = target.updatedAt || new Date().toISOString();
       target.students = Array.isArray(target.students) ? target.students : [];
       target.students.forEach(normalizeStudent);
+      normalizeModuleDates(target, "dailyTestDates");
       normalizeKnowledgeDates(target);
       normalizeHomeworkNames(target);
       Object.values(target.records || {}).forEach(record => {
         if (record.homework === "A-") record.homework = "A";
         if (!record.homework) record.homework = "A";
+        record.daily_wrong = String(record.daily_wrong ?? "").trim();
         record.knowledge_point = String(record.knowledge_point || "").trim();
         const parsedKnowledge = parseKnowledgePoint(record.knowledge_point);
         if (record.knowledge_wrong === undefined && parsedKnowledge.wrong !== "") record.knowledge_wrong = parsedKnowledge.wrong;
@@ -1633,21 +1910,25 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       });
     }
 
-    function normalizeKnowledgeDates(target) {
-      const source = target.knowledgeDates && typeof target.knowledgeDates === "object" ? target.knowledgeDates : {};
-      target.knowledgeDates = {};
+    function normalizeModuleDates(target, key) {
+      const source = target[key] && typeof target[key] === "object" ? target[key] : {};
+      target[key] = {};
       Object.entries(source).forEach(([date, config]) => {
         if (config === true) {
-          target.knowledgeDates[date] = { enabled: true, total: "" };
+          target[key][date] = { enabled: true, total: "" };
           return;
         }
         if (config && typeof config === "object") {
-          target.knowledgeDates[date] = {
+          target[key][date] = {
             enabled: Boolean(config.enabled),
             total: String(config.total || "").trim()
           };
         }
       });
+    }
+
+    function normalizeKnowledgeDates(target) {
+      normalizeModuleDates(target, "knowledgeDates");
     }
 
     function parseKnowledgePoint(value) {
@@ -1984,6 +2265,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           date,
           name: student.name,
           score: "",
+          daily_wrong: "",
           knowledge_point: "",
           knowledge_wrong: "",
           homework: homeworkNames().map(name => `${name}:${NO_HOMEWORK}`).join(" / "),
@@ -2021,6 +2303,84 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         });
       });
       saveState();
+    }
+
+    function dailyTestConfigForDate(date) {
+      state.dailyTestDates = state.dailyTestDates || {};
+      const config = state.dailyTestDates[date];
+      if (config === true) return { enabled: true, total: "" };
+      if (config && typeof config === "object") return { enabled: Boolean(config.enabled), total: String(config.total || "").trim() };
+      return { enabled: false, total: "" };
+    }
+
+    function dailyTestTotalForDate(date) {
+      return dailyTestConfigForDate(date).total || "";
+    }
+
+    function hasDailyTestForDate(date) {
+      const config = dailyTestConfigForDate(date);
+      return config.enabled || getDateRecords(date).some(record => record.daily_wrong !== "");
+    }
+
+    function setDailyTestForDate(date, hasDailyTest) {
+      state.dailyTestDates = state.dailyTestDates || {};
+      if (hasDailyTest) {
+        const config = dailyTestConfigForDate(date);
+        state.dailyTestDates[date] = { enabled: true, total: config.total };
+      } else {
+        delete state.dailyTestDates[date];
+        getDateRecords(date).forEach(record => {
+          record.daily_wrong = "";
+        });
+      }
+      saveState();
+    }
+
+    function setDailyTestTotalForDate(date, value) {
+      const text = normalizePositiveInteger(value, { min: 1, max: 50 });
+      state.dailyTestDates = state.dailyTestDates || {};
+      if (!text) {
+        delete state.dailyTestDates[date];
+        getDateRecords(date).forEach(record => {
+          record.daily_wrong = "";
+        });
+        saveState();
+        return;
+      }
+      state.dailyTestDates[date] = { enabled: true, total: text };
+      getDateRecords(date).forEach(record => {
+        record.daily_wrong = normalizeDailyWrongForDate(date, record.daily_wrong);
+      });
+      saveState();
+    }
+
+    function normalizeDailyWrongForDate(date, value) {
+      const total = Number(dailyTestTotalForDate(date));
+      const max = Number.isFinite(total) && total > 0 ? total : Infinity;
+      return normalizePositiveInteger(value, { min: 0, max });
+    }
+
+    function dailyWrongText(record) {
+      if (!record) return "";
+      const wrong = normalizeDailyWrongForDate(record?.date, record?.daily_wrong);
+      const total = dailyTestTotalForDate(record?.date);
+      if (wrong === "") return "";
+      if (total) return wrong === "0" ? "全对" : `错${wrong}`;
+      return wrong === "0" ? "全对" : `错${wrong}`;
+    }
+
+    function dailyWrongExportText(record, includeTotal = true) {
+      if (!record) return "";
+      const wrong = normalizeDailyWrongForDate(record?.date, record?.daily_wrong);
+      if (wrong === "") return "";
+      const text = wrong === "0" ? "全对" : `错${wrong}`;
+      const total = dailyTestTotalForDate(record?.date);
+      return includeTotal && total ? `${total}${text}` : text;
+    }
+
+    function dailyWrongExportHeader(date) {
+      const total = dailyTestTotalForDate(date);
+      return `${formatShortDate(date)}理解题${total ? `（共${total}题）` : ""}`;
     }
 
     function knowledgeConfigForDate(date) {
@@ -2063,6 +2423,15 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function setKnowledgeTotalForDate(date, value) {
       const text = normalizePositiveInteger(value, { min: 1, max: 50 });
       state.knowledgeDates = state.knowledgeDates || {};
+      if (!text) {
+        delete state.knowledgeDates[date];
+        getDateRecords(date).forEach(record => {
+          record.knowledge_point = "";
+          record.knowledge_wrong = "";
+        });
+        saveState();
+        return;
+      }
       state.knowledgeDates[date] = { enabled: true, total: text };
       getDateRecords(date).forEach(record => {
         record.knowledge_wrong = normalizeKnowledgeWrongForDate(date, record.knowledge_wrong);
@@ -2451,6 +2820,23 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function syncActiveView() {
       ["entryView", "subjectView", "eventView", "summaryView", "profileView", "rosterView"].forEach(id => $(id).classList.toggle("hidden", id !== activeView));
       document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.view === activeView));
+      const meta = VIEW_META[activeView] || VIEW_META.entryView;
+      if ($("topModuleName")) $("topModuleName").textContent = meta.module;
+      if ($("topPageName")) $("topPageName").textContent = meta.page;
+      const searchInput = $("globalSearchInput");
+      if (searchInput) {
+        const targetId = meta.searchId;
+        searchInput.placeholder = targetId ? `试试搜索：${meta.page}` : "当前模块无需搜索";
+        searchInput.value = targetId && $(targetId) ? $(targetId).value : "";
+        searchInput.disabled = !targetId;
+      }
+    }
+
+    function applyGlobalSearch(value) {
+      const meta = VIEW_META[activeView] || {};
+      if (!meta.searchId || !$(meta.searchId)) return;
+      $(meta.searchId).value = value;
+      render();
     }
 
     function render() {
@@ -2459,9 +2845,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       ensureDate(date);
       renderHeader();
       if ($("hasHomeworkInput")) $("hasHomeworkInput").checked = hasHomeworkForDate(date);
+      const hasDailyTest = hasDailyTestForDate(date);
+      if ($("hasDailyTestInput")) $("hasDailyTestInput").checked = hasDailyTest;
+      if ($("dailyTestTotalInput")) $("dailyTestTotalInput").value = dailyTestTotalForDate(date);
       const hasKnowledge = hasKnowledgeForDate(date);
       if ($("hasKnowledgeInput")) $("hasKnowledgeInput").checked = hasKnowledge;
-      if ($("knowledgeTotalWrap")) $("knowledgeTotalWrap").classList.toggle("hidden", !hasKnowledge);
       if ($("knowledgeTotalInput")) $("knowledgeTotalInput").value = knowledgeTotalForDate(date);
       renderHomeworkSettings();
       renderEntryStats(date);
@@ -2679,6 +3067,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const query = $("entrySearch").value.trim();
       const names = homeworkNames();
       const hasHomework = hasHomeworkForDate(date);
+      const hasDailyTest = hasDailyTestForDate(date);
+      const dailyTestTotal = dailyTestTotalForDate(date);
       const hasKnowledge = hasKnowledgeForDate(date);
       const knowledgeTotal = knowledgeTotalForDate(date);
       const rows = state.students
@@ -2688,6 +3078,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("homeworkHeader1").textContent = names[1];
       $("homeworkHeader0").classList.toggle("hidden", !hasHomework);
       $("homeworkHeader1").classList.toggle("hidden", !hasHomework);
+      $("dailyWrongHeader").textContent = dailyTestTotal ? `理解题错题（共${dailyTestTotal}题）` : "理解题错题";
+      $("dailyWrongHeader").classList.toggle("hidden", !hasDailyTest);
+      $("knowledgeHeader").textContent = knowledgeTotal ? `知识点错题（共${knowledgeTotal}题）` : "知识点错题";
       $("knowledgeHeader").classList.toggle("hidden", !hasKnowledge);
       $("entryBody").innerHTML = rows.map(({ student, idx, record }) => `
         <tr>
@@ -2695,7 +3088,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <td><span class="name">${student.name}</span><span class="student-meta">${[student.source_class, student.gender, student.phone].filter(Boolean).join(" ")}</span></td>
           <td class="muted">${student.school}</td>
           <td><input class="score-input" data-name="${student.name}" type="number" min="0" max="150" inputmode="decimal" value="${escapeHtml(record.score)}"></td>
-          ${hasKnowledge ? `<td><input class="knowledge-input" data-name="${student.name}" type="number" min="0" ${knowledgeTotal ? `max="${escapeHtml(knowledgeTotal)}"` : ""} inputmode="numeric" placeholder="错几题" value="${escapeHtml(record.knowledge_wrong ?? parseKnowledgePoint(record.knowledge_point).wrong)}"></td>` : ""}
+          ${hasDailyTest ? `<td><input class="daily-wrong-input knowledge-input" data-name="${student.name}" type="number" min="0" ${dailyTestTotal ? `max="${escapeHtml(dailyTestTotal)}"` : ""} inputmode="numeric" placeholder="错几题" value="${escapeHtml(record.daily_wrong || "")}"></td>` : ""}
+          ${hasKnowledge ? `<td><input class="knowledge-wrong-input knowledge-input" data-name="${student.name}" type="number" min="0" ${knowledgeTotal ? `max="${escapeHtml(knowledgeTotal)}"` : ""} inputmode="numeric" placeholder="错几题" value="${escapeHtml(record.knowledge_wrong ?? parseKnowledgePoint(record.knowledge_point).wrong)}"></td>` : ""}
           <td>
             <select class="daily-correction-select" data-name="${student.name}" ${isDailyFullScore(record) ? "disabled title=\"满分不需要纠错\"" : ""}>
               ${dailyCorrectionOptionsFor(record)}
@@ -2739,7 +3133,25 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           }
         });
       });
-      document.querySelectorAll(".knowledge-input").forEach((input, visibleIndex, inputs) => {
+      document.querySelectorAll(".daily-wrong-input").forEach((input, visibleIndex, inputs) => {
+        input.addEventListener("input", () => {
+          const before = input.value;
+          const record = updateRecordField(date, input.dataset.name, "daily_wrong", input.value);
+          if (record) input.value = record.daily_wrong || "";
+          if (before && record && before !== record.daily_wrong && dailyTestTotalForDate(date)) showToast("理解题错题数不能超过当天总题数");
+        });
+        input.addEventListener("keydown", event => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            const next = inputs[visibleIndex + 1];
+            if (next) {
+              next.focus();
+              next.select();
+            }
+          }
+        });
+      });
+      document.querySelectorAll(".knowledge-wrong-input").forEach((input, visibleIndex, inputs) => {
         input.addEventListener("input", () => {
           const before = input.value;
           const record = updateRecordField(date, input.dataset.name, "knowledge_wrong", input.value);
@@ -2792,6 +3204,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const student = state.students.find(item => item.name === name);
       if (!student) return;
       const record = ensureRecord(date, student);
+      if (field === "daily_wrong") value = normalizeDailyWrongForDate(date, value);
       if (field === "knowledge_wrong") value = normalizeKnowledgeWrongForDate(date, value);
       record[field] = value;
       if (field === "knowledge_wrong") record.knowledge_point = "";
@@ -3741,12 +4154,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const scoredRecords = records.filter(record => parseScore(record.score) !== null);
       const latestRecord = scoredRecords[scoredRecords.length - 1];
       const subjectScored = subjectTests.filter(test => parseScore(test.score) !== null);
-      const mapRows = (items, emptyText, mapper) => items.length ? items.map(mapper).join("") : `<tr><td colspan="6" class="empty">${emptyText}</td></tr>`;
+      const mapRows = (items, emptyText, mapper) => items.length ? items.map(mapper).join("") : `<tr><td colspan="7" class="empty">${emptyText}</td></tr>`;
+      const dailyDetailHead = `<tr><th>日期</th><th>分数</th><th>理解题</th><th>知识点</th><th>纠错</th><th>作业</th><th>状态</th></tr>`;
       if (action === "profileDailyScores") {
         return {
           title: "日测分数明细",
           sub: "用于查看平均分由哪些日测组成。",
-          head: `<tr><th>日期</th><th>分数</th><th>知识点</th><th>纠错</th><th>作业</th><th>状态</th></tr>`,
+          head: dailyDetailHead,
           body: mapRows(scoredRecords, "暂无日测分数", profileDailyRowHtml)
         };
       }
@@ -3754,8 +4168,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         return {
           title: "最近一次日测",
           sub: latestRecord ? `${latestRecord.date} 的最近有效分数。` : "暂无有效日测分数。",
-          head: `<tr><th>日期</th><th>分数</th><th>知识点</th><th>纠错</th><th>作业</th><th>状态</th></tr>`,
-          body: latestRecord ? profileDailyRowHtml(latestRecord) : `<tr><td colspan="6" class="empty">暂无最近分数</td></tr>`
+          head: dailyDetailHead,
+          body: latestRecord ? profileDailyRowHtml(latestRecord) : `<tr><td colspan="7" class="empty">暂无最近分数</td></tr>`
         };
       }
       if (action === "profileNap") {
@@ -3763,7 +4177,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         return {
           title: "打盹记录",
           sub: "用于快速查看打盹出现在哪些日期。",
-          head: `<tr><th>日期</th><th>分数</th><th>知识点</th><th>纠错</th><th>作业</th><th>状态</th></tr>`,
+          head: dailyDetailHead,
           body: mapRows(naps, "暂无打盹记录", profileDailyRowHtml)
         };
       }
@@ -3772,7 +4186,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         return {
           title: "未纠错明细",
           sub: "只列出有分数且不是满分、并标记为未纠错的日测。",
-          head: `<tr><th>日期</th><th>分数</th><th>知识点</th><th>纠错</th><th>作业</th><th>状态</th></tr>`,
+          head: dailyDetailHead,
           body: mapRows(uncorrected, "暂无未纠错记录", profileDailyRowHtml)
         };
       }
@@ -3814,11 +4228,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         return {
           title: "作业明细",
           sub: "只列出当天有作业的日期，方便查看 A/B/C/D/未提交来源。",
-          head: `<tr><th>日期</th><th>日测分数</th><th>知识点</th><th>作业</th><th>纠错</th><th>状态</th></tr>`,
+          head: `<tr><th>日期</th><th>日测分数</th><th>理解题</th><th>知识点</th><th>作业</th><th>纠错</th><th>状态</th></tr>`,
           body: mapRows(homeworkRows, "暂无作业记录", record => `
             <tr>
               <td>${escapeHtml(record.date)}</td>
               <td>${escapeHtml(record.score || "")}</td>
+              <td>${escapeHtml(dailyWrongText(record))}</td>
               <td>${escapeHtml(knowledgePointText(record))}</td>
               <td>${homeworkBadgesHtml(record)}</td>
               <td><span class="badge ${dailyCorrectionBadgeClass(record)}">${escapeHtml(dailyCorrectionText(record))}</span></td>
@@ -3830,7 +4245,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return {
         title: "每日记录明细",
         sub: "当前日期范围内该学生的全部每日记录。",
-        head: `<tr><th>日期</th><th>分数</th><th>知识点</th><th>纠错</th><th>作业</th><th>状态</th></tr>`,
+        head: dailyDetailHead,
         body: mapRows(records, "暂无每日记录", profileDailyRowHtml)
       };
     }
@@ -3840,6 +4255,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         <tr>
           <td>${escapeHtml(record.date)}</td>
           <td>${escapeHtml(record.score || "")}</td>
+          <td>${escapeHtml(dailyWrongText(record))}</td>
           <td>${escapeHtml(knowledgePointText(record))}</td>
           <td><span class="badge ${dailyCorrectionBadgeClass(record)}">${escapeHtml(dailyCorrectionText(record))}</span></td>
           <td>${homeworkBadgesHtml(record)}</td>
@@ -4130,7 +4546,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function buildAiPrompt(student, records, subjectTests, events, quickNotes, analysis) {
-      const dailyLines = records.map(record => `${record.date} 日测:${record.score || "未填"} 知识点:${knowledgePointText(record) || "未填"} 纠错:${dailyCorrectionText(record)} 作业:${homeworkSummaryText(record)} 状态:${statusText(record.status) || "正常"}`);
+      const dailyLines = records.map(record => `${record.date} 日测:${record.score || "未填"} 理解题:${dailyWrongText(record) || "未填"} 知识点:${knowledgePointText(record) || "未填"} 纠错:${dailyCorrectionText(record)} 作业:${homeworkSummaryText(record)} 状态:${statusText(record.status) || "正常"}`);
       const subjectLines = subjectTests.map(test => `${test.date} ${test.subject} 分数:${test.score || "未填"} 排名:${test.rank || "无"} 纠错:${test.correction || "无"} 备注:${test.note || "无"}`);
       const quickLines = quickNotes.map(note => `${note.date} ${note.time || ""} ${note.type} ${note.level}：${note.content || ""}`);
       const eventLines = events.map(event => `${event.date} ${event.type} ${event.content || ""} 后续:${event.followUp || "无"} 状态:${event.status || "已记录"}`);
@@ -4664,7 +5080,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const sheets = [
         ["家长群发送版", parentShareRowsForExport()],
         ["每日一测总表", dailyScoreboardRowsForExport()],
-        ["每日一测知识点打表", dailyKnowledgeRowsForExport()],
         ["单科成绩总表", subjectScoreboardRowsForExport()],
         ["学生名单", studentRowsForExport()],
         ["每日录入明细", dailyRowsForExport()],
@@ -4678,50 +5093,75 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function dailyScoreboardRowsForExport() {
-      const dates = dailyScoreDates();
-      const header = ["姓名", ...dates.map(formatShortDate)];
-      const rows = state.students.map(student => [
-        student.name,
-        ...dates.map(date => {
-          const score = parseScore(state.records?.[keyFor(date, student.name)]?.score);
-          return score === null ? "未测试" : score;
-        })
-      ]);
-      const averageRow = ["平均分", ...dates.map(date => {
-        const scores = state.students
-          .map(student => parseScore(state.records?.[keyFor(date, student.name)]?.score))
-          .filter(score => score !== null);
-        return averageText(scores);
-      })];
-      return [header, ...rows, averageRow];
-    }
-
-    function parentShareRowsForExport() {
-      const names = homeworkNames();
-      const dates = parentShareDates();
+      const dates = dailyTestExportDates();
       const header = ["姓名", ...dates.flatMap(date => [
-        `${formatShortDate(date)}每日一测`,
-        `${formatShortDate(date)}知识点`,
-        ...names.map(name => `${formatShortDate(date)}${name}`)
+        dailyWrongExportHeader(date),
+        `${formatShortDate(date)}知识点`
       ])];
       const rows = state.students.map(student => [
-        maskStudentName(student.name),
+        student.name,
         ...dates.flatMap(date => {
           const record = state.records?.[keyFor(date, student.name)];
-          const score = parseScore(record?.score);
           return [
-            score === null ? "未测试" : score,
-            knowledgePointText(record),
-            ...names.map((_, index) => record ? getHomeworkGrade(record, index) : "")
+            dailyWrongExportText(record, true),
+            knowledgePointText(record)
           ];
         })
       ]);
       return [header, ...rows];
     }
 
+    function parentShareRowsForExport() {
+      const names = homeworkNames();
+      const dateColumns = parentShareDates().map(date => ({ date, columns: parentShareColumnsForDate(date, names) }));
+      const header = ["姓名", ...dateColumns.flatMap(({ columns }) => columns.map(column => column.header))];
+      const rows = state.students.map(student => [
+        maskStudentName(student.name),
+        ...dateColumns.flatMap(({ date, columns }) => {
+          const record = state.records?.[keyFor(date, student.name)];
+          return columns.map(column => column.value(record));
+        })
+      ]);
+      return [header, ...rows];
+    }
+
+    function parentShareColumnsForDate(date, names = homeworkNames()) {
+      const records = getDateRecords(date);
+      const columns = [];
+      if (records.some(record => parseScore(record.score) !== null)) {
+        columns.push({
+          header: `${formatShortDate(date)}每日一测`,
+          value: record => {
+            const score = parseScore(record?.score);
+            return score === null ? "未测试" : score;
+          }
+        });
+      }
+      if (hasDailyTestForDate(date) || records.some(record => dailyWrongText(record))) {
+        columns.push({
+          header: dailyWrongExportHeader(date),
+          value: record => dailyWrongExportText(record, true)
+        });
+      }
+      if (hasKnowledgeForDate(date) || records.some(record => knowledgePointText(record))) {
+        columns.push({
+          header: `${formatShortDate(date)}知识点`,
+          value: record => knowledgePointText(record)
+        });
+      }
+      names.forEach((name, index) => {
+        if (!records.some(record => getHomeworkGrade(record, index) !== NO_HOMEWORK)) return;
+        columns.push({
+          header: `${formatShortDate(date)}${name}`,
+          value: record => record ? getHomeworkGrade(record, index) : ""
+        });
+      });
+      return columns;
+    }
+
     function parentShareDates() {
       return [...new Set(Object.values(state.records || {})
-        .filter(record => parseScore(record.score) !== null || knowledgePointText(record) || homeworkNames().some((_, index) => getHomeworkGrade(record, index) !== NO_HOMEWORK))
+        .filter(record => parseScore(record.score) !== null || dailyWrongText(record) || knowledgePointText(record) || homeworkNames().some((_, index) => getHomeworkGrade(record, index) !== NO_HOMEWORK))
         .map(record => record.date)
         .filter(Boolean))]
         .sort();
@@ -4742,23 +5182,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         .sort();
     }
 
-    function dailyKnowledgeRowsForExport() {
-      return [
-        ["日期", "序号", "姓名", "知识点", "习题"],
-        ...Object.values(state.records || {})
-          .filter(record => parseScore(record.score) !== null || knowledgePointText(record))
-          .sort(compareRecordsByDateAndStudent)
-          .map(record => {
-            const score = parseScore(record.score);
-            return [
-              record.date,
-              studentNumber(record.name),
-              record.name,
-              knowledgePointText(record),
-              score === null ? "未测试" : score
-            ];
-          })
-      ];
+    function dailyTestExportDates() {
+      return [...new Set(Object.values(state.records || {})
+        .filter(record => parseScore(record.score) !== null || dailyWrongText(record) || knowledgePointText(record))
+        .map(record => record.date)
+        .filter(Boolean))]
+        .sort();
     }
 
     function formatShortDate(dateText) {
@@ -4849,7 +5278,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function dailyRowsForExport() {
       const names = homeworkNames();
       return [
-        ["日期", "序号", "姓名", "日测分数", "知识点", "日测纠错", ...names, "今日状态", "随手记条数"],
+        ["日期", "序号", "姓名", "日测分数", "理解题", "知识点", "日测纠错", ...names, "今日状态", "随手记条数"],
         ...Object.values(state.records)
           .sort(compareRecordsByDateAndStudent)
           .map(record => [
@@ -4857,6 +5286,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             studentNumber(record.name),
             record.name,
             record.score,
+            dailyWrongExportText(record, true),
             knowledgePointText(record),
             dailyCorrectionText(record),
             ...names.map((_, index) => getHomeworkGrade(record, index)),
@@ -5116,12 +5546,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
   <cellXfs count="6">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"><alignment horizontal="center" vertical="center"/></xf>
     <xf numFmtId="0" fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
     <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="top" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -5387,7 +5817,18 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       render();
       showToast($("hasHomeworkInput").checked ? "当天作业已开启，默认未提交" : "当天已标记为无作业");
     });
-    $("hasKnowledgeInput").addEventListener("change", () => {
+    bindClick("hasDailyTestInput", () => {
+      setDailyTestForDate($("dateInput").value || today(), $("hasDailyTestInput").checked);
+      render();
+      showToast($("hasDailyTestInput").checked ? "当天已开启理解题错题录入" : "当天已关闭理解题错题录入");
+    });
+    $("dailyTestTotalInput").addEventListener("input", () => {
+      const date = $("dateInput").value || today();
+      setDailyTestTotalForDate(date, $("dailyTestTotalInput").value);
+      $("dailyTestTotalInput").value = dailyTestTotalForDate(date);
+      render();
+    });
+    bindClick("hasKnowledgeInput", () => {
       setKnowledgeForDate($("dateInput").value || today(), $("hasKnowledgeInput").checked);
       render();
       showToast($("hasKnowledgeInput").checked ? "当天已开启知识点检查" : "当天已关闭知识点检查");
@@ -5396,7 +5837,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const date = $("dateInput").value || today();
       setKnowledgeTotalForDate(date, $("knowledgeTotalInput").value);
       $("knowledgeTotalInput").value = knowledgeTotalForDate(date);
-      renderEntry(date);
+      render();
     });
     $("subjectDateInput").addEventListener("change", () => {
       subjectEntryOpen = true;
@@ -5447,7 +5888,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("profileSourceFilter").addEventListener("change", renderProfile);
     $("startDate").addEventListener("change", renderProfile);
     $("endDate").addEventListener("change", renderProfile);
-    $("resetDefaultsBtn").addEventListener("click", () => {
+    bindClick("resetDefaultsBtn", () => {
       ensureDate($("dateInput").value || today());
       render();
       showToast("当天默认记录已补齐");
@@ -5526,6 +5967,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     clearLegacyOfflineCache();
     requestPersistentStorage(false);
+    bindClick("sidebarToggleBtn", () => {
+      document.querySelector(".admin-shell")?.classList.toggle("sidebar-collapsed");
+    });
+    $("globalSearchInput").addEventListener("input", event => applyGlobalSearch(event.target.value));
     render();
     restoreFromIndexedDbIfNeeded();
   </script>
