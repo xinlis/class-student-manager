@@ -2453,6 +2453,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return String(record?.knowledge_point || "").trim();
     }
 
+    function knowledgeExportHeader(date) {
+      const total = knowledgeTotalForDate(date);
+      return `${formatShortDate(date)}知识点${total ? `（共${total}题）` : ""}`;
+    }
+
     function homeworkNames() {
       return (state.homeworkNames || DEFAULT_HOMEWORK_NAMES).map((name, index) => String(name || DEFAULT_HOMEWORK_NAMES[index]).trim() || DEFAULT_HOMEWORK_NAMES[index]);
     }
@@ -5096,7 +5101,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const dates = dailyTestExportDates();
       const header = ["姓名", ...dates.flatMap(date => [
         dailyWrongExportHeader(date),
-        `${formatShortDate(date)}知识点`
+        knowledgeExportHeader(date)
       ])];
       const rows = state.students.map(student => [
         student.name,
@@ -5145,7 +5150,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }
       if (hasKnowledgeForDate(date) || records.some(record => knowledgePointText(record))) {
         columns.push({
-          header: `${formatShortDate(date)}知识点`,
+          header: knowledgeExportHeader(date),
           value: record => knowledgePointText(record)
         });
       }
