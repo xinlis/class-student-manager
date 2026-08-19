@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>VIP2 班每日状态与成绩录入管理系统</title>
+  <title>VIP2 班学生档案与成绩管理系统</title>
   <style>
     :root {
       --bg: #f6f7f9;
@@ -74,12 +74,17 @@
       gap: 2px;
     }
     .nav-group-title {
-      padding: 12px 20px 6px;
+      padding: 16px 20px 7px;
       color: #111827;
       font-weight: 760;
+      font-size: 15px;
       display: flex;
       align-items: center;
       gap: 10px;
+    }
+    .nav-group-title:not(:first-child) {
+      margin-top: 5px;
+      border-top: 1px solid #edf0f4;
     }
     .nav-item {
       width: 100%;
@@ -106,6 +111,23 @@
       color: #2f8a7a;
       border-right: 3px solid #2f8a7a;
     }
+    .nav-child-item {
+      padding-left: 44px;
+      font-weight: 650;
+    }
+    .nav-child-item .nav-mark {
+      width: 12px;
+      font-size: 12px;
+    }
+    .nav-expand-indicator {
+      margin-left: auto;
+      color: #6b7280;
+      font-size: 11px;
+      transition: transform .15s ease;
+    }
+    .nav-item[aria-expanded="false"] .nav-expand-indicator {
+      transform: rotate(-90deg);
+    }
     .nav-mark {
       width: 18px;
       height: 18px;
@@ -125,6 +147,44 @@
     .admin-shell.sidebar-collapsed .nav-mark {
       font-size: 15px;
     }
+    .admin-shell.sidebar-collapsed .nav-expand-indicator { display: none; }
+    .entry-nav-submenu {
+      display: none;
+      gap: 7px;
+      padding: 9px 12px 11px 52px;
+      background: #f7fbfa;
+      border-right: 3px solid #d8eee9;
+    }
+    .nav-item.active + .entry-nav-submenu { display: grid; }
+    .nav-item.active + .entry-nav-submenu.collapsed { display: none; }
+    .entry-nav-submenu > label {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: #374151;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .entry-nav-submenu input[type="checkbox"] { flex: 0 0 auto; }
+    .entry-nav-submenu .nav-config {
+      padding-left: 23px;
+      color: var(--muted);
+    }
+    .entry-nav-submenu .nav-config input {
+      width: 58px;
+      min-width: 0;
+      min-height: 26px;
+      padding: 3px 5px;
+    }
+    .entry-nav-submenu .custom-entry-name-input { width: 92px; }
+    .entry-nav-tip {
+      padding-left: 23px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .admin-shell.sidebar-collapsed .entry-nav-submenu { display: none; }
     .admin-main {
       min-width: 0;
       display: grid;
@@ -143,7 +203,7 @@
       min-height: 52px;
       padding: 0 24px;
       display: grid;
-      grid-template-columns: auto minmax(240px, 1fr) auto;
+      grid-template-columns: auto minmax(0, 1fr) minmax(300px, 390px);
       gap: 12px;
       align-items: center;
     }
@@ -188,14 +248,19 @@
     .top-tools {
       display: flex;
       align-items: center;
+      justify-content: flex-end;
       gap: 8px;
       min-width: 0;
+      width: 100%;
     }
     .top-search {
       width: 220px;
+      min-width: 0;
+      flex: 1 1 140px;
       height: 36px;
       color: #9ca3af;
     }
+    .top-tools > button, .top-tools > details { flex: 0 0 auto; }
     .teacher-name {
       color: #374151;
       white-space: nowrap;
@@ -373,10 +438,31 @@
     .table-wrap { overflow: auto; max-height: calc(100vh - 230px); }
     .subject-page-grid {
       display: grid;
-      grid-template-columns: minmax(280px, .85fr) minmax(0, 1.35fr);
+      grid-template-columns: minmax(240px, .65fr) minmax(0, 1.55fr);
       gap: 12px;
       align-items: start;
     }
+    .subject-detail-table {
+      width: 100%;
+      min-width: 0;
+      table-layout: fixed;
+    }
+    .subject-detail-table th,
+    .subject-detail-table td {
+      padding: 7px 6px;
+    }
+    .subject-detail-table td {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      line-height: 1.35;
+    }
+    .subject-detail-table th:nth-child(1) { width: 42px; }
+    .subject-detail-table th:nth-child(2) { width: 150px; }
+    .subject-detail-table th:nth-child(3) { width: 145px; }
+    .subject-detail-table th:nth-child(4) { width: 64px; }
+    .subject-detail-table th:nth-child(5) { width: 58px; }
+    .subject-detail-table th:nth-child(6) { width: 92px; }
+    .subject-detail-table .student-meta { font-size: 11px; }
     .exam-list {
       display: grid;
       gap: 8px;
@@ -420,16 +506,29 @@
       gap: 6px;
       justify-items: end;
     }
+    .exam-card-buttons {
+      display: flex;
+      gap: 6px;
+    }
+    .subject-exam-edit,
     .subject-exam-delete {
       display: inline-flex;
       height: 24px;
       padding: 0 8px;
       align-items: center;
-      border: 1px solid #fecaca;
       border-radius: 6px;
+      cursor: pointer;
+    }
+    .subject-exam-edit {
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+      color: var(--blue);
+    }
+    .subject-exam-edit:hover { background: #dbeafe; }
+    .subject-exam-delete {
+      border: 1px solid #fecaca;
       background: #fff7f7;
       color: var(--red);
-      cursor: pointer;
     }
     .subject-exam-delete:hover {
       background: #fee2e2;
@@ -500,6 +599,51 @@
       width: 100%;
       min-height: 70px;
     }
+    .event-entry-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: nowrap;
+    }
+    .event-entry-toolbar label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .event-entry-toolbar .event-student-field { flex: 0 1 280px; }
+    .event-entry-toolbar .event-student-field select { min-width: 150px; width: 100%; }
+    .event-entry-toolbar .event-search-field { flex: 1 1 320px; }
+    .event-entry-toolbar .event-search-field input { min-width: 180px; width: 100%; }
+    .event-table-wrap { overflow-x: auto; }
+    .event-table {
+      width: 100%;
+      min-width: 900px;
+      table-layout: fixed;
+    }
+    .event-table th { white-space: nowrap; }
+    .event-table td {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.45;
+    }
+    .event-table th:nth-child(1) { width: 10%; }
+    .event-table th:nth-child(2) { width: 4%; }
+    .event-table th:nth-child(3) { width: 7%; }
+    .event-table th:nth-child(4) { width: 8%; }
+    .event-table th:nth-child(5) { width: 25%; }
+    .event-table th:nth-child(6) { width: 16%; }
+    .event-table th:nth-child(7) { width: 7%; }
+    .event-table th:nth-child(8) { width: 12%; }
+    .event-table th:nth-child(9) { width: 11%; }
+    .event-row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-items: center;
+    }
     .homework-settings {
       padding: 10px 12px;
       border-bottom: 1px solid var(--line);
@@ -536,6 +680,7 @@
       white-space: nowrap;
     }
     .entry-column-switches .test-config { color: var(--muted); font-weight: 500; }
+    .custom-entry-name-input { width: 120px; background: #fff; }
     .config-fold {
       border-bottom: 1px solid var(--line);
       background: #fbfcff;
@@ -662,6 +807,19 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 10px;
       margin-bottom: 12px;
+    }
+    .profile-title-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .profile-range-actions {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      flex-basis: 100%;
     }
     .chart-toolbar {
       display: flex;
@@ -1080,6 +1238,7 @@
         border-radius: 6px;
         padding: 0 12px;
       }
+      .entry-nav-submenu, .nav-item.active + .entry-nav-submenu { display: none; }
       .admin-shell.sidebar-collapsed .nav-item {
         padding: 0 12px;
         font-size: 14px;
@@ -1102,6 +1261,8 @@
       .data-tool-menu { position: static; width: 100%; margin-top: 6px; }
       .tab { flex: 0 0 auto; }
       main { padding: 12px; }
+      .event-entry-toolbar { flex-wrap: wrap; }
+      .event-entry-toolbar .event-search-field { flex-basis: 100%; }
     }
   </style>
 </head>
@@ -1110,13 +1271,26 @@
     <aside class="sidebar" id="sidebar">
       <div class="brand" aria-label="系统导航"></div>
       <nav class="side-nav" aria-label="系统模块">
-        <button class="tab nav-item active" data-view="profileView"><span class="nav-mark">●</span>学员管理</button>
-        <button class="tab nav-item" data-view="rosterView"><span class="nav-mark">■</span>班级管理</button>
+        <button class="tab nav-item active" data-view="profileView"><span class="nav-mark">●</span>学生档案</button>
+        <button class="tab nav-item" data-view="rosterView"><span class="nav-mark">■</span>学生名单</button>
         <div class="nav-group-title"><span class="nav-mark">▲</span>考试管理</div>
-        <button class="tab nav-item" data-view="entryView"><span class="nav-mark">·</span>每日录入</button>
-        <button class="tab nav-item" data-view="subjectView"><span class="nav-mark">·</span>各科单科卷</button>
-        <button class="tab nav-item" data-view="eventView"><span class="nav-mark">·</span>随手记</button>
-        <button class="tab nav-item" data-view="summaryView"><span class="nav-mark">·</span>今日异常</button>
+        <button class="tab nav-item nav-child-item" data-view="entryView" aria-expanded="true" aria-controls="entryNavSubmenu"><span class="nav-mark">·</span>每日录入<span class="nav-expand-indicator">▼</span></button>
+        <div class="entry-nav-submenu" id="entryNavSubmenu" aria-label="每日录入项目">
+          <label><input id="hasScoreInput" class="entry-column-toggle" data-column="score" type="checkbox"> 日测分数</label>
+          <label><input id="hasDailyTestInput" class="entry-column-toggle" data-column="dailyWrong" type="checkbox"> 理解题错题</label>
+          <label id="dailyTestTotalWrap" class="nav-config">总题数 <input id="dailyTestTotalInput" type="number" min="1" max="50" inputmode="numeric" placeholder="不录"></label>
+          <label><input id="hasKnowledgeInput" class="entry-column-toggle" data-column="knowledge" type="checkbox"> 知识点错题</label>
+          <label id="knowledgeTotalWrap" class="nav-config">总题数 <input id="knowledgeTotalInput" type="number" min="1" max="50" inputmode="numeric" placeholder="不录"></label>
+          <label><input id="hasCorrectionInput" class="entry-column-toggle" data-column="correction" type="checkbox"> 日测纠错</label>
+          <label><input id="hasHomework0Input" class="entry-column-toggle" data-column="homework0" type="checkbox"> <span id="homeworkSwitchName0">讲义</span></label>
+          <label><input id="hasHomework1Input" class="entry-column-toggle" data-column="homework1" type="checkbox"> <span id="homeworkSwitchName1">宝典</span></label>
+          <label><input id="hasCustomEntryInput" class="entry-column-toggle" data-column="custom" type="checkbox"> 自定义项</label>
+          <label id="customEntryNameWrap" class="nav-config">名称 <input id="customEntryNameInput" class="custom-entry-name-input" type="text" maxlength="12" placeholder="例如背诵"></label>
+          <div class="entry-nav-tip">按当天需要开启，关闭不会清除数据。</div>
+        </div>
+        <button class="tab nav-item nav-child-item" data-view="subjectView"><span class="nav-mark">·</span>单科</button>
+        <div class="nav-group-title"><span class="nav-mark">◆</span>日常记录</div>
+        <button class="tab nav-item nav-child-item" data-view="eventView"><span class="nav-mark">·</span>随手记</button>
       </nav>
     </aside>
 
@@ -1125,7 +1299,7 @@
         <div class="topbar">
           <button class="menu-button" id="sidebarToggleBtn" title="展开/收起菜单">☰</button>
           <div class="top-title">
-            <h1 id="appTitle">VIP2 班每日状态与成绩录入管理系统</h1>
+            <h1 id="appTitle">VIP2 班学生档案与成绩管理系统</h1>
             <div class="breadcrumb">
               <strong id="topModuleName">考试管理</strong>
               <span>&gt;</span>
@@ -1240,17 +1414,6 @@
             <label>搜索 <input id="entrySearch" type="search" placeholder="序号 / 姓名首字母 / 学校"></label>
           </div>
         </div>
-        <div class="entry-column-switches" aria-label="每日录入项目开关">
-          <label><input id="hasScoreInput" class="entry-column-toggle" data-column="score" type="checkbox"> 日测分数</label>
-          <label><input id="hasDailyTestInput" class="entry-column-toggle" data-column="dailyWrong" type="checkbox"> 理解题错题</label>
-          <label id="dailyTestTotalWrap" class="test-config">共 <input id="dailyTestTotalInput" class="knowledge-input" type="number" min="1" max="50" inputmode="numeric" placeholder="不录"> 题</label>
-          <label><input id="hasKnowledgeInput" class="entry-column-toggle" data-column="knowledge" type="checkbox"> 知识点错题</label>
-          <label id="knowledgeTotalWrap" class="test-config">共 <input id="knowledgeTotalInput" class="knowledge-input" type="number" min="1" max="50" inputmode="numeric" placeholder="不录"> 题</label>
-          <label><input id="hasCorrectionInput" class="entry-column-toggle" data-column="correction" type="checkbox"> 日测纠错</label>
-          <label><input id="hasHomework0Input" class="entry-column-toggle" data-column="homework0" type="checkbox"> <span id="homeworkSwitchName0">讲义</span></label>
-          <label><input id="hasHomework1Input" class="entry-column-toggle" data-column="homework1" type="checkbox"> <span id="homeworkSwitchName1">宝典</span></label>
-          <span class="sub">开关只控制当天录入项，不会清除已有数据。</span>
-        </div>
         <details class="config-fold">
           <summary>作业名称设置</summary>
           <div class="homework-settings">
@@ -1273,7 +1436,7 @@
                 <th id="correctionHeader">日测纠错</th>
                 <th id="homeworkHeader0">讲义</th>
                 <th id="homeworkHeader1">宝典</th>
-                <th>今日状态</th>
+                <th id="customEntryHeader">自定义项</th>
               </tr>
             </thead>
             <tbody id="entryBody"></tbody>
@@ -1306,8 +1469,8 @@
               <button id="copySubjectRankBtn" class="primary">复制排名</button>
             </div>
           </div>
-          <div class="table-wrap">
-            <table>
+          <div class="table-wrap subject-detail-table-wrap">
+            <table class="subject-detail-table">
               <thead>
                 <tr>
                   <th class="idx">#</th>
@@ -1337,6 +1500,7 @@
               <select id="entrySubjectSelect">
                 <option value="电路">电路</option>
                 <option value="电机">电机</option>
+                <option value="电力电子">电力电子</option>
                 <option value="稳态">稳态</option>
                 <option value="暂态">暂态</option>
                 <option value="继保">继保</option>
@@ -1378,28 +1542,28 @@
             <h2 class="panel-title">随手记</h2>
             <div class="sub">只管写发生了什么；系统会自动识别迟到、纪律、作业、情绪、表扬和沟通等类型。</div>
           </div>
-          <div class="toolbar">
-            <label>日期 <input id="eventDateInput" type="date"></label>
-            <label>筛选 <input id="eventSearch" type="search" placeholder="序号 / 姓名首字母 / 类型 / 内容"></label>
-          </div>
         </div>
         <div class="detail-panel communication-grid">
           <div class="communication-box">
             <h3>记一条</h3>
-            <div class="toolbar">
-              <label>学生
+            <div class="event-entry-toolbar">
+              <label>日期 <input id="eventDateInput" type="date"></label>
+              <label class="event-student-field">学生
                 <select id="inlineQuickStudentSelect"></select>
               </label>
               <label>时间 <input id="inlineQuickTimeInput" type="time"></label>
+              <label class="event-search-field">筛选
+                <input id="eventSearch" type="search" placeholder="序号 / 姓名首字母 / 类型 / 内容">
+              </label>
             </div>
-            <div class="toolbar" style="margin-top:10px; align-items:flex-start">
+            <div class="toolbar" style="align-items:flex-start">
               <textarea id="inlineQuickContentInput" placeholder="直接写即可，例如：李同学上课玩平板，没收一节课，下次没收一天；家长给孩子请假；晚自习结束去宿舍声音放小。"></textarea>
               <button id="addInlineQuickNoteBtn" class="primary">保存随手记</button>
             </div>
           </div>
         </div>
-        <div class="table-wrap">
-          <table>
+        <div class="table-wrap event-table-wrap">
+          <table class="event-table">
             <thead>
               <tr>
                 <th>日期</th>
@@ -1423,7 +1587,7 @@
       <div class="panel">
         <div class="panel-head">
           <div>
-            <h2 class="panel-title">今日异常学生汇总</h2>
+            <h2 class="panel-title">今日需关注学生汇总</h2>
             <div class="sub" id="summaryDateLabel"></div>
           </div>
           <div class="toolbar">
@@ -1432,7 +1596,7 @@
         </div>
         <div class="summary-grid" id="summaryGrid"></div>
         <div class="detail-panel" id="abnormalDetailPanel">
-          <h3 class="detail-title">异常明细</h3>
+          <h3 class="detail-title">需关注明细</h3>
           <div class="history-table" style="margin-top:0">
             <table>
               <thead>
@@ -1440,8 +1604,7 @@
                   <th>序号</th>
                   <th>姓名</th>
                   <th>日测分数</th>
-                  <th>作业</th>
-                  <th>今日状态</th>
+                  <th>需关注事项</th>
                   <th>操作</th>
                 </tr>
               </thead>
@@ -1464,17 +1627,26 @@
             </label>
             <label>起 <input id="startDate" type="date"></label>
             <label>止 <input id="endDate" type="date"></label>
+            <div class="profile-range-actions" aria-label="档案日期快捷筛选">
+              <button id="profileRangeTermBtn" class="small" type="button">本学期</button>
+              <button id="profileRange30Btn" class="small" type="button">近30天</button>
+              <button id="profileRangeAllBtn" class="small" type="button">全部</button>
+            </div>
           </div>
           <div class="student-list" id="studentList"></div>
         </aside>
         <div class="chart-panel">
-          <h2 class="panel-title" id="profileTitle">学生画像</h2>
-          <div class="sub" id="profileSub"></div>
+          <div class="profile-title-row">
+            <div>
+              <h2 class="panel-title" id="profileTitle">学生档案</h2>
+              <div class="sub" id="profileSub"></div>
+            </div>
+            <button id="exportStudentArchiveBtn" class="primary" type="button">导出当前学生档案</button>
+          </div>
           <div class="profile-kpis" id="profileKpis"></div>
           <div class="profile-detail-panel" id="profileDetailPanel"></div>
           <div class="mentor-panel" id="mentorNotePanel"></div>
           <div class="ai-panel" id="recentQuickNotePanel"></div>
-          <div class="ai-panel" id="recentEventPanel"></div>
           <div class="ai-panel" id="aiAnalysisPanel"></div>
           <div class="chart-toolbar">
             <div class="chart-mode" role="group" aria-label="成绩折线切换">
@@ -1488,14 +1660,7 @@
             <div class="history-table">
               <table>
                 <thead>
-                  <tr>
-                    <th>日期</th>
-                    <th>日测分数</th>
-                    <th>知识点</th>
-                    <th>日测纠错</th>
-                    <th>作业</th>
-                    <th>今日状态</th>
-                  </tr>
+                  <tr><th>日期</th><th>日测分数</th><th>理解题</th><th>知识点</th><th>日测纠错</th><th>作业</th><th>自定义项</th></tr>
                 </thead>
                 <tbody id="historyBody"></tbody>
               </table>
@@ -1506,33 +1671,9 @@
             <div class="history-table">
               <table>
                 <thead>
-                  <tr>
-                    <th>考试日期</th>
-                    <th>科目</th>
-                    <th>分数</th>
-                    <th>排名</th>
-                    <th>纠错情况</th>
-                    <th>备注</th>
-                  </tr>
+                  <tr><th>考试日期</th><th>科目</th><th>分数</th><th>排名</th><th>纠错情况</th><th>备注</th></tr>
                 </thead>
                 <tbody id="subjectHistoryBody"></tbody>
-              </table>
-            </div>
-          </details>
-          <details class="history-fold">
-            <summary>沟通记录</summary>
-            <div class="history-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>日期</th>
-                    <th>类型</th>
-                    <th>内容</th>
-                    <th>后续动作</th>
-                    <th>状态</th>
-                  </tr>
-                </thead>
-                <tbody id="eventHistoryBody"></tbody>
               </table>
             </div>
           </details>
@@ -1546,7 +1687,7 @@
   <div class="toast" id="toast"></div>
   <div class="modal hidden" id="quickNoteModal">
     <div class="modal-box quick-modal-box">
-      <h3>随手记</h3>
+      <h3 id="quickNoteModalTitle">随手记</h3>
       <div class="sub">随时记录现场小事；系统会自动分类、归档到学生或全班。</div>
       <div class="quick-note-grid">
         <label>学生
@@ -1668,15 +1809,17 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const HOMEWORK_GRADES = ["A+", "A", "B", "C", "D", HOMEWORK_NOT_SUBMITTED];
     const NO_HOMEWORK = "无作业";
     const DAILY_FULL_SCORE = 100;
-    const DAILY_CORRECTION_OPTIONS = ["已纠错", "未纠错"];
+    const DAILY_CORRECTION_PENDING = "未记录";
+    const DAILY_CORRECTION_OPTIONS = [DAILY_CORRECTION_PENDING, "未纠错", "已纠错"];
     const DAILY_NO_CORRECTION = "不需纠错";
+    const SUBJECT_CORRECTION_OPTIONS = ["未记录", "未纠错", "已纠错", "需面谈"];
     const CLASS_NOTE_NAME = "全班";
     const QUICK_NOTE_TYPES = ["家长沟通", "家长请假", "纪律提醒", "班级提醒", "迟到", "身体状态", "睡眠状态", "作业纠错", "学习状态", "情绪状态", "表扬鼓励", "日常记录", "其他"];
     const QUICK_NOTE_LEVELS = ["普通", "需关注"];
     const DEFAULT_HOMEWORK_NAMES = ["讲义", "宝典"];
-    const ENTRY_COLUMN_KEYS = ["score", "dailyWrong", "knowledge", "correction", "homework0", "homework1"];
+    const ENTRY_COLUMN_KEYS = ["score", "dailyWrong", "knowledge", "correction", "homework0", "homework1", "custom"];
     const DEFAULT_CLASS_NAME = "VIP2 班";
-    const SUBJECTS = ["电路", "电机", "稳态", "暂态", "继保", "高电压", "发电厂", "行测", "其他"];
+    const SUBJECTS = ["电路", "电机", "电力电子", "稳态", "暂态", "继保", "高电压", "发电厂", "行测", "其他"];
 
     const $ = (id) => document.getElementById(id);
     const today = () => new Date().toISOString().slice(0, 10);
@@ -1720,8 +1863,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     let state = loadState();
     let activeView = state.students.length ? "entryView" : "rosterView";
+    let entryNavExpanded = true;
     let selectedStudent = state.students[0]?.name || "";
     let editingStudentIndex = -1;
+    let editingQuickNoteId = "";
     let currentAiPrompt = "";
     let profileChartMode = "daily";
     let selectedSubjectExamKey = "";
@@ -1730,11 +1875,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     let cloudBusy = false;
     const VIEW_META = {
       entryView: { module: "考试管理", page: "每日录入", searchId: "entrySearch" },
-      subjectView: { module: "考试管理", page: "各科单科卷", searchId: "subjectSearch" },
+      subjectView: { module: "考试管理", page: "单科", searchId: "subjectSearch" },
       eventView: { module: "考试管理", page: "随手记", searchId: "eventSearch" },
-      summaryView: { module: "考试管理", page: "今日异常", searchId: "" },
-      profileView: { module: "学员管理", page: "学生画像", searchId: "profileSearch" },
-      rosterView: { module: "班级管理", page: "学生名单", searchId: "" }
+      summaryView: { module: "考试管理", page: "今日需关注", searchId: "" },
+      profileView: { module: "学生档案", page: "一人一档", searchId: "profileSearch" },
+      rosterView: { module: "学生名单", page: "名单维护", searchId: "" }
     };
 
     function normalizeDateKey(value) {
@@ -1833,6 +1978,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         const parsedKnowledge = parseKnowledgePoint(record.knowledge_point);
         if (record.knowledge_wrong === undefined && parsedKnowledge.wrong !== "") record.knowledge_wrong = parsedKnowledge.wrong;
         record.knowledge_wrong = String(record.knowledge_wrong ?? "").trim();
+        record.custom_entry = String(record.custom_entry ?? "").trim();
         if (parsedKnowledge.total !== "" && record.date) {
           target.knowledgeDates[record.date] = {
             enabled: true,
@@ -1879,7 +2025,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           name,
           score: test.score ?? "",
           rank: test.rank ?? "",
-          correction: test.correction || "已纠错",
+          correction: test.correction || "未记录",
           note: test.note || ""
         };
         next[key] = mergeSubjectTests(next[key], normalized, { date, subject, name });
@@ -1937,9 +2083,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       target.entryColumnDates = {};
       Object.entries(source).forEach(([date, config]) => {
         if (!config || typeof config !== "object") return;
-        target.entryColumnDates[date] = Object.fromEntries(
-          ENTRY_COLUMN_KEYS.map(key => [key, Boolean(config[key])])
-        );
+        target.entryColumnDates[date] = {
+          ...Object.fromEntries(ENTRY_COLUMN_KEYS.map(key => [key, Boolean(config[key])])),
+          customName: String(config.customName || "自定义项").trim() || "自定义项"
+        };
       });
     }
 
@@ -1971,7 +2118,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function renderHeader() {
-      const title = `${classNameText()}每日状态与成绩录入管理系统`;
+      const title = `${classNameText()}学生档案与成绩管理系统`;
       document.title = title;
       if ($("appTitle")) $("appTitle").textContent = title;
       if ($("appSubtitle")) {
@@ -2270,22 +2417,52 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }
     }
 
+    function blankDailyRecord(date, student) {
+      return {
+        date,
+        name: student.name,
+        score: "",
+        daily_wrong: "",
+        knowledge_point: "",
+        knowledge_wrong: "",
+        custom_entry: "",
+        homework: homeworkNames().map(name => `${name}:${NO_HOMEWORK}`).join(" / "),
+        homeworks: homeworkNames().map(() => NO_HOMEWORK),
+        correction: "",
+        status: [],
+        note: ""
+      };
+    }
+
+    function isMeaningfulDailyRecord(record) {
+      if (!record) return false;
+      return parseScore(record.score) !== null
+        || String(record.daily_wrong ?? "").trim() !== ""
+        || String(record.knowledge_point || "").trim() !== ""
+        || String(record.knowledge_wrong ?? "").trim() !== ""
+        || String(record.custom_entry || "").trim() !== ""
+        || String(record.note || "").trim() !== ""
+        || (record.status || []).length > 0
+        || record.correction === "未纠错"
+        || homeworkNames().some((_, index) => getHomeworkGrade(record, index) !== NO_HOMEWORK);
+    }
+
+    function storedDateRecords(date) {
+      return Object.values(state.records || {}).filter(record => record.date === date);
+    }
+
+    function recordForDisplay(date, student) {
+      const record = state.records?.[keyFor(date, student.name)];
+      if (!record) return blankDailyRecord(date, student);
+      normalizeRecordHomework(record);
+      normalizeDailyCorrection(record);
+      return record;
+    }
+
     function ensureRecord(date, student) {
       const key = keyFor(date, student.name);
       if (!state.records[key]) {
-        state.records[key] = {
-          date,
-          name: student.name,
-          score: "",
-          daily_wrong: "",
-          knowledge_point: "",
-          knowledge_wrong: "",
-          homework: homeworkNames().map(name => `${name}:${NO_HOMEWORK}`).join(" / "),
-          homeworks: homeworkNames().map(() => NO_HOMEWORK),
-          correction: "已纠错",
-          status: [],
-          note: ""
-        };
+        state.records[key] = blankDailyRecord(date, student);
       }
       normalizeRecordHomework(state.records[key]);
       normalizeDailyCorrection(state.records[key]);
@@ -2293,12 +2470,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function ensureDate(date) {
-      state.students.forEach(student => ensureRecord(date, student));
-      saveState();
+      storedDateRecords(date).forEach(record => {
+        normalizeRecordHomework(record);
+        normalizeDailyCorrection(record);
+      });
     }
 
     function getDateRecords(date) {
-      return state.students.map(student => ensureRecord(date, student));
+      return storedDateRecords(date).filter(isMeaningfulDailyRecord);
     }
 
     function hasHomeworkForDate(date) {
@@ -2307,7 +2486,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function setHomeworkForDate(date, hasHomework) {
-      getDateRecords(date).forEach(record => {
+      const records = hasHomework
+        ? state.students.map(student => ensureRecord(date, student))
+        : storedDateRecords(date);
+      records.forEach(record => {
         homeworkNames().forEach((_, index) => {
           const grade = getHomeworkGrade(record, index);
           if (hasHomework && grade === NO_HOMEWORK) setHomeworkGrade(record, index, HOMEWORK_NOT_SUBMITTED);
@@ -2321,7 +2503,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       state.entryColumnDates = state.entryColumnDates || {};
       const saved = state.entryColumnDates[date];
       if (saved && typeof saved === "object") {
-        return Object.fromEntries(ENTRY_COLUMN_KEYS.map(key => [key, Boolean(saved[key])]));
+        return {
+          ...Object.fromEntries(ENTRY_COLUMN_KEYS.map(key => [key, Boolean(saved[key])])),
+          customName: String(saved.customName || "自定义项").trim() || "自定义项"
+        };
       }
       const hasHomework = hasHomeworkForDate(date);
       return {
@@ -2330,7 +2515,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         knowledge: hasKnowledgeForDate(date),
         correction: true,
         homework0: hasHomework,
-        homework1: hasHomework
+        homework1: hasHomework,
+        custom: false,
+        customName: "自定义项"
       };
     }
 
@@ -2338,6 +2525,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (!ENTRY_COLUMN_KEYS.includes(key)) return;
       const config = entryColumnsForDate(date);
       config[key] = Boolean(enabled);
+      state.entryColumnDates[date] = config;
+      saveState();
+    }
+
+    function setCustomEntryNameForDate(date, value) {
+      const config = entryColumnsForDate(date);
+      config.customName = String(value || "").trim() || "自定义项";
       state.entryColumnDates[date] = config;
       saveState();
     }
@@ -2534,7 +2728,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function dailyCorrectionOptionsFor(record) {
       normalizeDailyCorrection(record);
       const options = isDailyFullScore(record) ? [DAILY_NO_CORRECTION] : DAILY_CORRECTION_OPTIONS;
-      return options.map(value => `<option value="${value}" ${record.correction === value ? "selected" : ""}>${value}</option>`).join("");
+      const current = record.correction || DAILY_CORRECTION_PENDING;
+      return options.map(value => `<option value="${value}" ${current === value ? "selected" : ""}>${value}</option>`).join("");
     }
 
     function isDailyFullScore(record) {
@@ -2544,18 +2739,23 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function normalizeDailyCorrection(record) {
       if (!record) return;
+      if (parseScore(record.score) === null) {
+        record.correction = "";
+        return;
+      }
       if (isDailyFullScore(record)) {
         record.correction = DAILY_NO_CORRECTION;
         return;
       }
-      if (![...DAILY_CORRECTION_OPTIONS, DAILY_NO_CORRECTION].includes(record.correction) || record.correction === DAILY_NO_CORRECTION || record.correction === "未检查") {
-        record.correction = "已纠错";
+      if (!DAILY_CORRECTION_OPTIONS.includes(record.correction) || record.correction === "未检查") {
+        record.correction = DAILY_CORRECTION_PENDING;
       }
     }
 
     function dailyCorrectionText(record) {
       normalizeDailyCorrection(record);
-      return record.correction || "已纠错";
+      if (parseScore(record?.score) === null) return "";
+      return record.correction || DAILY_CORRECTION_PENDING;
     }
 
     function dailyCorrectionBadgeClass(record) {
@@ -2591,7 +2791,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           name: cleanName,
           score: "",
           rank: "",
-          correction: "已纠错",
+          correction: "未记录",
           note: ""
         };
       }
@@ -2620,7 +2820,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (parseScore(test?.score) !== null) weight += 8;
       if (test?.rank) weight += 2;
       if (test?.note?.trim()) weight += 2;
-      if (test?.correction && test.correction !== "已纠错") weight += 1;
+      if (test?.correction && !["未记录", "已纠错"].includes(test.correction)) weight += 1;
       return weight;
     }
 
@@ -2632,13 +2832,36 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         name: defaults.name,
         score: preferred?.score ?? current?.score ?? "",
         rank: preferred?.rank ?? current?.rank ?? "",
-        correction: preferred?.correction || current?.correction || "已纠错",
+        correction: preferred?.correction || current?.correction || "未记录",
         note: preferred?.note ?? current?.note ?? ""
       };
     }
 
     function getSubjectTests(date, subject) {
-      return state.students.map(student => ensureSubjectTest(date, subject, student));
+      const cleanDate = normalizeDateKey(date);
+      const cleanSubject = String(subject || "").trim();
+      return Object.values(state.subjectTests || {})
+        .filter(test => normalizeDateKey(test.date) === cleanDate)
+        .filter(test => String(test.subject || "").trim() === cleanSubject);
+    }
+
+    function subjectTestForDisplay(date, subject, student) {
+      const stored = state.subjectTests?.[subjectKeyFor(normalizeDateKey(date), String(subject || "").trim(), student.name)];
+      if (stored) {
+        if (parseScore(stored.score) === null && !stored.note?.trim() && stored.correction === "已纠错") {
+          return { ...stored, correction: "未记录" };
+        }
+        return stored;
+      }
+      return {
+        date: normalizeDateKey(date),
+        subject: String(subject || "").trim(),
+        name: student.name,
+        score: "",
+        rank: "",
+        correction: "未记录",
+        note: ""
+      };
     }
 
     function calculateSubjectRanks(date, subject) {
@@ -2861,9 +3084,30 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       render();
     }
 
+    function syncEntryNavExpansion() {
+      const button = document.querySelector('[data-view="entryView"]');
+      const submenu = $("entryNavSubmenu");
+      if (!button || !submenu) return;
+      const expanded = activeView === "entryView" && entryNavExpanded;
+      button.setAttribute("aria-expanded", String(expanded));
+      submenu.classList.toggle("collapsed", !entryNavExpanded);
+    }
+
+    function handleNavClick(button) {
+      const viewId = button.dataset.view;
+      if (viewId === "entryView" && activeView === "entryView") {
+        entryNavExpanded = !entryNavExpanded;
+        syncEntryNavExpansion();
+        return;
+      }
+      if (viewId === "entryView") entryNavExpanded = true;
+      setView(viewId);
+    }
+
     function syncActiveView() {
       ["entryView", "subjectView", "eventView", "summaryView", "profileView", "rosterView"].forEach(id => $(id).classList.toggle("hidden", id !== activeView));
       document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.view === activeView));
+      syncEntryNavExpansion();
       const meta = VIEW_META[activeView] || VIEW_META.entryView;
       if ($("topModuleName")) $("topModuleName").textContent = meta.module;
       if ($("topPageName")) $("topPageName").textContent = meta.page;
@@ -2896,6 +3140,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if ($("dailyTestTotalWrap")) $("dailyTestTotalWrap").classList.toggle("hidden", !entryColumns.dailyWrong);
       if ($("knowledgeTotalInput")) $("knowledgeTotalInput").value = knowledgeTotalForDate(date);
       if ($("knowledgeTotalWrap")) $("knowledgeTotalWrap").classList.toggle("hidden", !entryColumns.knowledge);
+      if ($("customEntryNameInput")) $("customEntryNameInput").value = entryColumns.customName || "自定义项";
+      if ($("customEntryNameWrap")) $("customEntryNameWrap").classList.toggle("hidden", !entryColumns.custom);
       renderHomeworkSettings();
       renderEntryStats(date);
       if (activeView === "entryView") renderEntry(date);
@@ -2909,8 +3155,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function renderEntryStats(date) {
       const records = getDateRecords(date);
       const filledScores = records.filter(record => parseScore(record.score) !== null).length;
-      const homeworkIssues = records.filter(isHomeworkIssue).length;
-      const statusIssues = records.filter(record => record.status?.length).length;
       const quickNoteCount = getQuickNotes({ date }).length;
       const avg = records
         .map(record => parseScore(record.score))
@@ -2920,7 +3164,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         statHtml("学生总数", state.students.length),
         statHtml("已录分数", `${filledScores}/${state.students.length}`),
         statHtml("平均分", avgScore),
-        statHtml("异常人数", new Set(records.filter(r => isAbnormalRecord(r)).map(r => r.name)).size, "openAbnormal"),
+        statHtml("需关注", attentionRowsForDate(date).filter(row => row.name !== CLASS_NOTE_NAME).length, "openAbnormal"),
         statHtml("随手记", quickNoteCount, "openQuickNotes")
       ].join("");
       const abnormalCard = document.querySelector('[data-action="openAbnormal"]');
@@ -2953,12 +3197,71 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function isAbnormalRecord(record) {
-      return isHomeworkIssue(record) || Boolean(record.status?.length);
+      return isAttentionRecord(record);
+    }
+
+    function isAttentionRecord(record) {
+      const score = parseScore(record?.score);
+      const lowScore = score !== null && score < 70;
+      const correctionPending = score !== null && !isDailyFullScore(record) && record.correction !== "已纠错";
+      return lowScore || correctionPending || isHomeworkIssue(record);
+    }
+
+    function recordAttentionLabels(record) {
+      const labels = [];
+      const score = parseScore(record?.score);
+      if (score !== null && score < 70) labels.push(`日测低分 ${score}`);
+      if (score !== null && !isDailyFullScore(record) && record.correction !== "已纠错") {
+        labels.push(record.correction === "未纠错" ? "日测未纠错" : "纠错未登记");
+      }
+      if (isHomeworkIssue(record)) labels.push(`作业：${homeworkIssueText(record)}`);
+      return labels;
+    }
+
+    function attentionRowsForDate(date) {
+      const rows = new Map();
+      getDateRecords(date).filter(isAttentionRecord).forEach(record => {
+        rows.set(record.name, {
+          name: record.name,
+          score: record.score,
+          issues: recordAttentionLabels(record)
+        });
+      });
+      getQuickNotes({ date })
+        .filter(note => note.level === "需关注" || ["需关注", "需跟进"].includes(quickNoteStatus(note)))
+        .forEach(note => {
+          const current = rows.get(note.name) || { name: note.name, score: "", issues: [] };
+          current.issues.push(`随手记：${note.content}`);
+          rows.set(note.name, current);
+        });
+      return [...rows.values()];
     }
 
     function currentTimeText() {
       const date = new Date();
       return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+    }
+
+    function localDateText(date) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    }
+
+    function setProfileDateRange(mode) {
+      const now = new Date();
+      if (mode === "all") {
+        $("startDate").value = "";
+        $("endDate").value = "";
+      } else if (mode === "30") {
+        const start = new Date(now);
+        start.setDate(start.getDate() - 29);
+        $("startDate").value = localDateText(start);
+        $("endDate").value = localDateText(now);
+      } else {
+        const startMonth = now.getMonth() >= 6 ? 6 : 0;
+        $("startDate").value = localDateText(new Date(now.getFullYear(), startMonth, 1));
+        $("endDate").value = localDateText(now);
+      }
+      renderProfile();
     }
 
     function getQuickNotes({ date = "", name = "", start = "", end = "" } = {}) {
@@ -3104,7 +3407,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const dailyTestTotal = dailyTestTotalForDate(date);
       const knowledgeTotal = knowledgeTotalForDate(date);
       const rows = state.students
-        .map((student, idx) => ({ student, idx, record: ensureRecord(date, student) }))
+        .map((student, idx) => ({ student, idx, record: recordForDisplay(date, student) }))
         .filter(item => matchesStudentSearch(item.student, item.idx, query));
       $("homeworkHeader0").textContent = names[0];
       $("homeworkHeader1").textContent = names[1];
@@ -3118,6 +3421,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("knowledgeHeader").textContent = knowledgeTotal ? `知识点错题（共${knowledgeTotal}题）` : "知识点错题";
       $("knowledgeHeader").classList.toggle("hidden", !columns.knowledge);
       $("correctionHeader").classList.toggle("hidden", !columns.correction);
+      $("customEntryHeader").textContent = columns.customName || "自定义项";
+      $("customEntryHeader").classList.toggle("hidden", !columns.custom);
       $("entryBody").innerHTML = rows.map(({ student, idx, record }) => `
         <tr>
           <td class="idx">${idx + 1}</td>
@@ -3127,7 +3432,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           ${columns.dailyWrong ? `<td><input class="daily-wrong-input knowledge-input" data-name="${student.name}" type="number" min="0" ${dailyTestTotal ? `max="${escapeHtml(dailyTestTotal)}"` : ""} inputmode="numeric" placeholder="错几题" value="${escapeHtml(record.daily_wrong || "")}"></td>` : ""}
           ${columns.knowledge ? `<td><input class="knowledge-wrong-input knowledge-input" data-name="${student.name}" type="number" min="0" ${knowledgeTotal ? `max="${escapeHtml(knowledgeTotal)}"` : ""} inputmode="numeric" placeholder="错几题" value="${escapeHtml(record.knowledge_wrong ?? parseKnowledgePoint(record.knowledge_point).wrong)}"></td>` : ""}
           ${columns.correction ? `<td>
-            <select class="daily-correction-select" data-name="${student.name}" ${isDailyFullScore(record) ? "disabled title=\"满分不需要纠错\"" : ""}>
+            <select class="daily-correction-select" data-name="${student.name}" ${parseScore(record.score) === null || isDailyFullScore(record) ? `disabled title="${parseScore(record.score) === null ? "录入分数后再登记纠错" : "满分不需要纠错"}"` : ""}>
               ${dailyCorrectionOptionsFor(record)}
             </select>
           </td>` : ""}
@@ -3138,13 +3443,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
               </select>
             </td>
           ` : "").join("")}
-          <td>
-            <div class="tag-row">
-              ${STATUS_OPTIONS.map(status => `
-                <button class="tag ${status.key} ${record.status?.includes(status.key) ? "on" : ""}" data-status="${status.key}" data-name="${student.name}">${status.label}</button>
-              `).join("")}
-            </div>
-          </td>
+          ${columns.custom ? `<td><input class="custom-entry-input note-input" data-name="${student.name}" type="text" value="${escapeHtml(record.custom_entry || "")}" placeholder="填写${escapeHtml(columns.customName || "自定义项")}"></td>` : ""}
         </tr>
       `).join("");
 
@@ -3154,8 +3453,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           const select = input.closest("tr")?.querySelector(".daily-correction-select");
           if (record && select) {
             select.innerHTML = dailyCorrectionOptionsFor(record);
-            select.disabled = isDailyFullScore(record);
-            select.title = isDailyFullScore(record) ? "满分不需要纠错" : "";
+            select.disabled = parseScore(record.score) === null || isDailyFullScore(record);
+            select.title = parseScore(record.score) === null ? "录入分数后再登记纠错" : isDailyFullScore(record) ? "满分不需要纠错" : "";
           }
         });
         input.addEventListener("keydown", event => {
@@ -3211,8 +3510,18 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       document.querySelectorAll(".daily-correction-select").forEach(select => {
         select.addEventListener("change", () => updateRecordField(date, select.dataset.name, "correction", select.value));
       });
-      document.querySelectorAll(".tag").forEach(btn => {
-        btn.addEventListener("click", () => toggleStatus(date, btn.dataset.name, btn.dataset.status));
+      document.querySelectorAll(".custom-entry-input").forEach((input, visibleIndex, inputs) => {
+        input.addEventListener("input", () => updateRecordField(date, input.dataset.name, "custom_entry", input.value));
+        input.addEventListener("keydown", event => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            const next = inputs[visibleIndex + 1];
+            if (next) {
+              next.focus();
+              next.select();
+            }
+          }
+        });
       });
     }
 
@@ -3335,7 +3644,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           </span>
           <span class="exam-card-actions">
             <span class="exam-card-score">最高 ${escapeHtml(group.highest)}<br>85%+ ${group.excellentCount}</span>
-            <span class="small danger subject-exam-delete" data-date="${escapeHtml(group.date)}" data-subject="${escapeHtml(group.subject)}">删除</span>
+            <span class="exam-card-buttons">
+              <span class="small subject-exam-edit" data-date="${escapeHtml(group.date)}" data-subject="${escapeHtml(group.subject)}">改日期</span>
+              <span class="small danger subject-exam-delete" data-date="${escapeHtml(group.date)}" data-subject="${escapeHtml(group.subject)}">删除</span>
+            </span>
           </span>
         </button>
       `).join("") || `<div class="empty">暂无单科测试。点“录入新测试”开始登记。</div>`;
@@ -3353,6 +3665,68 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           deleteSubjectExam(btn.dataset.date, btn.dataset.subject);
         });
       });
+      document.querySelectorAll(".subject-exam-edit").forEach(btn => {
+        btn.addEventListener("click", event => {
+          event.stopPropagation();
+          changeSubjectExamDate(btn.dataset.date, btn.dataset.subject);
+        });
+      });
+    }
+
+    function changeSubjectExamDate(date, subject) {
+      const fromDate = normalizeDateKey(date);
+      const cleanSubject = String(subject || "").trim();
+      if (!fromDate || !cleanSubject) return;
+      const targetInput = prompt(`请输入 ${cleanSubject} 这场考试的正确日期（YYYY-MM-DD）：`, fromDate);
+      if (targetInput === null) return;
+      const toDate = normalizeDateKey(targetInput);
+      const match = toDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const parsedDate = match ? new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))) : null;
+      const validDate = parsedDate
+        && parsedDate.getUTCFullYear() === Number(match[1])
+        && parsedDate.getUTCMonth() === Number(match[2]) - 1
+        && parsedDate.getUTCDate() === Number(match[3]);
+      if (!validDate) {
+        showToast("请输入正确日期，例如 2026-08-17");
+        return;
+      }
+      if (toDate === fromDate) {
+        showToast("日期没有变化");
+        return;
+      }
+
+      const sourceEntries = Object.entries(state.subjectTests || {})
+        .filter(([, test]) => normalizeDateKey(test?.date) === fromDate && String(test?.subject || "").trim() === cleanSubject);
+      const meaningfulEntries = sourceEntries.filter(([, test]) => isMeaningfulSubjectTest(test));
+      if (!meaningfulEntries.length) {
+        showToast("这场考试没有可迁移的成绩");
+        return;
+      }
+      const targetExisting = Object.values(state.subjectTests || {})
+        .filter(test => normalizeDateKey(test?.date) === toDate && String(test?.subject || "").trim() === cleanSubject)
+        .filter(isMeaningfulSubjectTest);
+      if (targetExisting.length) {
+        alert(`${toDate} ${cleanSubject} 已有一场测试，不能覆盖。请先核对目标日期。`);
+        return;
+      }
+
+      sourceEntries.forEach(([oldKey, test]) => {
+        const nextKey = subjectKeyFor(toDate, cleanSubject, test.name);
+        state.subjectTests[nextKey] = mergeSubjectTests(state.subjectTests[nextKey], test, {
+          date: toDate,
+          subject: cleanSubject,
+          name: test.name
+        });
+        delete state.subjectTests[oldKey];
+      });
+      calculateSubjectRanks(toDate, cleanSubject);
+      selectedSubjectExamKey = subjectExamKeyFor(toDate, cleanSubject);
+      if ($("subjectDateInput")) $("subjectDateInput").value = toDate;
+      if ($("entrySubjectSelect")) $("entrySubjectSelect").value = cleanSubject;
+      subjectEntryOpen = false;
+      saveState();
+      renderSubjectTests();
+      showToast(`已将 ${cleanSubject} 测试日期改为 ${toDate}`);
     }
 
     function deleteSubjectExam(date, subject) {
@@ -3393,7 +3767,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("subjectDetailTitle").textContent = `${group.subject} · ${formatShortDate(group.date)}`;
       $("subjectDetailSub").textContent = `全班 ${state.students.length} 人，已录 ${group.scoredCount} 人，均分 ${group.average}，最高 ${group.highest}。`;
       $("subjectDetailBody").innerHTML = state.students.map((student, idx) => {
-        const test = state.subjectTests?.[subjectKeyFor(group.date, group.subject, student.name)] || {};
+        const test = subjectTestForDisplay(group.date, group.subject, student);
         const score = parseScore(test.score) === null ? "" : test.score;
         return `
           <tr>
@@ -3402,7 +3776,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             <td class="muted">${escapeHtml(student.school || "")}</td>
             <td>${score === "" ? `<span class="muted">未录</span>` : escapeHtml(score)}</td>
             <td class="rank-cell">${escapeHtml(test.rank || "")}</td>
-            <td><span class="badge ${test.correction === "未纠错" ? "warn" : test.correction === "需面谈" ? "bad" : "ok"}">${escapeHtml(test.correction || "已纠错")}</span></td>
+            <td><span class="badge ${test.correction === "未纠错" ? "warn" : test.correction === "需面谈" ? "bad" : test.correction === "已纠错" ? "ok" : "neutral"}">${escapeHtml(test.correction || "未记录")}</span></td>
             <td>${escapeHtml(test.note || "")}</td>
           </tr>
         `;
@@ -3413,7 +3787,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       calculateSubjectRanks(date, subject);
       const query = $("subjectSearch").value.trim();
       const rows = state.students
-        .map((student, idx) => ({ student, idx, test: ensureSubjectTest(date, subject, student) }))
+        .map((student, idx) => ({ student, idx, test: subjectTestForDisplay(date, subject, student) }))
         .filter(item => matchesStudentSearch(item.student, item.idx, query));
       $("subjectBody").innerHTML = rows.map(({ student, idx, test }) => `
         <tr>
@@ -3423,8 +3797,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <td><input class="subject-score-input score-input" data-name="${student.name}" type="number" min="0" inputmode="decimal" value="${escapeHtml(test.score)}"></td>
           <td class="rank-cell">${escapeHtml(test.rank || "")}</td>
           <td>
-            <select class="subject-correction-select" data-name="${student.name}">
-              ${["已纠错", "未纠错", "需面谈"].map(value => `<option value="${value}" ${test.correction === value ? "selected" : ""}>${value}</option>`).join("")}
+            <select class="subject-correction-select" data-name="${student.name}" ${parseScore(test.score) === null ? "disabled title=\"录入分数后再登记纠错\"" : ""}>
+              ${SUBJECT_CORRECTION_OPTIONS.map(value => `<option value="${value}" ${test.correction === value ? "selected" : ""}>${value}</option>`).join("")}
             </select>
           </td>
           <td><input class="subject-note-input note-input" data-name="${student.name}" value="${escapeHtml(test.note || "")}" placeholder="可选"></td>
@@ -3443,8 +3817,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             const rankCell = row?.querySelector(".rank-cell");
             const studentName = scoreInput.dataset.name;
             const student = state.students.find(item => item.name === studentName);
-            if (rankCell && student) rankCell.textContent = ensureSubjectTest(date, subject, student).rank || "";
+            if (rankCell && student) rankCell.textContent = subjectTestForDisplay(date, subject, student).rank || "";
           });
+          const correctionSelect = input.closest("tr")?.querySelector(".subject-correction-select");
+          if (correctionSelect) {
+            correctionSelect.disabled = parseScore(input.value) === null;
+            correctionSelect.title = correctionSelect.disabled ? "录入分数后再登记纠错" : "";
+            if (correctionSelect.disabled) correctionSelect.value = "未记录";
+          }
         });
         input.addEventListener("keydown", event => {
           if (event.key === "Enter") {
@@ -3508,7 +3888,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <td><span class="badge ${item.status === "需跟进" ? "warn" : item.status === "已完成" ? "ok" : "neutral"}">${escapeHtml(item.status)}</span></td>
           <td>${escapeHtml(formatRecordCreatedAt(item.createdAt))}</td>
           <td>
-            <button class="small danger event-delete-btn" data-id="${escapeHtml(item.id)}">删除</button>
+            <div class="event-row-actions">
+              <button class="small danger event-delete-btn" data-id="${escapeHtml(item.id)}">删除</button>
+            </div>
           </td>
         </tr>
       ` : `
@@ -3522,14 +3904,20 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <td><span class="badge ${quickNoteStatusBadgeClass(quickNoteStatus(item))}">${escapeHtml(quickNoteStatus(item))}</span></td>
           <td>${escapeHtml(formatRecordCreatedAt(item.createdAt))}</td>
           <td>
-            <button class="small quick-follow-btn" data-id="${escapeHtml(item.id)}">标记跟进</button>
-            <button class="small quick-complete-btn" data-id="${escapeHtml(item.id)}">已跟进</button>
-            <button class="small danger quick-timeline-delete-btn" data-id="${escapeHtml(item.id)}">删除</button>
+            <div class="event-row-actions">
+              <button class="small quick-edit-btn" data-id="${escapeHtml(item.id)}">编辑</button>
+              <button class="small quick-follow-btn" data-id="${escapeHtml(item.id)}">标记跟进</button>
+              <button class="small quick-complete-btn" data-id="${escapeHtml(item.id)}">已跟进</button>
+              <button class="small danger quick-timeline-delete-btn" data-id="${escapeHtml(item.id)}">删除</button>
+            </div>
           </td>
         </tr>
       `).join("") || `<tr><td colspan="9" class="empty">暂无随手记</td></tr>`;
       document.querySelectorAll(".event-delete-btn").forEach(btn => {
         btn.addEventListener("click", () => deleteEvent(btn.dataset.id));
+      });
+      document.querySelectorAll(".quick-edit-btn").forEach(btn => {
+        btn.addEventListener("click", () => editQuickNote(btn.dataset.id));
       });
       document.querySelectorAll(".quick-follow-btn").forEach(btn => {
         btn.addEventListener("click", () => markQuickNoteFollowUp(btn.dataset.id));
@@ -3741,18 +4129,45 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function openQuickNoteModal(name = "") {
+      editingQuickNoteId = "";
       renderQuickNoteStudentOptions();
       $("quickNoteStudentSelect").value = name || CLASS_NOTE_NAME;
       $("quickNoteDateInput").value = $("dateInput").value || today();
       $("quickNoteTimeInput").value = currentTimeText();
       $("quickNoteContentInput").value = "";
+      $("quickNoteModalTitle").textContent = "随手记";
+      $("saveQuickNoteBtn").textContent = "保存随手记";
+      $("closeQuickNoteModalBtn").textContent = "关闭";
       $("quickNoteModal").classList.remove("hidden");
       renderQuickNoteList();
       $("quickNoteContentInput").focus();
     }
 
     function closeQuickNoteModal() {
+      editingQuickNoteId = "";
       $("quickNoteModal").classList.add("hidden");
+    }
+
+    function editQuickNote(id) {
+      const note = (state.quickNotes || []).find(item => item.id === id);
+      if (!note) {
+        showToast("这条随手记已不存在");
+        return;
+      }
+      editingQuickNoteId = note.id;
+      renderQuickNoteStudentOptions();
+      $("quickNoteStudentSelect").value = [...$("quickNoteStudentSelect").options].some(option => option.value === note.name)
+        ? note.name
+        : CLASS_NOTE_NAME;
+      $("quickNoteDateInput").value = note.date || today();
+      $("quickNoteTimeInput").value = note.time || currentTimeText();
+      $("quickNoteContentInput").value = note.content || "";
+      $("quickNoteModalTitle").textContent = "编辑随手记";
+      $("saveQuickNoteBtn").textContent = "保存修改";
+      $("closeQuickNoteModalBtn").textContent = "取消";
+      $("quickNoteModal").classList.remove("hidden");
+      renderQuickNoteList();
+      $("quickNoteContentInput").focus();
     }
 
     function renderQuickNoteStudentOptions() {
@@ -3786,13 +4201,33 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         showToast("请先选择学生，或在内容里写清学生姓名");
         return;
       }
-      state.quickNotes = [note, ...(state.quickNotes || [])];
+      const original = editingQuickNoteId
+        ? (state.quickNotes || []).find(item => item.id === editingQuickNoteId)
+        : null;
+      const isEditing = Boolean(original);
+      if (original) {
+        note.id = original.id;
+        note.createdAt = original.createdAt || note.createdAt;
+        if (original.followUp || ["需跟进", "已跟进", "已完成"].includes(original.status)) {
+          note.followUp = original.followUp || "";
+          note.status = original.status || "需跟进";
+        }
+        note.updatedAt = new Date().toISOString();
+        state.quickNotes = (state.quickNotes || []).map(item => item.id === original.id ? note : item);
+      } else {
+        state.quickNotes = [note, ...(state.quickNotes || [])];
+      }
+      editingQuickNoteId = "";
       saveState();
       $("quickNoteContentInput").value = "";
       $("quickNoteTimeInput").value = currentTimeText();
-      renderQuickNoteList();
+      $("quickNoteModalTitle").textContent = "随手记";
+      $("saveQuickNoteBtn").textContent = "保存随手记";
+      $("closeQuickNoteModalBtn").textContent = "关闭";
       render();
-      showToast(note.name !== name ? `已识别为 ${note.name}，随手记已保存` : "随手记已保存");
+      renderQuickNoteList();
+      const actionText = isEditing ? "随手记已更新" : "随手记已保存";
+      showToast(note.name !== name ? `已识别为 ${note.name}，${actionText}` : actionText);
     }
 
     function renderQuickNoteList() {
@@ -3808,9 +4243,15 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             <strong>${escapeHtml(note.name)}</strong>：${escapeHtml(note.content)}
             <span class="badge ${quickNoteStatusBadgeClass(quickNoteStatus(note))}">${escapeHtml(quickNoteStatus(note))}</span>
           </div>
-          <button class="small danger quick-note-delete-btn" data-id="${escapeHtml(note.id)}">删除</button>
+          <div class="event-row-actions">
+            <button class="small quick-note-edit-btn" data-id="${escapeHtml(note.id)}">编辑</button>
+            <button class="small danger quick-note-delete-btn" data-id="${escapeHtml(note.id)}">删除</button>
+          </div>
         </div>
       `).join("") || `<div class="empty">该学生当天暂无随手记</div>`;
+      document.querySelectorAll(".quick-note-edit-btn").forEach(btn => {
+        btn.addEventListener("click", () => editQuickNote(btn.dataset.id));
+      });
       document.querySelectorAll(".quick-note-delete-btn").forEach(btn => {
         btn.addEventListener("click", () => deleteQuickNote(btn.dataset.id));
       });
@@ -3829,8 +4270,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const student = state.students.find(item => item.name === name);
       if (!student) return;
       const test = ensureSubjectTest(date, subject, student);
+      const previousScore = parseScore(test.score);
       test[field] = value;
-      if (field === "score") calculateSubjectRanks(date, subject);
+      if (field === "score") {
+        if (parseScore(value) === null) test.correction = "未记录";
+        if (previousScore === null && parseScore(value) !== null && test.correction === "已纠错") test.correction = "未记录";
+        if (!SUBJECT_CORRECTION_OPTIONS.includes(test.correction)) test.correction = "未记录";
+        calculateSubjectRanks(date, subject);
+      }
       saveState();
     }
 
@@ -3900,14 +4347,20 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function renderSummary(date) {
       const records = getDateRecords(date);
       const quickNotes = getQuickNotes({ date });
-      $("summaryDateLabel").textContent = `${date}，显示作业、上课状态和随手记中的异常学生。`;
+      const concernNotes = quickNotes.filter(note => note.level === "需关注" || ["需关注", "需跟进"].includes(quickNoteStatus(note)));
+      $("summaryDateLabel").textContent = `${date}，汇总低分、未纠错、作业未达标和需要跟进的随手记。`;
       const buckets = [
+        ["日测低于 70 分", records.filter(record => {
+          const score = parseScore(record.score);
+          return score !== null && score < 70;
+        }).map(record => `${record.name}：${record.score}分`)],
+        ["日测未完成纠错", records.filter(record => {
+          const score = parseScore(record.score);
+          return score !== null && !isDailyFullScore(record) && record.correction !== "已纠错";
+        }).map(record => `${record.name}：${record.correction || DAILY_CORRECTION_PENDING}`)],
         ["作业未达 A", records.filter(isHomeworkIssue).map(r => `${r.name}：${homeworkIssueText(r)}`)],
-        ["迟到", records.filter(r => r.status?.includes("late")).map(r => r.name)],
-        ["走神", records.filter(r => r.status?.includes("distracted")).map(r => r.name)],
-        ["打盹/睡觉", records.filter(r => r.status?.includes("sleep")).map(r => r.name)],
-        ["请假", records.filter(r => r.status?.includes("absent")).map(r => r.name)],
-        ["随手记", quickNotes.map(note => `${note.name}：${note.time || ""} ${note.type} ${note.content}${note.level === "需关注" ? "（需关注）" : ""}`)]
+        ["随手记需关注", concernNotes.map(note => `${note.name}：${note.time || ""} ${note.type} ${note.content}`)],
+        ["待跟进事项", quickNotes.filter(note => quickNoteStatus(note) === "需跟进").map(note => `${note.name}：${note.followUp || note.content}`)]
       ];
       $("summaryGrid").innerHTML = buckets.map(([title, list]) => `
         <div class="summary-box">
@@ -3917,21 +4370,20 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           </div>
         </div>
       `).join("");
-      renderAbnormalDetails(records);
+      renderAbnormalDetails(date);
     }
 
-    function renderAbnormalDetails(records) {
-      const abnormalRecords = records.filter(isAbnormalRecord);
-      $("abnormalDetailBody").innerHTML = abnormalRecords.map(record => `
+    function renderAbnormalDetails(date) {
+      const rows = attentionRowsForDate(date);
+      $("abnormalDetailBody").innerHTML = rows.map(row => `
         <tr>
-          <td class="idx">${studentNumber(record.name)}</td>
-          <td><span class="name">${escapeHtml(record.name)}</span></td>
-          <td>${escapeHtml(record.score)}</td>
-          <td>${homeworkBadgesHtml(record)}</td>
-          <td>${record.status?.length ? record.status.map(key => `<span class="badge bad">${STATUS_LABELS[key]}</span>`).join(" ") : "<span class='muted'>正常</span>"}</td>
-          <td><button class="small detail-profile-btn" data-name="${escapeHtml(record.name)}">查看画像</button></td>
+          <td class="idx">${row.name === CLASS_NOTE_NAME ? "" : studentNumber(row.name)}</td>
+          <td><span class="name">${escapeHtml(row.name)}</span></td>
+          <td>${escapeHtml(row.score)}</td>
+          <td>${row.issues.map(issue => `<span class="badge warn">${escapeHtml(issue)}</span>`).join(" ")}</td>
+          <td>${row.name === CLASS_NOTE_NAME ? "" : `<button class="small detail-profile-btn" data-name="${escapeHtml(row.name)}">查看档案</button>`}</td>
         </tr>
-      `).join("") || `<tr><td colspan="6" class="empty">暂无异常明细</td></tr>`;
+      `).join("") || `<tr><td colspan="5" class="empty">暂无需关注事项</td></tr>`;
       document.querySelectorAll(".detail-profile-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           selectedStudent = btn.dataset.name;
@@ -3943,14 +4395,21 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function summaryText(date) {
       const records = getDateRecords(date);
       const quickNotes = getQuickNotes({ date });
-      const lines = [`${date} ${compactClassName()}异常汇总`];
+      const lines = [`${date} ${compactClassName()}需关注汇总`];
       const groups = {
+        "日测低于70分": records.filter(record => {
+          const score = parseScore(record.score);
+          return score !== null && score < 70;
+        }).map(record => `${record.name}(${record.score}分)`),
+        "日测未完成纠错": records.filter(record => {
+          const score = parseScore(record.score);
+          return score !== null && !isDailyFullScore(record) && record.correction !== "已纠错";
+        }).map(record => `${record.name}(${record.correction || DAILY_CORRECTION_PENDING})`),
         "作业未达A": records.filter(isHomeworkIssue).map(r => `${r.name}(${homeworkIssueText(r)})`),
-        "迟到": records.filter(r => r.status?.includes("late")).map(r => r.name),
-        "走神": records.filter(r => r.status?.includes("distracted")).map(r => r.name),
-        "打盹/睡觉": records.filter(r => r.status?.includes("sleep")).map(r => r.name),
-        "请假": records.filter(r => r.status?.includes("absent")).map(r => r.name),
-        "随手记": quickNotes.map(note => `${note.name}(${note.time || ""}${note.type}：${note.content}${note.level === "需关注" ? "，需关注" : ""})`)
+        "随手记需关注": quickNotes
+          .filter(note => note.level === "需关注" || ["需关注", "需跟进"].includes(quickNoteStatus(note)))
+          .map(note => `${note.name}(${note.time || ""}${note.type}：${note.content})`),
+        "待跟进事项": quickNotes.filter(note => quickNoteStatus(note) === "需跟进").map(note => `${note.name}(${note.followUp || note.content})`)
       };
       Object.entries(groups).forEach(([label, list]) => lines.push(`${label}：${list.length ? list.join("、") : "无"}`));
       return lines.join("\n");
@@ -3968,17 +4427,15 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const subjectTests = getStudentSubjectTests(student.name);
       const events = getStudentEvents(student.name);
       const quickNotes = getStudentQuickNotes(student.name);
-      $("profileTitle").textContent = `${student.name} 的学生画像`;
+      $("profileTitle").textContent = `${student.name} 的学生档案`;
       $("profileSub").textContent = `${student.gender || "未知性别"} · ${student.school || "未填写学校"} · ${student.phone || "未填写电话"}${student.source_class ? ` · 来源：${student.source_class}` : ""}`;
       renderProfileKpis(records, subjectTests, events, quickNotes);
       renderMentorNote(student);
-      renderRecentQuickNotes(quickNotes);
-      renderRecentEvents(events);
+      renderRecentQuickNotes(quickNotes, events);
       renderAiAnalysis(student, records, subjectTests, events, quickNotes);
       renderProfileChart(records, subjectTests);
       renderHistory(records);
       renderSubjectHistory(subjectTests);
-      renderEventHistory(events);
     }
 
     function getStudentRecords(name) {
@@ -3986,6 +4443,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const end = $("endDate").value;
       return Object.values(state.records)
         .filter(record => record.name === name)
+        .filter(isMeaningfulDailyRecord)
         .filter(record => !start || record.date >= start)
         .filter(record => !end || record.date <= end)
         .sort((a, b) => a.date.localeCompare(b.date));
@@ -4019,7 +4477,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function isMeaningfulSubjectTest(test) {
-      return parseScore(test.score) !== null || Boolean(test.note?.trim()) || test.correction !== "已纠错";
+      return parseScore(test.score) !== null
+        || Boolean(test.note?.trim())
+        || Boolean(test.correction && !["未记录", "已纠错"].includes(test.correction));
     }
 
     function renderStudentList() {
@@ -4130,20 +4590,21 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         .map((name, index) => `${escapeHtml(name)}：${HOMEWORK_GRADES.map(grade => `${grade}:${records.filter(r => getHomeworkGrade(r, index) === grade).length}`).join("  ")}`)
         .join("<br>");
       const homeworkDays = records.filter(r => homeworkNames().some((_, index) => getHomeworkGrade(r, index) !== NO_HOMEWORK)).length;
-      const napCount = records.filter(r => r.status?.includes("sleep")).length;
       const correctionStats = dailyCorrectionStats(records);
+      const concernCount = quickNotes.filter(note => note.level === "需关注" || ["需关注", "需跟进"].includes(quickNoteStatus(note))).length;
       $("profileKpis").innerHTML = [
         statHtml("记录天数", records.length, "profileDaily"),
         statHtml("平均分", avg, "profileDailyScores"),
         statHtml("最近分数", latest, "profileLatestScore"),
-        statHtml("打盹次数", napCount, "profileNap"),
-        statHtml("未纠错", correctionStats.uncorrected, "profileUncorrected"),
+        statHtml("需关注随手记", concernCount, "profileQuickConcerns"),
+        statHtml("纠错待处理", correctionStats.uncorrected + correctionStats.unchecked, "profileUncorrected"),
         statHtml("单科考试次数", subjectTests.filter(test => parseScore(test.score) !== null).length, "profileSubject"),
         statHtml("单科均分", subjectAvg, "profileSubject"),
-        statHtml("沟通历史", events.length, "profileEvents")
+        statHtml("随手记与沟通", quickNotes.length + events.length, "profileCommunications")
       ].join("") + `<div class="stat clickable" style="grid-column:1/-1" data-action="profileHomework" title="点击查看作业明细"><div class="label">作业累计（仅统计有作业日期，共 ${homeworkDays} 天）</div><div style="margin-top:6px;font-weight:700">${gradeCounts}</div></div>`;
       bindProfileKpiDetails(records, subjectTests, events, quickNotes);
-      renderProfileDetail("profileDaily", records, subjectTests, events, quickNotes, false);
+      setActiveProfileKpi("");
+      $("profileDetailPanel").innerHTML = `<div class="sub">点击上方统计卡片查看明细；完整记录在页面下方分类展开。</div>`;
     }
 
     function bindProfileKpiDetails(records, subjectTests, events, quickNotes = []) {
@@ -4191,7 +4652,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const latestRecord = scoredRecords[scoredRecords.length - 1];
       const subjectScored = subjectTests.filter(test => parseScore(test.score) !== null);
       const mapRows = (items, emptyText, mapper) => items.length ? items.map(mapper).join("") : `<tr><td colspan="7" class="empty">${emptyText}</td></tr>`;
-      const dailyDetailHead = `<tr><th>日期</th><th>分数</th><th>理解题</th><th>知识点</th><th>纠错</th><th>作业</th><th>状态</th></tr>`;
+      const dailyDetailHead = `<tr><th>日期</th><th>分数</th><th>理解题</th><th>知识点</th><th>纠错</th><th>作业</th></tr>`;
       if (action === "profileDailyScores") {
         return {
           title: "日测分数明细",
@@ -4208,20 +4669,20 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           body: latestRecord ? profileDailyRowHtml(latestRecord) : `<tr><td colspan="7" class="empty">暂无最近分数</td></tr>`
         };
       }
-      if (action === "profileNap") {
-        const naps = records.filter(record => record.status?.includes("sleep"));
+      if (action === "profileQuickConcerns") {
+        const concerns = quickNotes.filter(note => note.level === "需关注" || ["需关注", "需跟进"].includes(quickNoteStatus(note)));
         return {
-          title: "打盹记录",
-          sub: "用于快速查看打盹出现在哪些日期。",
-          head: dailyDetailHead,
-          body: mapRows(naps, "暂无打盹记录", profileDailyRowHtml)
+          title: "需关注随手记",
+          sub: "只列出需要关注或继续跟进的记录。",
+          head: `<tr><th>日期</th><th>类型</th><th>内容</th><th>后续动作</th><th>状态</th></tr>`,
+          body: concerns.length ? concerns.map(note => `<tr><td>${escapeHtml(note.date)}</td><td>${escapeHtml(normalizeQuickNoteType(note.type))}</td><td>${escapeHtml(note.content)}</td><td>${escapeHtml(note.followUp || "")}</td><td>${escapeHtml(quickNoteStatus(note))}</td></tr>`).join("") : `<tr><td colspan="5" class="empty">暂无需关注随手记</td></tr>`
         };
       }
       if (action === "profileUncorrected") {
-        const uncorrected = scoredRecords.filter(record => !isDailyFullScore(record) && record.correction === "未纠错");
+        const uncorrected = scoredRecords.filter(record => !isDailyFullScore(record) && record.correction !== "已纠错");
         return {
-          title: "未纠错明细",
-          sub: "只列出有分数且不是满分、并标记为未纠错的日测。",
+          title: "纠错待处理明细",
+          sub: "只列出有分数且不是满分、纠错尚未完成或未登记的日测。",
           head: dailyDetailHead,
           body: mapRows(uncorrected, "暂无未纠错记录", profileDailyRowHtml)
         };
@@ -4243,20 +4704,22 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           `)
         };
       }
-      if (action === "profileEvents") {
+      if (action === "profileCommunications") {
+        const communications = studentCommunicationItems(quickNotes, events);
         return {
-          title: "沟通历史明细",
-          sub: "用于查看正式沟通记录及后续跟进状态。",
-          head: `<tr><th>日期</th><th>类型</th><th>内容</th><th>后续动作</th><th>状态</th></tr>`,
-          body: events.length ? events.map(event => `
+          title: "随手记与沟通明细",
+          sub: "随手记和之前保存的沟通记录统一显示在这里。",
+          head: `<tr><th>日期</th><th>来源</th><th>类型</th><th>内容</th><th>后续动作</th><th>状态</th></tr>`,
+          body: communications.length ? communications.map(item => `
             <tr>
-              <td>${escapeHtml(event.date)}</td>
-              <td>${escapeHtml(event.type)}</td>
-              <td>${escapeHtml(event.content)}</td>
-              <td>${escapeHtml(event.followUp || "")}</td>
-              <td><span class="badge ${event.status === "需跟进" ? "warn" : event.status === "已完成" ? "ok" : "neutral"}">${escapeHtml(event.status || "已记录")}</span></td>
+              <td>${escapeHtml(item.date)}${item.time ? `<br><span class="muted">${escapeHtml(item.time)}</span>` : ""}</td>
+              <td>${escapeHtml(item.source)}</td>
+              <td>${escapeHtml(item.type)}</td>
+              <td>${escapeHtml(item.content)}</td>
+              <td>${escapeHtml(item.followUp || "")}</td>
+              <td><span class="badge ${quickNoteStatusBadgeClass(item.displayStatus)}">${escapeHtml(item.displayStatus)}</span></td>
             </tr>
-          `).join("") : `<tr><td colspan="5" class="empty">暂无沟通历史</td></tr>`
+          `).join("") : `<tr><td colspan="6" class="empty">暂无随手记与沟通记录</td></tr>`
         };
       }
       if (action === "profileHomework") {
@@ -4264,7 +4727,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         return {
           title: "作业明细",
           sub: "只列出当天有作业的日期，方便查看 A/B/C/D/未提交来源。",
-          head: `<tr><th>日期</th><th>日测分数</th><th>理解题</th><th>知识点</th><th>作业</th><th>纠错</th><th>状态</th></tr>`,
+          head: `<tr><th>日期</th><th>日测分数</th><th>理解题</th><th>知识点</th><th>作业</th><th>纠错</th></tr>`,
           body: mapRows(homeworkRows, "暂无作业记录", record => `
             <tr>
               <td>${escapeHtml(record.date)}</td>
@@ -4273,7 +4736,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
               <td>${escapeHtml(knowledgePointText(record))}</td>
               <td>${homeworkBadgesHtml(record)}</td>
               <td><span class="badge ${dailyCorrectionBadgeClass(record)}">${escapeHtml(dailyCorrectionText(record))}</span></td>
-              <td>${statusBadgesHtml(record)}</td>
             </tr>
           `)
         };
@@ -4295,7 +4757,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <td>${escapeHtml(knowledgePointText(record))}</td>
           <td><span class="badge ${dailyCorrectionBadgeClass(record)}">${escapeHtml(dailyCorrectionText(record))}</span></td>
           <td>${homeworkBadgesHtml(record)}</td>
-          <td>${statusBadgesHtml(record)}</td>
         </tr>
       `;
     }
@@ -4306,28 +4767,48 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         : "<span class='muted'>正常</span>";
     }
 
-    function renderRecentQuickNotes(quickNotes) {
-      const recent = [...quickNotes].sort(compareQuickNotesDesc).slice(0, 5);
-      const stats = quickNoteTypeStats(quickNotes).slice(0, 5);
+    function studentCommunicationItems(quickNotes = [], events = []) {
+      return [
+        ...quickNotes.map(note => ({
+          ...note,
+          source: "随手记",
+          type: normalizeQuickNoteType(note.type),
+          displayStatus: quickNoteStatus(note),
+          sortTime: note.time || note.createdAt || ""
+        })),
+        ...events.map(event => ({
+          ...event,
+          source: "原沟通记录",
+          type: event.type || "沟通",
+          displayStatus: event.status || "已记录",
+          sortTime: event.createdAt || ""
+        }))
+      ].sort((a, b) => `${b.date || ""}${b.sortTime || ""}`.localeCompare(`${a.date || ""}${a.sortTime || ""}`));
+    }
+
+    function renderRecentQuickNotes(quickNotes, events = []) {
+      const communications = studentCommunicationItems(quickNotes, events);
+      const recent = communications.slice(0, 5);
+      const stats = quickNoteTypeStats(communications).slice(0, 5);
       $("recentQuickNotePanel").innerHTML = `
         <div class="ai-panel-head">
           <div>
-            <h3 class="ai-panel-title">随手记</h3>
-            <div class="sub">一句话记录后自动分类；没写具体学生时归为全班。</div>
+            <h3 class="ai-panel-title">随手记与沟通</h3>
+            <div class="sub">统一显示随手记和之前保存的沟通记录。</div>
           </div>
-          <button id="profileQuickNoteBtn" class="small primary">给该生随手记</button>
+          <button id="profileQuickNoteBtn" class="small primary">给该生记一条</button>
         </div>
         <div class="summary-list">
-          ${stats.length ? stats.map(item => `<span class="badge neutral">${escapeHtml(item.type)} ${item.count}</span>`).join("") : `<span class="empty">暂无随手记统计</span>`}
+          ${stats.length ? stats.map(item => `<span class="badge neutral">${escapeHtml(item.type)} ${item.count}</span>`).join("") : `<span class="empty">暂无记录统计</span>`}
         </div>
         <div class="quick-note-list">
-          ${recent.length ? recent.map(note => `
+          ${recent.length ? recent.map(item => `
             <div class="quick-note-item">
-              <span class="badge ${note.level === "需关注" ? "warn" : normalizeQuickNoteType(note.type) === "表扬鼓励" ? "ok" : "neutral"}">${escapeHtml(note.date)} ${escapeHtml(note.time || "")} · ${escapeHtml(normalizeQuickNoteType(note.type))}</span>
-              <div class="quick-note-text">${escapeHtml(note.content)}</div>
-              <span class="badge ${note.level === "需关注" ? "warn" : "neutral"}">${escapeHtml(note.level)}</span>
+              <span class="badge ${quickNoteStatusBadgeClass(item.displayStatus)}">${escapeHtml(item.date)} ${escapeHtml(item.time || "")} · ${escapeHtml(item.source)} · ${escapeHtml(item.type)}</span>
+              <div class="quick-note-text">${escapeHtml(item.content)}</div>
+              <span class="badge ${quickNoteStatusBadgeClass(item.displayStatus)}">${escapeHtml(item.displayStatus)}</span>
             </div>
-          `).join("") : `<div class="empty">暂无随手记</div>`}
+          `).join("") : `<div class="empty">暂无随手记与沟通记录</div>`}
         </div>
       `;
       $("profileQuickNoteBtn").addEventListener("click", () => openQuickNoteModal(selectedStudent));
@@ -4344,30 +4825,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type));
     }
 
-    function renderRecentEvents(events) {
-      const recent = [...events]
-        .sort((a, b) => `${b.date}${b.createdAt || ""}`.localeCompare(`${a.date}${a.createdAt || ""}`))
-        .slice(0, 3);
-      $("recentEventPanel").innerHTML = `
-        <div class="ai-panel-head">
-          <div>
-            <h3 class="ai-panel-title">沟通历史</h3>
-            <div class="sub">兼容之前保存的沟通记录；新内容统一从随手记进入。</div>
-          </div>
-          <button id="jumpEventBtn" class="small">去记录沟通</button>
-        </div>
-        <div class="summary-list">
-          ${recent.length ? recent.map(event => `
-            <span class="badge ${event.status === "需跟进" ? "warn" : event.status === "已完成" ? "ok" : "neutral"}">
-              ${escapeHtml(event.date)} · ${escapeHtml(event.type)} · ${escapeHtml(shortText(event.content, 34))}
-              ${event.followUp ? ` · 跟进：${escapeHtml(shortText(event.followUp, 18))}` : ""}
-            </span>
-          `).join("") : `<span class="empty">暂无沟通历史</span>`}
-        </div>
-      `;
-      $("jumpEventBtn").addEventListener("click", () => setView("eventView"));
-    }
-
     function shortText(text, maxLength = 32) {
       const chars = Array.from(String(text || "").trim());
       if (chars.length <= maxLength) return chars.join("");
@@ -4379,12 +4836,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         <tr>
           <td>${record.date}</td>
           <td>${escapeHtml(record.score)}</td>
+          <td>${escapeHtml(dailyWrongText(record))}</td>
           <td>${escapeHtml(knowledgePointText(record))}</td>
           <td><span class="badge ${dailyCorrectionBadgeClass(record)}">${escapeHtml(dailyCorrectionText(record))}</span></td>
           <td>${homeworkBadgesHtml(record)}</td>
-          <td>${record.status?.length ? record.status.map(key => `<span class="badge bad">${STATUS_LABELS[key]}</span>`).join(" ") : "<span class='muted'>正常</span>"}</td>
+          <td>${escapeHtml(record.custom_entry || "")}</td>
         </tr>
-      `).join("") || `<tr><td colspan="6" class="empty">暂无记录</td></tr>`;
+      `).join("") || `<tr><td colspan="7" class="empty">暂无记录</td></tr>`;
     }
 
     function renderAiAnalysis(student, records, subjectTests, events, quickNotes = []) {
@@ -4394,7 +4852,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         <div class="ai-panel-head">
           <div>
             <h3 class="ai-panel-title">智能分析</h3>
-            <div class="sub">基于当前日期范围内的日测、单科、作业、课堂状态、随手记和沟通历史生成。</div>
+            <div class="sub">基于当前日期范围内的日测、单科、作业及随手记与沟通记录生成。</div>
           </div>
           <button id="copyAiPromptBtn" class="small primary">复制给 AI 深度分析</button>
         </div>
@@ -4433,7 +4891,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const lowDailyCount = scores.filter(score => score < 70).length;
       const subjectStats = subjectWeaknessStats(subjectTests);
       const homeworkStats = homeworkWeaknessStats(records);
-      const statusStats = statusWeaknessStats(records);
       const correctionStats = dailyCorrectionStats(records);
       const noteStats = noteKeywordStats(records, subjectTests, events, quickNotes);
       const eventFollowCount = events.filter(event => event.status === "需跟进").length;
@@ -4466,21 +4923,17 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       homeworkStats.issues.forEach(item => habits.push(`${item.name} 出现 ${item.count} 次 B/C/D/未提交，作业质量需要盯紧。`));
       if (correctionStats.uncorrected) habits.push(`日测未纠错 ${correctionStats.uncorrected} 次，错题闭环需要重点盯。`);
       if (correctionStats.unchecked) habits.push(`日测纠错未检查 ${correctionStats.unchecked} 次，建议补查错题订正。`);
-      Object.entries(statusStats).forEach(([label, count]) => {
-        if (count) habits.push(`${label} ${count} 次，课堂状态需要关注。`);
-      });
       if (noteStats.keywords.length) habits.push(`备注中多次出现：${noteStats.keywords.join("、")}。`);
       quickStats.slice(0, 3).forEach(item => habits.push(`随手记中“${item.type}”出现 ${item.count} 次。`));
       if (mentorNote.personality) habits.push(`性格特点：${mentorNote.personality}`);
       if (mentorNote.issues) habits.push(`班主任标记的主要问题：${mentorNote.issues}`);
       if (mentorNote.communication) habits.push(`沟通注意：${mentorNote.communication}`);
-      if (!habits.length) habits.push("作业和课堂异常较少，当前学习习惯记录整体稳定。");
+      if (!habits.length) habits.push("作业、纠错和随手记中的需关注事项较少，当前学习习惯记录整体稳定。");
 
       const actions = [];
       if (subjectStats.weakSubjects[0]) actions.push(`优先安排 ${subjectStats.weakSubjects[0].subject} 的错题回看和小题专项。`);
       if (correctionStats.uncorrected || correctionStats.unchecked) actions.push("把日测错题纠错作为当天闭环动作，低分当天优先检查订正质量。");
       if (homeworkStats.issues[0]) actions.push(`连续 3 天查看 ${homeworkStats.issues[0].name}，重点看订正是否完整。`);
-      if (statusStats["打盹"] || statusStats["走神"]) actions.push("课堂上安排前排提醒或课间短沟通，确认睡眠、身体状态和听课卡点。");
       if (mentorNote.sprint) actions.push(`冲刺策略参考：${mentorNote.sprint}`);
       if (mentorNote.family) actions.push(`家长沟通参考：${mentorNote.family}`);
       if (lowDailyCount || scoreTrend.includes("下降")) actions.push("建议和学生做一次 5 分钟复盘：低分题型、失分原因、当天补救动作。");
@@ -4552,7 +5005,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return {
         noNeed: scored.filter(isDailyFullScore).length,
         checked: needCorrection.filter(record => record.correction === "已纠错").length,
-        unchecked: needCorrection.filter(record => !record.correction || record.correction === "未检查").length,
+        unchecked: needCorrection.filter(record => !record.correction || ["未检查", DAILY_CORRECTION_PENDING].includes(record.correction)).length,
         uncorrected: needCorrection.filter(record => record.correction === "未纠错").length
       };
     }
@@ -4582,13 +5035,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function buildAiPrompt(student, records, subjectTests, events, quickNotes, analysis) {
-      const dailyLines = records.map(record => `${record.date} 日测:${record.score || "未填"} 理解题:${dailyWrongText(record) || "未填"} 知识点:${knowledgePointText(record) || "未填"} 纠错:${dailyCorrectionText(record)} 作业:${homeworkSummaryText(record)} 状态:${statusText(record.status) || "正常"}`);
+      const dailyLines = records.map(record => `${record.date} 日测:${record.score || "未填"} 理解题:${dailyWrongText(record) || "未填"} 知识点:${knowledgePointText(record) || "未填"} 纠错:${dailyCorrectionText(record)} 作业:${homeworkSummaryText(record)}`);
       const subjectLines = subjectTests.map(test => `${test.date} ${test.subject} 分数:${test.score || "未填"} 排名:${test.rank || "无"} 纠错:${test.correction || "无"} 备注:${test.note || "无"}`);
       const quickLines = quickNotes.map(note => `${note.date} ${note.time || ""} ${note.type} ${note.level}：${note.content || ""}`);
       const eventLines = events.map(event => `${event.date} ${event.type} ${event.content || ""} 后续:${event.followUp || "无"} 状态:${event.status || "已记录"}`);
       const mentorLines = mentorNoteText(student);
       return [
-        `请你以班主任和学习规划老师的视角，分析这个学生的薄弱点、课堂状态、作业习惯和后续干预建议。`,
+        `请你以班主任和学习规划老师的视角，分析这个学生的薄弱点、课堂表现、作业习惯和后续干预建议。`,
         `要求：结论具体、不要空泛，分为“主要问题 / 证据 / 建议动作 / 家长沟通话术”四部分。`,
         ``,
         `学生：${student.name}；学校：${student.school || "未填写"}；性别：${student.gender || "未填写"}；来源班级：${student.source_class || "未填写"}`,
@@ -4640,18 +5093,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <td>${escapeHtml(test.note || "")}</td>
         </tr>
       `).join("") || `<tr><td colspan="6" class="empty">暂无单科测试记录</td></tr>`;
-    }
-
-    function renderEventHistory(events) {
-      $("eventHistoryBody").innerHTML = events.map(event => `
-        <tr>
-          <td>${escapeHtml(event.date)}</td>
-          <td>${escapeHtml(event.type)}</td>
-          <td>${escapeHtml(event.content)}</td>
-          <td>${escapeHtml(event.followUp || "")}</td>
-          <td><span class="badge ${event.status === "需跟进" ? "warn" : event.status === "已完成" ? "ok" : "neutral"}">${escapeHtml(event.status)}</span></td>
-        </tr>
-      `).join("") || `<tr><td colspan="5" class="empty">暂无沟通历史</td></tr>`;
     }
 
     function splitRosterLine(line) {
@@ -4969,9 +5410,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function renderRoster() {
       $("rosterStats").innerHTML = [
         statHtml("学生总数", state.students.length),
-        statHtml("每日记录", Object.keys(state.records || {}).length),
+        statHtml("有效每日记录", Object.values(state.records || {}).filter(isMeaningfulDailyRecord).length),
         statHtml("随手记", (state.quickNotes || []).length),
-        statHtml("单科记录", Object.keys(state.subjectTests || {}).length)
+        statHtml("有效单科记录", Object.values(state.subjectTests || {}).filter(isMeaningfulSubjectTest).length)
       ].join("");
       $("rosterBody").innerHTML = state.students.map((student, index) => `
         <tr>
@@ -5115,17 +5556,80 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function exportWorkbook() {
       const sheets = [
         ["家长群发送版", parentShareRowsForExport()],
-        ["每日一测总表", dailyScoreboardRowsForExport()],
         ["单科成绩总表", subjectScoreboardRowsForExport()],
         ["学生名单", studentRowsForExport()],
-        ["每日录入明细", dailyRowsForExport()],
         ["随手记", quickNoteRowsForExport()],
-        ["每日异常汇总", abnormalRowsForExport()],
         ["单科测试", subjectRowsForExport()],
         ["学生汇总", studentSummaryRowsForExport()]
       ];
       const workbook = buildXlsxWorkbook(sheets);
-      download(`${safeFileClassName()}班级管理分表-${today()}.xlsx`, workbook, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      download(`${safeFileClassName()}学生档案分表-${today()}.xlsx`, workbook, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    }
+
+    function exportCurrentStudentArchive() {
+      const student = state.students.find(item => item.name === selectedStudent);
+      if (!student) {
+        showToast("请先选择学生");
+        return;
+      }
+      const records = getStudentRecords(student.name);
+      const subjectTests = getStudentSubjectTests(student.name);
+      const events = getStudentEvents(student.name);
+      const quickNotes = getStudentQuickNotes(student.name);
+      const note = student.mentor_note || {};
+      const rangeText = [$("startDate").value || "最早记录", $("endDate").value || "最新记录"].join(" 至 ");
+      const names = homeworkNames();
+      const archiveSummary = [
+        ["学生档案项目", "内容"],
+        ["姓名", student.name],
+        ["性别", student.gender || ""],
+        ["学校", student.school || ""],
+        ["手机号", student.phone || ""],
+        ["来源班级", student.source_class || ""],
+        ["档案日期范围", rangeText],
+        ["性格特点", note.personality || ""],
+        ["主要问题", note.issues || ""],
+        ["沟通注意", note.communication || ""],
+        ["冲刺策略", note.sprint || ""],
+        ["家校情况", note.family || ""],
+        ["标签", note.tags || ""],
+        ["有效每日记录", records.length],
+        ["单科考试次数", subjectTests.filter(test => parseScore(test.score) !== null).length],
+        ["随手记条数", quickNotes.length],
+        ["沟通历史条数", events.length]
+      ];
+      const dailyRows = [
+        ["日期", "日测分数", "理解题", "知识点", "日测纠错", ...names, "自定义项"],
+        ...records.map(record => [
+          record.date,
+          record.score,
+          dailyWrongText(record),
+          knowledgeExportText(record),
+          dailyCorrectionText(record),
+          ...names.map((_, index) => getHomeworkGrade(record, index)),
+          record.custom_entry || ""
+        ])
+      ];
+      const subjectRows = [
+        ["考试日期", "科目", "分数", "排名", "纠错情况", "备注"],
+        ...subjectTests.map(test => [test.date, test.subject, test.score, test.rank || "", test.correction || "未记录", test.note || ""])
+      ];
+      const timeline = [
+        ...quickNotes.map(item => ({ ...item, source: "随手记", displayStatus: quickNoteStatus(item), sortTime: item.time || item.createdAt || "" })),
+        ...events.map(item => ({ ...item, source: "沟通历史", displayStatus: item.status || "已记录", sortTime: item.createdAt || "" }))
+      ].sort((a, b) => `${a.date || ""}${a.sortTime || ""}`.localeCompare(`${b.date || ""}${b.sortTime || ""}`));
+      const timelineRows = [
+        ["日期", "来源", "类型", "内容", "后续动作", "状态"],
+        ...timeline.map(item => [item.date || "", item.source, normalizeQuickNoteType(item.type), item.content || "", item.followUp || "", item.displayStatus])
+      ];
+      const workbook = buildXlsxWorkbook([
+        ["档案摘要", archiveSummary],
+        ["每日记录", dailyRows],
+        ["单科成绩", subjectRows],
+        ["随手记与沟通", timelineRows]
+      ]);
+      download(`${safeFileClassName()}-${student.name}-学生档案-${today()}.xlsx`, workbook, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      showToast(`${student.name} 的学生档案已导出`);
     }
 
     function dailyScoreboardRowsForExport() {
@@ -5192,12 +5696,19 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           value: record => record ? getHomeworkGrade(record, index) : ""
         });
       });
+      if (records.some(record => String(record.custom_entry || "").trim())) {
+        const customName = entryColumnsForDate(date).customName || "自定义项";
+        columns.push({
+          header: `${formatShortDate(date)}${customName}`,
+          value: record => record?.custom_entry || ""
+        });
+      }
       return columns;
     }
 
     function parentShareDates() {
       return [...new Set(Object.values(state.records || {})
-        .filter(record => parseScore(record.score) !== null || dailyWrongText(record) || knowledgePointText(record) || homeworkNames().some((_, index) => getHomeworkGrade(record, index) !== NO_HOMEWORK))
+        .filter(record => parseScore(record.score) !== null || dailyWrongText(record) || knowledgePointText(record) || String(record.custom_entry || "").trim() || homeworkNames().some((_, index) => getHomeworkGrade(record, index) !== NO_HOMEWORK))
         .map(record => record.date)
         .filter(Boolean))]
         .sort();
@@ -5314,7 +5825,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function dailyRowsForExport() {
       const names = homeworkNames();
       return [
-        ["日期", "序号", "姓名", "日测分数", "理解题", "知识点", "日测纠错", ...names, "今日状态", "随手记条数"],
+        ["日期", "序号", "姓名", "日测分数", "理解题", "知识点", "日测纠错", ...names, "自定义项", "随手记条数"],
         ...Object.values(state.records)
           .sort(compareRecordsByDateAndStudent)
           .map(record => [
@@ -5326,7 +5837,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             knowledgeExportText(record),
             dailyCorrectionText(record),
             ...names.map((_, index) => getHomeworkGrade(record, index)),
-            statusText(record.status),
+            record.custom_entry || "",
             getQuickNotes({ date: record.date, name: record.name }).length
           ])
       ];
@@ -5340,9 +5851,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           if (isHomeworkIssue(record)) {
             rows.push([record.date, studentNumber(record.name), record.name, "作业", homeworkIssueText(record)]);
           }
-          (record.status || []).forEach(status => {
-            rows.push([record.date, studentNumber(record.name), record.name, "今日状态", STATUS_LABELS[status] || status]);
-          });
         });
       return rows;
     }
@@ -5437,7 +5945,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const header = [
         "序号", "姓名", "来源班级", "标签", "日测次数", "日测平均分", "单科考试次数", "单科均分",
         ...homeworkHeaders,
-        "迟到次数", "走神次数", "打盹次数", "请假次数", "随手记次数", "需关注随手记", "沟通历史次数", "待跟进沟通"
+        "随手记次数", "需关注随手记", "沟通历史次数", "待跟进事项"
       ];
       const rows = state.students.map((student, index) => {
         const daily = Object.values(state.records).filter(record => record.name === student.name);
@@ -5456,14 +5964,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           subjectScores.length,
           averageText(subjectScores),
           ...names.flatMap((_, homeworkIndex) => HOMEWORK_GRADES.map(grade => countHomework(daily, grade, homeworkIndex))),
-          countStatus(daily, "late"),
-          countStatus(daily, "distracted"),
-          countStatus(daily, "sleep"),
-          countStatus(daily, "absent"),
           quickNotes.length,
-          quickNotes.filter(note => note.level === "需关注").length,
+          quickNotes.filter(note => note.level === "需关注" || ["需关注", "需跟进"].includes(quickNoteStatus(note))).length,
           events.length,
-          events.filter(event => event.status === "需跟进").length
+          events.filter(event => event.status === "需跟进").length + quickNotes.filter(note => quickNoteStatus(note) === "需跟进").length
         ];
       });
       return [header, ...rows];
@@ -5829,15 +6333,15 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (element) element.addEventListener("click", handler);
     }
 
-    document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => setView(btn.dataset.view)));
+    document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => handleNavClick(btn)));
     $("dateInput").value = today();
     $("subjectDateInput").value = today();
     $("eventDateInput").value = today();
     $("quickNoteDateInput").value = today();
     $("quickNoteTimeInput").value = currentTimeText();
     $("inlineQuickTimeInput").value = currentTimeText();
-    $("startDate").value = "2026-07-07";
-    $("endDate").value = today();
+    $("startDate").value = "";
+    $("endDate").value = "";
     $("dateInput").addEventListener("change", render);
     $("saveHomeworkNamesBtn").addEventListener("click", saveHomeworkNames);
     ["homeworkName0", "homeworkName1"].forEach(id => {
@@ -5855,6 +6359,22 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         render();
         showToast(`${input.closest("label")?.innerText.trim() || "录入项"}已${input.checked ? "开启" : "关闭"}，已有数据会保留`);
       });
+    });
+    $("customEntryNameInput").addEventListener("input", () => {
+      const date = $("dateInput").value || today();
+      setCustomEntryNameForDate(date, $("customEntryNameInput").value);
+      const label = $("customEntryNameInput").value.trim() || "自定义项";
+      $("customEntryHeader").textContent = label;
+      document.querySelectorAll(".custom-entry-input").forEach(input => {
+        input.placeholder = `填写${label}`;
+      });
+    });
+    $("customEntryNameInput").addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.currentTarget.blur();
+        showToast("自定义项名称已保存");
+      }
     });
     $("dailyTestTotalInput").addEventListener("input", () => {
       const date = $("dateInput").value || today();
@@ -5914,6 +6434,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("profileSourceFilter").addEventListener("change", renderProfile);
     $("startDate").addEventListener("change", renderProfile);
     $("endDate").addEventListener("change", renderProfile);
+    $("profileRangeTermBtn").addEventListener("click", () => setProfileDateRange("term"));
+    $("profileRange30Btn").addEventListener("click", () => setProfileDateRange("30"));
+    $("profileRangeAllBtn").addEventListener("click", () => setProfileDateRange("all"));
+    $("exportStudentArchiveBtn").addEventListener("click", exportCurrentStudentArchive);
     bindClick("resetDefaultsBtn", () => {
       ensureDate($("dateInput").value || today());
       render();
