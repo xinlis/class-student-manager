@@ -933,6 +933,34 @@
     .mentor-tags-input {
       width: 100%;
     }
+    .stage-record-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .stage-record-item {
+      display: grid;
+      grid-template-columns: minmax(210px, .45fr) minmax(0, 1.55fr);
+      gap: 10px;
+      align-items: start;
+      padding: 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #fff;
+    }
+    .stage-record-date {
+      font-weight: 750;
+      color: var(--ink);
+      line-height: 1.6;
+    }
+    .stage-record-content {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+      line-height: 1.6;
+      color: #344054;
+      overflow-wrap: anywhere;
+    }
     .ai-panel-head {
       display: flex;
       justify-content: space-between;
@@ -1253,7 +1281,7 @@
       .topbar { padding: 10px 12px; }
       .top-title h1, .top-title .sub { white-space: normal; }
       .menu-button { display: none; }
-      .stats, .subject-page-grid, .profile-kpis, .summary-grid, .profile-layout, .roster-grid, .ai-grid, .mentor-grid, .quick-note-grid, .quick-note-item, .communication-grid { grid-template-columns: 1fr; }
+      .stats, .subject-page-grid, .profile-kpis, .summary-grid, .profile-layout, .roster-grid, .ai-grid, .mentor-grid, .quick-note-grid, .quick-note-item, .communication-grid, .stage-record-item { grid-template-columns: 1fr; }
       .actions, .top-summary .actions { justify-content: flex-start; }
       .top-tools { align-items: stretch; flex-direction: column; }
       .top-search { width: 100%; }
@@ -1646,6 +1674,7 @@
           <div class="profile-kpis" id="profileKpis"></div>
           <div class="profile-detail-panel" id="profileDetailPanel"></div>
           <div class="mentor-panel" id="mentorNotePanel"></div>
+          <div class="mentor-panel" id="stageProfilePanel"></div>
           <div class="ai-panel" id="recentQuickNotePanel"></div>
           <div class="ai-panel" id="aiAnalysisPanel"></div>
           <div class="chart-toolbar">
@@ -2047,6 +2076,34 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         family: String(student.mentor_note?.family || "").trim(),
         tags: String(student.mentor_note?.tags || "").trim()
       };
+      student.stage_profile = {
+        highlights: String(student.stage_profile?.highlights || "").trim(),
+        improvements: String(student.stage_profile?.improvements || "").trim(),
+        status: String(student.stage_profile?.status || "").trim(),
+        next_focus: String(student.stage_profile?.next_focus || "").trim()
+      };
+      student.stage_records = (Array.isArray(student.stage_records) ? student.stage_records : [])
+        .map((record, index) => ({
+          id: String(record?.id || `stage-${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`),
+          date: normalizeDateKey(record?.date),
+          title: String(record?.title || "").trim(),
+          observation: String(record?.observation || "").trim(),
+          progress: String(record?.progress || "").trim(),
+          next_goal: String(record?.next_goal || record?.nextGoal || "").trim(),
+          createdAt: record?.createdAt || new Date().toISOString()
+        }))
+        .filter(record => record.date || record.title || record.observation || record.progress || record.next_goal);
+      if (!student.stage_records.length && Object.values(student.stage_profile).some(Boolean)) {
+        student.stage_records.push({
+          id: `stage-legacy-${student.name || Date.now()}`,
+          date: "",
+          title: "原阶段补充",
+          observation: [student.stage_profile.status, student.stage_profile.improvements].filter(Boolean).join("；"),
+          progress: student.stage_profile.highlights,
+          next_goal: student.stage_profile.next_focus,
+          createdAt: new Date().toISOString()
+        });
+      }
     }
 
     function normalizeHomeworkNames(target) {
@@ -4431,6 +4488,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("profileSub").textContent = `${student.gender || "未知性别"} · ${student.school || "未填写学校"} · ${student.phone || "未填写电话"}${student.source_class ? ` · 来源：${student.source_class}` : ""}`;
       renderProfileKpis(records, subjectTests, events, quickNotes);
       renderMentorNote(student);
+      renderStageProfile(student, records, subjectTests, events, quickNotes);
       renderRecentQuickNotes(quickNotes, events);
       renderAiAnalysis(student, records, subjectTests, events, quickNotes);
       renderProfileChart(records, subjectTests);
@@ -4578,6 +4636,131 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       saveState();
       if (showMessage) showToast("班主任备注已保存");
       renderProfile();
+    }
+
+    function renderStageProfile(student, records, subjectTests, events, quickNotes) {
+      const stages = buildAutomaticGrowthStages(records, subjectTests, events, quickNotes);
+      const latest = stages[stages.length - 1];
+      $("stageProfilePanel").innerHTML = `
+        <details>
+          <summary>
+            <div class="ai-panel-head">
+              <div>
+                <h3 class="ai-panel-title">自动成长分析</h3>
+                <div class="mentor-summary">${latest ? `系统已根据现有数据分析 ${stages.length} 个学习周；最近一周：${latest.summary}` : "当前日期范围内数据较少，继续正常录入后会自动形成每周成长分析。"}</div>
+              </div>
+              <span class="mentor-toggle">查看每周变化</span>
+            </div>
+          </summary>
+          <div class="sub">无需额外填写。系统按周汇总日测、单科、作业、纠错以及随手记与沟通，并与前一周比较。</div>
+          <div class="stage-record-list">
+            ${stages.length ? [...stages].reverse().map(stage => `
+              <div class="stage-record-item">
+                <div class="stage-record-date">${escapeHtml(stage.period)}<br><span class="muted">第 ${stage.index} 周</span></div>
+                <div class="stage-record-content">
+                  <div><strong>本周：</strong>${escapeHtml(stage.summary)}</div>
+                  <div><strong>变化：</strong>${escapeHtml(stage.change)}</div>
+                  <div><strong>建议：</strong>${escapeHtml(stage.suggestion)}</div>
+                </div>
+              </div>
+            `).join("") : `<div class="empty">暂无可分析数据；有日测、作业、单科或随手记后会自动生成。</div>`}
+          </div>
+        </details>
+      `;
+      const details = $("stageProfilePanel").querySelector("details");
+      const toggle = $("stageProfilePanel").querySelector(".mentor-toggle");
+      details.addEventListener("toggle", () => {
+        toggle.textContent = details.open ? "收起" : "查看每周变化";
+      });
+    }
+
+    function weekRangeForDate(dateText) {
+      const normalized = normalizeDateKey(dateText);
+      const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!match) return null;
+      const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+      if (date.getUTCFullYear() !== Number(match[1]) || date.getUTCMonth() !== Number(match[2]) - 1 || date.getUTCDate() !== Number(match[3])) return null;
+      const day = date.getUTCDay() || 7;
+      const start = new Date(date);
+      start.setUTCDate(date.getUTCDate() - day + 1);
+      const end = new Date(start);
+      end.setUTCDate(start.getUTCDate() + 6);
+      return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
+    }
+
+    function buildAutomaticGrowthStages(records, subjectTests, events, quickNotes) {
+      const groups = new Map();
+      const groupFor = dateText => {
+        const range = weekRangeForDate(dateText);
+        if (!range) return null;
+        if (!groups.has(range.start)) groups.set(range.start, { ...range, records: [], subjectTests: [], events: [], quickNotes: [] });
+        return groups.get(range.start);
+      };
+      records.forEach(record => groupFor(record.date)?.records.push(record));
+      subjectTests.forEach(test => groupFor(test.date)?.subjectTests.push(test));
+      events.forEach(event => groupFor(event.date)?.events.push(event));
+      quickNotes.forEach(note => groupFor(note.date)?.quickNotes.push(note));
+      let previousStage = null;
+      return [...groups.values()].sort((a, b) => a.start.localeCompare(b.start)).map((group, index) => {
+        const dailyScores = group.records.map(record => parseScore(record.score)).filter(score => score !== null);
+        const subjectScores = group.subjectTests.map(test => parseScore(test.score)).filter(score => score !== null);
+        const dailyAvg = averageNumber(dailyScores);
+        const subjectAvg = averageNumber(subjectScores);
+        const homeworkGrades = group.records.flatMap(record => homeworkNames().map((_, homeworkIndex) => getHomeworkGrade(record, homeworkIndex))).filter(grade => grade !== NO_HOMEWORK);
+        const homeworkGood = homeworkGrades.filter(grade => ["A+", "A"].includes(grade)).length;
+        const correction = dailyCorrectionStats(group.records.map(record => ({ ...record })));
+        const correctionNeed = correction.checked + correction.unchecked + correction.uncorrected;
+        const concernCount = group.quickNotes.filter(note => note.level === "需关注" || ["需关注", "需跟进"].includes(quickNoteStatus(note))).length
+          + group.events.filter(event => event.status === "需跟进").length;
+        const praiseCount = group.quickNotes.filter(note => normalizeQuickNoteType(note.type) === "表扬鼓励").length;
+        const summaryParts = [];
+        if (dailyAvg !== null) summaryParts.push(`日测 ${dailyScores.length} 次，均分 ${dailyAvg.toFixed(1)}`);
+        if (subjectAvg !== null) summaryParts.push(`单科 ${subjectScores.length} 次，均分 ${subjectAvg.toFixed(1)}`);
+        if (homeworkGrades.length) summaryParts.push(`作业优秀率 ${(homeworkGood / homeworkGrades.length * 100).toFixed(0)}%`);
+        if (correctionNeed) summaryParts.push(`纠错完成 ${correction.checked}/${correctionNeed}`);
+        if (praiseCount) summaryParts.push(`正向记录 ${praiseCount} 条`);
+        if (concernCount) summaryParts.push(`需关注 ${concernCount} 条`);
+        let change = "这是当前范围内首个有记录的学习周";
+        const currentStart = new Date(`${group.start}T00:00:00Z`);
+        const previousStart = previousStage ? new Date(`${previousStage.start}T00:00:00Z`) : null;
+        const isAdjacentWeek = previousStart && (currentStart - previousStart) / 86400000 === 7;
+        if (previousStage && !isAdjacentWeek) {
+          change = "与上一条记录之间存在空缺周，暂不直接比较";
+        } else if (previousStage && previousStage.dailyAvg === null) {
+          change = "前一周没有可比较的日测数据";
+        } else if (previousStage && dailyAvg === null) {
+          change = "本周没有日测数据，暂不比较日测变化";
+        } else if (previousStage && dailyAvg !== null && previousStage.dailyAvg !== null) {
+          const diff = dailyAvg - previousStage.dailyAvg;
+          change = Math.abs(diff) < 3 ? `日测均分较前一周基本稳定（${diff >= 0 ? "+" : ""}${diff.toFixed(1)}）` : `日测均分较前一周${diff > 0 ? "提高" : "下降"} ${Math.abs(diff).toFixed(1)} 分`;
+        }
+        const suggestionParts = [];
+        if (correction.uncorrected + correction.unchecked) suggestionParts.push(`优先完成 ${correction.uncorrected + correction.unchecked} 次待处理纠错`);
+        if (concernCount) suggestionParts.push("回看本周需关注记录并完成跟进");
+        if (change.includes("下降")) suggestionParts.push("复盘本周低分题型和失分原因");
+        if (!suggestionParts.length) suggestionParts.push("保持当前节奏，继续观察下一周变化");
+        const stage = {
+          index: index + 1,
+          start: group.start,
+          end: group.end,
+          period: `${group.start} 至 ${group.end}`,
+          dailyCount: dailyScores.length,
+          dailyAvg,
+          subjectCount: subjectScores.length,
+          subjectAvg,
+          homeworkCount: homeworkGrades.length,
+          homeworkGoodRate: homeworkGrades.length ? homeworkGood / homeworkGrades.length : null,
+          correctionNeed,
+          correctionRate: correctionNeed ? correction.checked / correctionNeed : null,
+          praiseCount,
+          concernCount,
+          summary: summaryParts.join("；") || "本周只有少量过程记录，暂无可量化成绩",
+          change,
+          suggestion: suggestionParts.join("；")
+        };
+        previousStage = stage;
+        return stage;
+      });
     }
 
     function renderProfileKpis(records, subjectTests, events, quickNotes = []) {
@@ -4879,6 +5062,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function buildStudentAnalysis(student, records, subjectTests, events, quickNotes = []) {
       const mentorNote = student.mentor_note || {};
+      const growthStages = buildAutomaticGrowthStages(records, subjectTests, events, quickNotes);
+      const latestStage = growthStages[growthStages.length - 1];
       const mentorText = mentorNoteText(student);
       const scores = records.map(record => parseScore(record.score)).filter(score => score !== null);
       const recentScores = scores.slice(-3);
@@ -4913,6 +5098,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (eventFollowCount) judgements.push(`有 ${eventFollowCount} 条沟通历史仍需跟进。`);
       if (recentEvent) judgements.push(`最近一次沟通历史：${recentEvent.date} ${recentEvent.type}，状态为${recentEvent.status || "已记录"}。`);
       if (quickNotes.length) judgements.push(`当前日期范围内有 ${quickNotes.length} 条随手记，其中 ${quickConcernCount} 条需关注。`);
+      if (latestStage) judgements.push(`最近学习周（${latestStage.period}）：${latestStage.summary}。`);
+      if (latestStage && !latestStage.change.includes("暂无")) judgements.push(latestStage.change);
 
       const weaknesses = [];
       if (lowDailyCount) weaknesses.push(`日测低于 70 分共 ${lowDailyCount} 次，需要关注基础掌握和当日消化情况。`);
@@ -4939,6 +5126,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (lowDailyCount || scoreTrend.includes("下降")) actions.push("建议和学生做一次 5 分钟复盘：低分题型、失分原因、当天补救动作。");
       if (eventFollowCount) actions.push("先处理待跟进沟通历史，避免问题记录后没有闭环。");
       if (quickConcernCount) actions.push("优先查看需关注随手记，判断是否需要家长反馈或后续观察。");
+      if (latestStage) actions.push(`自动周分析建议：${latestStage.suggestion}`);
       if (!actions.length) actions.push("保持当前记录节奏，每周复盘一次成绩波动和作业质量即可。");
 
       return {
@@ -5040,6 +5228,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const quickLines = quickNotes.map(note => `${note.date} ${note.time || ""} ${note.type} ${note.level}：${note.content || ""}`);
       const eventLines = events.map(event => `${event.date} ${event.type} ${event.content || ""} 后续:${event.followUp || "无"} 状态:${event.status || "已记录"}`);
       const mentorLines = mentorNoteText(student);
+      const stageLines = buildAutomaticGrowthStages(records, subjectTests, events, quickNotes)
+        .map(stage => `${stage.period}；本周：${stage.summary}；变化：${stage.change}；建议：${stage.suggestion}`)
+        .join("\n");
       return [
         `请你以班主任和学习规划老师的视角，分析这个学生的薄弱点、课堂表现、作业习惯和后续干预建议。`,
         `要求：结论具体、不要空泛，分为“主要问题 / 证据 / 建议动作 / 家长沟通话术”四部分。`,
@@ -5047,6 +5238,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         `学生：${student.name}；学校：${student.school || "未填写"}；性别：${student.gender || "未填写"}；来源班级：${student.source_class || "未填写"}`,
         `班主任长期备注：`,
         mentorLines || "暂无",
+        ``,
+        `系统自动生成的每周成长分析：`,
+        stageLines || "暂无",
         ``,
         `本系统初步判断：`,
         ...["主要判断", ...analysis.judgements, "薄弱点", ...analysis.weaknesses, "状态与习惯", ...analysis.habits, "建议动作", ...analysis.actions],
@@ -5577,8 +5771,24 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const events = getStudentEvents(student.name);
       const quickNotes = getStudentQuickNotes(student.name);
       const note = student.mentor_note || {};
+      const growthStages = buildAutomaticGrowthStages(records, subjectTests, events, quickNotes);
+      const latestStage = growthStages[growthStages.length - 1];
       const rangeText = [$("startDate").value || "最早记录", $("endDate").value || "最新记录"].join(" 至 ");
       const names = homeworkNames();
+      const dailyScores = records.map(record => parseScore(record.score)).filter(score => score !== null);
+      const subjectScored = subjectTests
+        .map(test => ({ ...test, scoreNum: parseScore(test.score) }))
+        .filter(test => test.scoreNum !== null);
+      const recentAverage = averageNumber(dailyScores.slice(-3));
+      const previousAverage = averageNumber(dailyScores.slice(-6, -3));
+      const correctionStats = dailyCorrectionStats(records);
+      const needCorrectionCount = correctionStats.checked + correctionStats.unchecked + correctionStats.uncorrected;
+      const homeworkRecordedCount = records.reduce((sum, record) => sum + names.filter((_, index) => getHomeworkGrade(record, index) !== NO_HOMEWORK).length, 0);
+      const homeworkGoodCount = records.reduce((sum, record) => sum + names.filter((_, index) => ["A+", "A"].includes(getHomeworkGrade(record, index))).length, 0);
+      const concernNotes = quickNotes.filter(item => item.level === "需关注" || ["需关注", "需跟进"].includes(quickNoteStatus(item)));
+      const followUpCount = concernNotes.filter(item => quickNoteStatus(item) === "需跟进").length
+        + events.filter(item => item.status === "需跟进").length;
+      const analysis = buildStudentAnalysis(student, records, subjectTests, events, quickNotes);
       const archiveSummary = [
         ["学生档案项目", "内容"],
         ["姓名", student.name],
@@ -5593,11 +5803,87 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         ["冲刺策略", note.sprint || ""],
         ["家校情况", note.family || ""],
         ["标签", note.tags || ""],
+        ["自动分析周数", growthStages.length],
+        ["最近分析周期", latestStage?.period || "暂无数据"],
+        ["最近一周表现", latestStage?.summary || "暂无数据"],
+        ["与前期比较", latestStage?.change || "暂无数据"],
+        ["系统建议", latestStage?.suggestion || "暂无数据"],
         ["有效每日记录", records.length],
-        ["单科考试次数", subjectTests.filter(test => parseScore(test.score) !== null).length],
+        ["有效日测次数", dailyScores.length],
+        ["日测平均分", dailyScores.length ? averageNumber(dailyScores).toFixed(1) : "暂无数据"],
+        ["最近一次日测", dailyScores.length ? dailyScores[dailyScores.length - 1] : "暂无数据"],
+        ["近期趋势", trendText(recentAverage, previousAverage)],
+        ["单科考试次数", subjectScored.length],
+        ["单科平均分", subjectScored.length ? averageNumber(subjectScored.map(test => test.scoreNum)).toFixed(1) : "暂无数据"],
+        ["作业优秀率", homeworkRecordedCount ? `${(homeworkGoodCount / homeworkRecordedCount * 100).toFixed(0)}%（${homeworkGoodCount}/${homeworkRecordedCount}）` : "暂无数据"],
+        ["纠错闭环率", needCorrectionCount ? `${(correctionStats.checked / needCorrectionCount * 100).toFixed(0)}%（${correctionStats.checked}/${needCorrectionCount}）` : "暂无需纠错记录"],
+        ["需关注记录", concernNotes.length],
+        ["待跟进事项", followUpCount],
         ["随手记条数", quickNotes.length],
         ["沟通历史条数", events.length]
       ];
+      const stageRows = [
+        ["学习周", "日测次数", "日测均分", "单科次数", "单科均分", "作业优秀率", "纠错完成率", "正向记录", "需关注", "本周分析", "与前周比较", "建议"],
+        ...growthStages.map(stage => [
+          stage.period,
+          stage.dailyCount,
+          stage.dailyAvg === null ? "" : Number(stage.dailyAvg.toFixed(1)),
+          stage.subjectCount,
+          stage.subjectAvg === null ? "" : Number(stage.subjectAvg.toFixed(1)),
+          stage.homeworkGoodRate === null ? "" : `${(stage.homeworkGoodRate * 100).toFixed(0)}%`,
+          stage.correctionRate === null ? "" : `${(stage.correctionRate * 100).toFixed(0)}%`,
+          stage.praiseCount,
+          stage.concernCount,
+          stage.summary,
+          stage.change,
+          stage.suggestion
+        ])
+      ];
+      const analysisRows = [
+        ["分析维度", "系统根据现有记录整理"],
+        ["主要判断", analysis.judgements.join("\n")],
+        ["薄弱点", analysis.weaknesses.join("\n")],
+        ["学习习惯与状态", analysis.habits.join("\n")],
+        ["建议动作", analysis.actions.join("\n")],
+        ["表扬与正向记录", quickNotes.filter(item => normalizeQuickNoteType(item.type) === "表扬鼓励").map(item => `${item.date}：${item.content}`).join("\n") || "暂无明确的表扬鼓励记录"]
+      ];
+      const scoreTrendData = [
+        ...records.filter(record => parseScore(record.score) !== null).map(record => [record.date, "日测", "每日一测", parseScore(record.score), "", dailyCorrectionText(record), record.custom_entry || ""]),
+        ...subjectScored.map(test => [test.date, "单科考试", test.subject, test.scoreNum, test.rank || "", test.correction || "未记录", test.note || ""])
+      ].sort((a, b) => String(a[0]).localeCompare(String(b[0])) || String(a[1]).localeCompare(String(b[1])));
+      const scoreTrendRows = [
+        ["日期", "记录类型", "科目/项目", "成绩", "排名", "纠错情况", "备注"],
+        ...scoreTrendData
+      ];
+      const homeworkRows = [
+        ["作业项目", "有作业次数", "A+/A次数", "B次数", "C次数", "D次数", "未提交次数", "优秀率"],
+        ...names.map((name, index) => {
+          const grades = records.map(record => getHomeworkGrade(record, index)).filter(grade => grade !== NO_HOMEWORK);
+          const good = grades.filter(grade => ["A+", "A"].includes(grade)).length;
+          return [
+            name,
+            grades.length,
+            good,
+            grades.filter(grade => grade === "B").length,
+            grades.filter(grade => grade === "C").length,
+            grades.filter(grade => grade === "D").length,
+            grades.filter(grade => grade === HOMEWORK_NOT_SUBMITTED).length,
+            grades.length ? `${(good / grades.length * 100).toFixed(0)}%` : "暂无数据"
+          ];
+        }),
+        ["日测纠错", needCorrectionCount, correctionStats.checked, "", "", correctionStats.uncorrected, correctionStats.unchecked, needCorrectionCount ? `${(correctionStats.checked / needCorrectionCount * 100).toFixed(0)}%` : "暂无需纠错记录"]
+      ];
+      const issueRows = [["日期", "来源", "表现或问题", "处理状态", "说明"]];
+      records.forEach(record => {
+        const score = parseScore(record.score);
+        if (score !== null && score < 70) issueRows.push([record.date, "日测", `日测 ${score} 分`, dailyCorrectionText(record), "低于70分"]);
+        if (dailyWrongText(record) && dailyWrongText(record) !== "全对") issueRows.push([record.date, "理解题", dailyWrongExportText(record, true), dailyCorrectionText(record), "理解题错题记录"]);
+        if (knowledgeExportText(record) && knowledgeExportText(record) !== "全对") issueRows.push([record.date, "知识点", knowledgeExportText(record), dailyCorrectionText(record), "知识点错题记录"]);
+      });
+      subjectScored.filter(test => test.scoreNum < 70).forEach(test => issueRows.push([test.date, `单科·${test.subject}`, `${test.scoreNum} 分`, test.correction || "未记录", test.note || "低于70分"]));
+      concernNotes.forEach(item => issueRows.push([item.date, `随手记·${normalizeQuickNoteType(item.type)}`, item.content || "", quickNoteStatus(item), item.followUp || ""]));
+      events.filter(item => item.status === "需跟进").forEach(item => issueRows.push([item.date, `沟通·${item.type || "沟通"}`, item.content || "", item.status, item.followUp || ""]));
+      issueRows.splice(1, issueRows.length - 1, ...issueRows.slice(1).sort((a, b) => String(a[0]).localeCompare(String(b[0])) || String(a[1]).localeCompare(String(b[1]))));
       const dailyRows = [
         ["日期", "日测分数", "理解题", "知识点", "日测纠错", ...names, "自定义项"],
         ...records.map(record => [
@@ -5624,6 +5910,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       ];
       const workbook = buildXlsxWorkbook([
         ["档案摘要", archiveSummary],
+        ["自动成长分析", stageRows],
+        ["综合分析", analysisRows],
+        ["成绩趋势", scoreTrendRows],
+        ["作业与纠错", homeworkRows],
+        ["问题与关注", issueRows],
         ["每日记录", dailyRows],
         ["单科成绩", subjectRows],
         ["随手记与沟通", timelineRows]
@@ -6257,7 +6548,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (text.includes("日期") || text.includes("时间")) return 112;
       if (text.includes("学校")) return 150;
       if (text.includes("手机") || text.includes("电话")) return 120;
-      if (text.includes("备注") || text.includes("内容") || text.includes("动作") || text.includes("性格") || text.includes("问题") || text.includes("沟通") || text.includes("策略") || text.includes("家校")) return 220;
+      if (text.includes("备注") || text.includes("内容") || text.includes("动作") || text.includes("性格") || text.includes("问题") || text.includes("沟通") || text.includes("策略") || text.includes("家校") || text.includes("老师补充") || text.includes("系统根据") || text.includes("表现或问题") || text.includes("说明") || text.includes("分析") || text.includes("比较") || text.includes("建议")) return 220;
       if (text.includes("单科")) return 82;
       if (text.includes("次数") || text.includes("平均") || text.includes("分数")) return 92;
       return 96;
@@ -6265,13 +6556,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function styleForColumn(header) {
       const text = String(header || "");
-      if (text.includes("备注") || text.includes("内容") || text.includes("动作") || text.includes("性格") || text.includes("问题") || text.includes("沟通") || text.includes("策略") || text.includes("家校") || text.includes("标签")) return "Wrap";
+      if (text.includes("备注") || text.includes("内容") || text.includes("动作") || text.includes("性格") || text.includes("问题") || text.includes("沟通") || text.includes("策略") || text.includes("家校") || text.includes("标签") || text.includes("老师补充") || text.includes("系统根据") || text.includes("说明") || text.includes("分析") || text.includes("比较") || text.includes("建议")) return "Wrap";
       if (["姓名", "序号", "排名", "分数", "日测分数", "日测次数", "日测平均分", "单科考试次数", "单科均分"].includes(text) || /^\d{1,2}月\d{1,2}日$/.test(text) || text.includes("单科") || text.includes("次数")) return "Center";
       return "";
     }
 
     function xmlText(value) {
       return String(value ?? "")
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;");
