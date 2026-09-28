@@ -1590,6 +1590,9 @@
       background: #fff;
       box-shadow: var(--shadow);
     }
+    .dorm-room-card.dorm-inspect-card { cursor: pointer; transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
+    .dorm-room-card.dorm-inspect-card:hover { border-color: #84adff; box-shadow: 0 8px 22px rgba(37, 99, 235, .12); transform: translateY(-1px); }
+    .dorm-room-card.dorm-inspect-card:focus-visible { outline: 3px solid rgba(37, 99, 235, .2); border-color: var(--blue); }
     .dorm-room-head {
       display: flex;
       align-items: center;
@@ -1627,6 +1630,15 @@
     .dorm-inspection-status.bad { color: #b42318; background: #fef3f2; }
     .dorm-inspection-status.empty { color: #667085; background: #f2f4f7; }
     .dorm-history-actions { display: flex; gap: 6px; white-space: nowrap; }
+    .dorm-inspection-modal { width: min(820px, 100%); }
+    .dorm-inspection-modal .dorm-inspection-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dorm-inspection-modal .dorm-inspection-form .wide { grid-column: 1 / -1; }
+    .dorm-inspection-modal .dorm-inspection-actions { grid-column: 1 / -1; justify-content: flex-end; }
+    .dorm-inspection-modal select { margin: 0; }
+    .dorm-modal-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+    .dorm-modal-title h3 { margin: 0; font-size: 20px; }
+    .dorm-modal-close { border: 0; min-width: 38px; padding: 0; font-size: 25px; line-height: 1; color: #667085; background: transparent; }
+    .dorm-modal-close:hover { color: #101828; background: #f2f4f7; }
     .schedule-toolbar {
       display: flex;
       align-items: center;
@@ -2107,6 +2119,9 @@
       .dorm-toolbar { grid-template-columns: 1fr; }
       .dorm-inspection-form { grid-template-columns: 1fr; }
       .dorm-inspection-form .wide { grid-column: auto; }
+      .dorm-inspection-modal .dorm-inspection-form { grid-template-columns: 1fr; }
+      .dorm-inspection-modal .dorm-inspection-form .wide,
+      .dorm-inspection-modal .dorm-inspection-actions { grid-column: auto; }
       .schedule-calendar { grid-template-columns: repeat(7, minmax(88px, 1fr)); overflow-x: auto; }
       .schedule-day { min-height: 126px; padding: 6px; }
       .schedule-form-row { grid-template-columns: 1fr; }
@@ -2651,27 +2666,6 @@
         </div>
       </div>
       <div class="stats" id="dormStats"></div>
-      <div class="panel">
-        <div class="panel-head">
-          <div>
-            <h2 class="panel-title">登记查宿</h2>
-            <div class="sub">选择宿舍后登记卫生、异常和检查老师，保存后自动进入下方查宿记录表。</div>
-          </div>
-        </div>
-        <div class="dorm-inspection-form">
-          <label>日期<input id="dormInspectionDate" type="date"></label>
-          <label>宿舍<input id="dormInspectionRoom" type="text" list="dormRoomSuggestions" placeholder="例如：1-402"></label>
-          <label>卫生情况
-            <select id="dormInspectionHygiene"><option value="优秀">优秀</option><option value="良好" selected>良好</option><option value="一般">一般</option><option value="较差">较差</option></select>
-          </label>
-          <label>检查老师<input id="dormInspectionTeacher" type="text" list="dormTeacherSuggestions" placeholder="例如：宋老师"></label>
-          <label class="wide">异常情况<textarea id="dormInspectionAbnormal" rows="2" placeholder="没有异常可留空；如：地面有垃圾、物品摆放杂乱"></textarea></label>
-          <div class="dorm-inspection-actions">
-            <button id="saveDormInspectionBtn" class="primary" type="button">保存查宿记录</button>
-            <button id="clearDormInspectionBtn" type="button">清空</button>
-          </div>
-        </div>
-      </div>
       <div class="dorm-toolbar">
         <input id="dormSearchInput" type="search" placeholder="搜索学生 / 宿舍 / 学校">
         <select id="dormRoomFilter"><option value="">全部宿舍</option><option value="__unassigned__">未分配宿舍</option></select>
@@ -3100,6 +3094,28 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         <button id="saveTeacherScheduleBtn" class="primary" type="button">保存课程与排班</button>
         <button id="clearTeacherScheduleBtn" class="danger" type="button">清空当天安排</button>
         <button id="closeTeacherScheduleBtn" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal hidden" id="dormInspectionModal">
+    <div class="modal-box dorm-inspection-modal">
+      <div class="dorm-modal-title">
+        <h3 id="dormInspectionModalTitle">新增查宿记录</h3>
+        <button id="closeDormInspectionTopBtn" class="dorm-modal-close" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="sub">记录会自动保存到查宿记录表，并可随时导出 Excel。</div>
+      <div class="dorm-inspection-form" style="margin-top:16px">
+        <label>日期<input id="dormInspectionDate" type="date"></label>
+        <label>宿舍<input id="dormInspectionRoom" type="text" list="dormRoomSuggestions" placeholder="例如：1-402"></label>
+        <label>卫生情况
+          <select id="dormInspectionHygiene"><option value="优秀">优秀</option><option value="良好" selected>良好</option><option value="一般">一般</option><option value="较差">较差</option></select>
+        </label>
+        <label>检查老师<input id="dormInspectionTeacher" type="text" list="dormTeacherSuggestions" placeholder="例如：宋老师"></label>
+        <label class="wide">异常情况<textarea id="dormInspectionAbnormal" rows="3" placeholder="没有异常可留空；如：地面有垃圾、物品摆放杂乱"></textarea></label>
+        <div class="dorm-inspection-actions">
+          <button id="closeDormInspectionBtn" type="button">取消</button>
+          <button id="saveDormInspectionBtn" class="primary" type="button">保存</button>
+        </div>
       </div>
     </div>
   </div>
@@ -8862,13 +8878,19 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("dormInspectionAbnormal").value = "";
       $("dormInspectionTeacher").value = currentTeacherName();
       $("saveDormInspectionBtn").dataset.editId = "";
-      $("saveDormInspectionBtn").textContent = "保存查宿记录";
+      $("saveDormInspectionBtn").textContent = "保存";
+      $("dormInspectionModalTitle").textContent = "新增查宿记录";
+    }
+
+    function closeDormInspectionModal() {
+      $("dormInspectionModal").classList.add("hidden");
+      clearDormInspectionForm();
     }
 
     function startDormInspection(room = "") {
       clearDormInspectionForm();
       $("dormInspectionRoom").value = room === "未分配" ? "" : room;
-      $("dormInspectionRoom").scrollIntoView({ behavior: "smooth", block: "center" });
+      $("dormInspectionModal").classList.remove("hidden");
       $("dormInspectionHygiene").focus();
     }
 
@@ -8894,6 +8916,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }
       saveState();
       clearDormInspectionForm();
+      $("dormInspectionModal").classList.add("hidden");
       renderDormManagement();
       showToast(existing ? "查宿记录已更新" : `${room} 查宿记录已保存`);
     }
@@ -8908,7 +8931,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("dormInspectionTeacher").value = record.teacher || "";
       $("saveDormInspectionBtn").dataset.editId = record.id;
       $("saveDormInspectionBtn").textContent = "保存修改";
-      $("dormInspectionDate").scrollIntoView({ behavior: "smooth", block: "center" });
+      $("dormInspectionModalTitle").textContent = "编辑查宿记录";
+      $("dormInspectionModal").classList.remove("hidden");
+      $("dormInspectionDate").focus();
     }
 
     function deleteDormInspection(id) {
@@ -8965,12 +8990,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }).map(([room, students]) => {
         const latest = sortedDormInspections().find(record => record.room === room);
         return `
-        <div class="dorm-room-card">
+        <div class="dorm-room-card ${room !== "未分配" ? "dorm-inspect-card" : ""}" ${room !== "未分配" ? `data-room="${escapeHtml(room)}" role="button" tabindex="0" aria-label="登记 ${escapeHtml(room)} 查宿记录"` : ""}>
           <div class="dorm-room-head"><strong>${escapeHtml(room)}</strong><span class="student-pill">${students.length} 人</span></div>
           <div class="dorm-student-tags">${students.map(student => `<span class="dorm-student-tag">${escapeHtml(student.name)}</span>`).join("")}</div>
           <div class="dorm-card-actions">
             ${latest ? `<span class="dorm-inspection-status ${dormHygieneClass(latest.hygiene)}">${escapeHtml(latest.date.slice(5))} · ${escapeHtml(latest.hygiene)}</span>` : `<span class="dorm-inspection-status empty">尚未检查</span>`}
-            ${room !== "未分配" ? `<button class="small primary dorm-inspect-btn" data-room="${escapeHtml(room)}" type="button">登记查宿</button>` : ""}
+            ${room !== "未分配" ? `<span class="sub">点击登记</span>` : ""}
           </div>
         </div>
       `; }).join("") || `<div class="panel roster-empty">没有符合当前条件的住宿信息</div>`;
@@ -8998,7 +9023,15 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         </tr>
       `).join("") || `<tr><td colspan="7" class="roster-empty">暂无符合条件的学生</td></tr>`;
       document.querySelectorAll(".dorm-save-btn").forEach(button => button.addEventListener("click", () => saveDormAssignment(Number(button.dataset.index))));
-      document.querySelectorAll(".dorm-inspect-btn").forEach(button => button.addEventListener("click", () => startDormInspection(button.dataset.room)));
+      document.querySelectorAll(".dorm-inspect-card").forEach(card => {
+        card.addEventListener("click", () => startDormInspection(card.dataset.room));
+        card.addEventListener("keydown", event => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            startDormInspection(card.dataset.room);
+          }
+        });
+      });
       document.querySelectorAll(".dorm-inspection-edit").forEach(button => button.addEventListener("click", () => editDormInspection(button.dataset.id)));
       document.querySelectorAll(".dorm-inspection-delete").forEach(button => button.addEventListener("click", () => deleteDormInspection(button.dataset.id)));
       document.querySelectorAll(".dorm-room-input").forEach(input => input.addEventListener("keydown", event => {
@@ -10645,7 +10678,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     bindClick("exportDormBtn", exportDormRoster);
     bindClick("exportDormInspectionsBtn", exportDormInspections);
     bindClick("saveDormInspectionBtn", saveDormInspection);
-    bindClick("clearDormInspectionBtn", () => clearDormInspectionForm(false));
+    bindClick("closeDormInspectionBtn", closeDormInspectionModal);
+    bindClick("closeDormInspectionTopBtn", closeDormInspectionModal);
     bindClick("resetDormFilterBtn", () => {
       $("dormSearchInput").value = "";
       $("dormRoomFilter").value = "";
@@ -10764,6 +10798,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     if ($("closeStudentEditBtn")) $("closeStudentEditBtn").addEventListener("click", closeStudentEditModal);
     if ($("studentEditModal")) $("studentEditModal").addEventListener("click", event => {
       if (event.target.id === "studentEditModal") closeStudentEditModal();
+    });
+    $("dormInspectionModal").addEventListener("click", event => {
+      if (event.target.id === "dormInspectionModal") closeDormInspectionModal();
     });
     bindClick("addStudentBtn", startAddStudent);
     bindClick("exportRosterPageBtn", exportFilteredRoster);
