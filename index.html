@@ -2360,6 +2360,7 @@
           <label><input id="hasKnowledgeInput" class="entry-column-toggle" data-column="knowledge" type="checkbox"> 知识点错题</label>
           <label id="knowledgeTotalWrap" class="test-config">总题数 <input id="knowledgeTotalInput" type="number" min="1" max="50" inputmode="numeric" placeholder="不录"></label>
           <label><input id="hasCorrectionInput" class="entry-column-toggle" data-column="correction" type="checkbox"> 日测纠错</label>
+          <label><input id="hasKnowledgeQuestionInput" class="entry-column-toggle" data-column="question" type="checkbox"> 知识点提问（A/B/C）</label>
           <label><input id="hasHomework0Input" class="entry-column-toggle" data-column="homework0" type="checkbox"> <span id="homeworkSwitchName0">讲义</span></label>
           <label><input id="hasHomework1Input" class="entry-column-toggle" data-column="homework1" type="checkbox"> <span id="homeworkSwitchName1">宝典</span></label>
           <label><input id="hasCustomEntryInput" class="entry-column-toggle" data-column="custom" type="checkbox"> 自定义项</label>
@@ -2402,6 +2403,7 @@
                 <th id="knowledgeHeader">错题数</th>
                 <th id="knowledgeReviewHeader">知识点复查</th>
                 <th id="correctionHeader">日测纠错</th>
+                <th id="knowledgeQuestionHeader">知识点提问情况</th>
                 <th id="homeworkHeader0">讲义</th>
                 <th id="homeworkHeader1">宝典</th>
                 <th id="customEntryHeader">自定义项</th>
@@ -3164,7 +3166,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       nosign: "未报到"
     };
     const DEFAULT_HOMEWORK_NAMES = ["讲义", "宝典"];
-    const ENTRY_COLUMN_KEYS = ["score", "dailyWrong", "knowledge", "correction", "homework0", "homework1", "custom"];
+    const KNOWLEDGE_QUESTION_OPTIONS = ["", "A", "B", "C"];
+    const ENTRY_COLUMN_KEYS = ["score", "dailyWrong", "knowledge", "correction", "question", "homework0", "homework1", "custom"];
     const DEFAULT_CLASS_NAME = "VIP2 班";
     const SUBJECTS = ["电路", "电机", "电力电子", "稳态", "暂态", "继保", "高电压", "发电厂", "行测", "其他"];
     const DEFAULT_SYSTEM_SETTINGS = {
@@ -3457,6 +3460,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         record.knowledge_wrong = String(record.knowledge_wrong ?? "").trim();
         record.knowledge_review = String(record.knowledge_review || "").trim();
         if (!KNOWLEDGE_REVIEW_OPTIONS.includes(record.knowledge_review)) record.knowledge_review = "";
+        record.knowledge_question = String(record.knowledge_question || "").trim().toUpperCase();
+        if (!KNOWLEDGE_QUESTION_OPTIONS.includes(record.knowledge_question)) record.knowledge_question = "";
         record.custom_entry = String(record.custom_entry ?? "").trim();
         if (parsedKnowledge.total !== "" && record.date) {
           target.knowledgeDates[record.date] = {
@@ -3667,7 +3672,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       Object.entries(source).forEach(([date, config]) => {
         if (!config || typeof config !== "object") return;
         target.entryColumnDates[date] = {
-          ...Object.fromEntries(ENTRY_COLUMN_KEYS.map(key => [key, Boolean(config[key])])),
+          ...Object.fromEntries(ENTRY_COLUMN_KEYS.map(key => [key, key === "question" && config[key] === undefined ? true : Boolean(config[key])])),
           customName: String(config.customName || "自定义项").trim() || "自定义项"
         };
       });
@@ -4675,6 +4680,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         knowledge_point: "",
         knowledge_wrong: "",
         knowledge_review: "",
+        knowledge_question: "",
         custom_entry: "",
         homework: homeworkNames().map(name => `${name}:${NO_HOMEWORK}`).join(" / "),
         homeworks: homeworkNames().map(() => NO_HOMEWORK),
@@ -4691,6 +4697,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         || String(record.knowledge_point || "").trim() !== ""
         || String(record.knowledge_wrong ?? "").trim() !== ""
         || String(record.knowledge_review || "").trim() !== ""
+        || String(record.knowledge_question || "").trim() !== ""
         || String(record.custom_entry || "").trim() !== ""
         || String(record.note || "").trim() !== ""
         || (record.status || []).length > 0
@@ -4766,6 +4773,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         dailyWrong: hasDailyTestForDate(date),
         knowledge: hasKnowledgeForDate(date),
         correction: true,
+        question: true,
         homework0: hasHomework,
         homework1: hasHomework,
         custom: false,
@@ -4956,6 +4964,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function knowledgeReviewOptionsFor(record) {
       const current = knowledgeReviewText(record);
       return KNOWLEDGE_REVIEW_OPTIONS.map(value => `<option value="${value}" ${current === value ? "selected" : ""}>${value || "未复查"}</option>`).join("");
+    }
+
+    function knowledgeQuestionOptionsFor(record) {
+      const current = KNOWLEDGE_QUESTION_OPTIONS.includes(record?.knowledge_question) ? record.knowledge_question : "";
+      return KNOWLEDGE_QUESTION_OPTIONS.map(value => `<option value="${value}" ${current === value ? "selected" : ""}>${value || "未记录"}</option>`).join("");
     }
 
     function homeworkNames() {
@@ -5751,6 +5764,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("knowledgeHeader").classList.toggle("hidden", !columns.knowledge);
       $("knowledgeReviewHeader").classList.toggle("hidden", !columns.knowledge);
       $("correctionHeader").classList.toggle("hidden", !columns.correction);
+      $("knowledgeQuestionHeader").classList.toggle("hidden", !columns.question);
       $("customEntryHeader").textContent = columns.customName || "自定义项";
       $("customEntryHeader").classList.toggle("hidden", !columns.custom);
       $("entryBody").innerHTML = rows.map(({ student, idx, record }) => `
@@ -5767,6 +5781,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
               ${dailyCorrectionOptionsFor(record)}
             </select>
           </td>` : ""}
+          ${columns.question ? `<td><select class="knowledge-question-select" data-name="${student.name}">${knowledgeQuestionOptionsFor(record)}</select></td>` : ""}
           ${names.map((_, homeworkIndex) => columns[`homework${homeworkIndex}`] ? `
             <td>
               <select class="homework-select" data-name="${student.name}" data-homework-index="${homeworkIndex}">
@@ -5856,6 +5871,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       document.querySelectorAll(".knowledge-review-select").forEach(select => {
         select.addEventListener("change", () => updateRecordField(date, select.dataset.name, "knowledge_review", select.value));
       });
+      document.querySelectorAll(".knowledge-question-select").forEach(select => {
+        select.addEventListener("change", () => updateRecordField(date, select.dataset.name, "knowledge_question", select.value));
+      });
       document.querySelectorAll(".custom-entry-input").forEach((input, visibleIndex, inputs) => {
         input.addEventListener("input", () => updateRecordField(date, input.dataset.name, "custom_entry", input.value));
         input.addEventListener("keydown", event => {
@@ -5897,6 +5915,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const record = ensureRecord(date, student);
       if (field === "daily_wrong") value = normalizeDailyWrongForDate(date, value);
       if (field === "knowledge_wrong") value = normalizeKnowledgeWrongForDate(date, value);
+      if (field === "knowledge_question") value = KNOWLEDGE_QUESTION_OPTIONS.includes(String(value || "").toUpperCase()) ? String(value || "").toUpperCase() : "";
       record[field] = value;
       if (field === "knowledge_wrong") {
         record.knowledge_point = "";
@@ -7900,7 +7919,16 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           if (!student) { report.skipped += 1; return; }
           dailyTable.headers.forEach((header, column) => {
             const date = workbookDateFromHeader(header);
-            const kind = String(header).includes("理解题") ? "daily" : String(header).includes("知识点") ? "knowledge" : "";
+            const headerText = String(header || "").trim();
+            if (date && /知识点提问/.test(headerText)) {
+              const grade = String(row[column] || "").trim().toUpperCase();
+              if (!KNOWLEDGE_QUESTION_OPTIONS.includes(grade) || !grade) return;
+              const record = ensureRecord(date, student);
+              state.entryColumnDates[date] = { ...(state.entryColumnDates[date] || {}), question: true };
+              if (!record.knowledge_question) { record.knowledge_question = grade; report.dailyCells += 1; }
+              return;
+            }
+            const kind = headerText.includes("理解题") ? "daily" : headerText.includes("知识点") ? "knowledge" : "";
             if (!date || !kind) return;
             const parsed = parseWrongCount(row[column]);
             if (parsed.wrong === "" && !parsed.leave) return;
@@ -9741,7 +9769,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       events.filter(item => item.status === "需跟进").forEach(item => issueRows.push([item.date, `沟通·${item.type || "沟通"}`, item.content || "", item.status, item.followUp || ""]));
       issueRows.splice(1, issueRows.length - 1, ...issueRows.slice(1).sort((a, b) => String(a[0]).localeCompare(String(b[0])) || String(a[1]).localeCompare(String(b[1]))));
       const dailyRows = [
-        ["日期", "日测分数", "理解题", "知识点", "知识点复查", "日测纠错", ...names, "自定义项"],
+        ["日期", "日测分数", "理解题", "知识点", "知识点复查", "日测纠错", "知识点提问情况", ...names, "自定义项"],
         ...records.map(record => [
           record.date,
           record.score,
@@ -9749,6 +9777,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           knowledgeExportText(record),
           knowledgeReviewText(record),
           dailyCorrectionText(record),
+          record.knowledge_question || "",
           ...names.map((_, index) => getHomeworkGrade(record, index)),
           record.custom_entry || ""
         ])
@@ -9787,7 +9816,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         dailyWrongExportHeader(date),
         knowledgeExportHeader(date),
         `${formatShortDate(date)}知识点复查`,
-        `${formatShortDate(date)}纠错情况`
+        `${formatShortDate(date)}纠错情况`,
+        `${formatShortDate(date)}知识点提问情况`
       ])];
       const rows = activeStudents().map(student => [
         student.name,
@@ -9797,7 +9827,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             dailyWrongExportText(record, true),
             knowledgeExportText(record),
             knowledgeReviewText(record),
-            dailyCorrectionText(record)
+            dailyCorrectionText(record),
+            record?.knowledge_question || ""
           ];
         })
       ]);
@@ -9850,6 +9881,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           value: record => dailyCorrectionText(record)
         });
       }
+      if (records.some(record => String(record.knowledge_question || "").trim())) {
+        columns.push({
+          header: `${formatShortDate(date)}知识点提问情况`,
+          value: record => record?.knowledge_question || ""
+        });
+      }
       names.forEach((name, index) => {
         if (!records.some(record => getHomeworkGrade(record, index) !== NO_HOMEWORK)) return;
         columns.push({
@@ -9874,6 +9911,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           || knowledgePointText(record)
           || knowledgeReviewText(record)
           || dailyCorrectionText(record)
+          || String(record.knowledge_question || "").trim()
           || String(record.custom_entry || "").trim()
           || homeworkNames().some((_, index) => getHomeworkGrade(record, index) !== NO_HOMEWORK))
         .map(record => record.date)
@@ -9898,7 +9936,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function dailyTestExportDates() {
       return [...new Set(Object.values(state.records || {})
-        .filter(record => parseScore(record.score) !== null || dailyWrongText(record) || knowledgePointText(record))
+        .filter(record => parseScore(record.score) !== null || dailyWrongText(record) || knowledgePointText(record) || String(record.knowledge_question || "").trim())
         .map(record => record.date)
         .filter(Boolean))]
         .sort();
@@ -10003,7 +10041,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function dailyRowsForExport() {
       const names = homeworkNames();
       return [
-        ["日期", "序号", "姓名", "日测分数", "理解题", "知识点", "知识点复查", "日测纠错", ...names, "自定义项", "随手记条数"],
+        ["日期", "序号", "姓名", "日测分数", "理解题", "知识点", "知识点复查", "日测纠错", "知识点提问情况", ...names, "自定义项", "随手记条数"],
         ...Object.values(state.records)
           .sort(compareRecordsByDateAndStudent)
           .map(record => [
@@ -10015,6 +10053,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             knowledgeExportText(record),
             knowledgeReviewText(record),
             dailyCorrectionText(record),
+            record.knowledge_question || "",
             ...names.map((_, index) => getHomeworkGrade(record, index)),
             record.custom_entry || "",
             getQuickNotes({ date: record.date, name: record.name }).length
