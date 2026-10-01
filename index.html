@@ -1803,6 +1803,14 @@
     }
     .teacher-saved-chip button { width: 22px; min-width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; color: #b42318; }
     .schedule-combined-blocks { display: grid; gap: 14px; }
+    .schedule-mobile-toolbar,
+    .schedule-mobile-list { display: none; }
+    .schedule-mobile-card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
     .schedule-matrix-wrap {
       overflow-x: auto;
       border: 1px solid var(--line);
@@ -2486,6 +2494,77 @@
       .management-page-actions button { width: 100%; }
       .dorm-room-grid { grid-template-columns: 1fr; }
       .schedule-matrix-wrap { max-width: 100%; -webkit-overflow-scrolling: touch; }
+      #scheduleView .schedule-toolbar {
+        align-items: flex-start;
+        padding: 10px;
+      }
+      #scheduleView .schedule-toolbar .sub { line-height: 1.55; }
+      #scheduleView .schedule-legend { gap: 5px; }
+      #scheduleView .schedule-fast-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: stretch;
+      }
+      #scheduleView .schedule-fast-actions button { width: 100%; }
+      .schedule-mobile-toolbar {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 7px;
+        margin-bottom: 10px;
+        padding: 10px;
+        border: 1px solid #bfdbfe;
+        border-radius: 10px;
+        background: #eff6ff;
+      }
+      .schedule-mobile-toolbar input { width: 100%; min-width: 0; }
+      .schedule-mobile-toolbar .schedule-mobile-edit { grid-column: 1 / -1; }
+      .schedule-mobile-list { display: grid; gap: 9px; }
+      .schedule-mobile-card { overflow: hidden; }
+      .schedule-mobile-card.today { border-color: #60a5fa; box-shadow: 0 0 0 2px #dbeafe; }
+      .schedule-mobile-card.past { opacity: .78; }
+      .schedule-mobile-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        min-height: 48px;
+        padding: 8px 11px;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
+        color: #1d4ed8;
+        background: #f8fbff;
+        text-align: left;
+      }
+      .schedule-mobile-card-head strong { font-size: 15px; }
+      .schedule-mobile-card-head span { color: #64748b; font-size: 12px; }
+      .schedule-mobile-courses { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 9px; }
+      .schedule-mobile-course {
+        min-width: 0;
+        padding: 7px 5px;
+        border-radius: 7px;
+        text-align: center;
+      }
+      .schedule-mobile-course small { display: block; margin-bottom: 3px; color: #64748b; font-size: 10px; }
+      .schedule-mobile-course b { display: block; overflow-wrap: anywhere; font-size: 12px; }
+      .schedule-mobile-teachers { display: grid; gap: 7px; padding: 0 9px 9px; }
+      .schedule-mobile-teacher-row {
+        display: grid;
+        grid-template-columns: minmax(70px, 1fr) minmax(0, 1.4fr);
+        align-items: center;
+        gap: 8px;
+      }
+      .schedule-mobile-teacher-row label { overflow-wrap: anywhere; color: #475569; font-size: 12px; font-weight: 750; }
+      .schedule-mobile-teacher-row select { width: 100%; min-width: 0; }
+      .schedule-mobile-empty-teachers {
+        margin: 0 9px 9px;
+        padding: 8px;
+        border-radius: 7px;
+        color: #64748b;
+        background: #f8fafc;
+        font-size: 12px;
+      }
 
       #eventView .event-entry-toolbar {
         display: grid;
@@ -3181,6 +3260,12 @@
         </div>
       </div>
       <div class="schedule-fast-actions" id="scheduleFastActions"></div>
+      <div class="schedule-mobile-toolbar">
+        <button id="scheduleMobilePrevWeekBtn" type="button" aria-label="上一周">‹ 上周</button>
+        <input id="scheduleMobileDateInput" type="date" aria-label="选择排班日期">
+        <button id="scheduleMobileNextWeekBtn" type="button" aria-label="下一周">下周 ›</button>
+        <button id="scheduleMobileEditBtn" class="primary schedule-mobile-edit" type="button">编辑所选日期课程与排班</button>
+      </div>
       <div class="schedule-combined-blocks" id="scheduleCombinedBlocks"></div>
     </section>
 
@@ -3722,6 +3807,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     let rosterInitialFilter = "";
     let scheduleMonth = today().slice(0, 7);
     let scheduleViewMode = "term";
+    let scheduleMobileDate = today();
     let customTeacherShiftField = "";
     let editingQuickNoteId = "";
     let currentAiPrompt = "";
@@ -9936,6 +10022,70 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       showToast(`已导出 ${rangeLabel} 课程与排班`);
     }
 
+    function clampMobileScheduleDate(value) {
+      const range = scheduleTermRange();
+      const clean = /^\d{4}-\d{2}-\d{2}$/.test(value || "") ? value : today();
+      if (clean < range.start) return range.start;
+      if (clean > range.end) return range.end;
+      return clean;
+    }
+
+    function shiftMobileScheduleWeek(delta) {
+      const current = new Date(`${clampMobileScheduleDate(scheduleMobileDate)}T12:00:00`);
+      current.setDate(current.getDate() + delta * 7);
+      scheduleMobileDate = clampMobileScheduleDate(localDateText(current));
+      renderTeacherSchedule();
+    }
+
+    function mobileScheduleCardHtml(date, teachers) {
+      const item = state.teacherSchedules?.[date] || {};
+      const parsed = new Date(`${date}T12:00:00`);
+      const weekday = ["日", "一", "二", "三", "四", "五", "六"][parsed.getDay()];
+      const courseRows = [["上午", item.morning], ["下午", item.afternoon], ["晚上", item.courseEvening]];
+      const courses = courseRows.map(([label, value]) => `
+        <div class="schedule-mobile-course ${value ? courseColorClass(value) : "course-default"}">
+          <small>${label}</small><b>${escapeHtml(value || "—")}</b>
+        </div>
+      `).join("");
+      const teacherRows = teachers.length ? teachers.map(teacher => {
+        const shift = item.teacherShifts?.[teacher] || "";
+        return `
+          <div class="schedule-mobile-teacher-row">
+            <label>${escapeHtml(teacherShortLabel(teacher))}</label>
+            <select class="schedule-matrix-select ${shiftSelectClass(shift)}" data-date="${date}" data-teacher="${escapeHtml(teacher)}" aria-label="${escapeHtml(teacherShortLabel(teacher))} ${date} 班次">
+              <option value="" ${!shift ? "selected" : ""}>未排班</option>
+              <option value="early" ${shift === "early" ? "selected" : ""}>早班</option>
+              <option value="evening" ${shift === "evening" ? "selected" : ""}>晚班</option>
+              <option value="full" ${shift === "full" ? "selected" : ""}>通班</option>
+              <option value="rest" ${shift === "rest" ? "selected" : ""}>休息</option>
+            </select>
+          </div>
+        `;
+      }).join("") : `<div class="schedule-mobile-empty-teachers">尚未配置值班老师；课程仍可编辑，老师可稍后在“系统设置”中添加。</div>`;
+      return `
+        <article class="schedule-mobile-card ${date === today() ? "today" : ""} ${date < today() ? "past" : ""}">
+          <button type="button" class="schedule-mobile-card-head schedule-date-head" data-date="${date}">
+            <strong>${Number(date.slice(5, 7))}月${Number(date.slice(8, 10))}日 · 周${weekday}</strong>
+            <span>点击编辑课程 ›</span>
+          </button>
+          <div class="schedule-mobile-courses">${courses}</div>
+          <div class="schedule-mobile-teachers">${teacherRows}</div>
+        </article>
+      `;
+    }
+
+    function renderMobileTeacherSchedule(visibleDates, teachers) {
+      scheduleMobileDate = clampMobileScheduleDate(scheduleMobileDate);
+      const dateInput = $("scheduleMobileDateInput");
+      const range = scheduleTermRange();
+      dateInput.min = range.start;
+      dateInput.max = range.end;
+      dateInput.value = scheduleMobileDate;
+      const startIndex = Math.max(0, visibleDates.indexOf(scheduleMobileDate));
+      const dates = visibleDates.slice(startIndex, startIndex + 7);
+      $("scheduleCombinedBlocks").innerHTML = `<div class="schedule-mobile-list">${dates.map(date => mobileScheduleCardHtml(date, teachers)).join("")}</div>`;
+    }
+
     function renderTeacherSchedule() {
       applyCourseScheduleTemplateIfNeeded();
       $("exportScheduleBtn").textContent = "导出本期课程与排班";
@@ -9953,10 +10103,17 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         statHtml("本期天数", visibleDates.length)
       ].join("");
       const teachers = scheduleTeacherNames();
+      const isMobile = window.matchMedia("(max-width: 860px)").matches;
+      if (isMobile) {
+        renderMobileTeacherSchedule(visibleDates, teachers);
+        document.querySelectorAll("#scheduleCombinedBlocks .schedule-date-head").forEach(button => button.addEventListener("click", () => openTeacherSchedule(button.dataset.date)));
+        document.querySelectorAll("#scheduleCombinedBlocks .schedule-matrix-select").forEach(select => select.addEventListener("change", () => setTeacherMatrixShift(select.dataset.date, select.dataset.teacher, select.value)));
+        return;
+      }
       const chunks = [];
       for (let index = 0; index < visibleDates.length; index += 8) chunks.push(visibleDates.slice(index, index + 8));
       const courseRows = [["上午", "morning"], ["下午", "afternoon"], ["晚上", "courseEvening"]];
-      $("scheduleCombinedBlocks").innerHTML = teachers.length ? chunks.map((dates, blockIndex) => {
+      $("scheduleCombinedBlocks").innerHTML = chunks.map((dates, blockIndex) => {
         const dateHeaders = dates.map(date => {
           const parsed = new Date(`${date}T12:00:00`);
           const weekday = ["日", "一", "二", "三", "四", "五", "六"][parsed.getDay()];
@@ -9973,7 +10130,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           return `<td class="${swapButton ? "schedule-swap-cell" : ""} ${date < today() ? "past-date" : ""}">${swapButton}<select class="schedule-matrix-select ${shiftSelectClass(shift)}" data-date="${date}" data-teacher="${escapeHtml(teacher)}" aria-label="${escapeHtml(teacherShortLabel(teacher))} ${date} 班次"><option value="" ${!shift ? "selected" : ""}>—</option><option value="early" ${shift === "early" ? "selected" : ""}>早</option><option value="evening" ${shift === "evening" ? "selected" : ""}>晚</option><option value="full" ${shift === "full" ? "selected" : ""}>通</option><option value="rest" ${shift === "rest" ? "selected" : ""}>休</option></select></td>`;
         }).join("")}</tr>`).join("");
         return `<div><div class="schedule-block-label">第 ${blockIndex + 1} 段 · ${Number(dates[0].slice(5, 7))}月${Number(dates[0].slice(8, 10))}日—${Number(dates[dates.length - 1].slice(5, 7))}月${Number(dates[dates.length - 1].slice(8, 10))}日</div><div class="schedule-matrix-wrap"><table class="schedule-matrix"><thead><tr><th class="schedule-row-label">日期</th>${dateHeaders}</tr></thead><tbody>${courseHtml}${teacherHtml}</tbody></table></div></div>`;
-      }).join("") : `<div class="panel roster-empty">请先到“系统设置”填写值班教师，再回来排班。</div>`;
+      }).join("");
       document.querySelectorAll("#scheduleCombinedBlocks .schedule-date-head").forEach(button => button.addEventListener("click", () => openTeacherSchedule(button.dataset.date)));
       document.querySelectorAll("#scheduleCombinedBlocks .schedule-matrix-select").forEach(select => select.addEventListener("change", () => setTeacherMatrixShift(select.dataset.date, select.dataset.teacher, select.value)));
       document.querySelectorAll("#scheduleCombinedBlocks .schedule-swap-button").forEach(button => button.addEventListener("click", () => swapTeacherMatrixShifts(button.dataset.date, button.dataset.firstTeacher, button.dataset.secondTeacher)));
@@ -11214,6 +11371,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       scheduleViewMode = "month";
       renderTeacherSchedule();
     });
+    bindClick("scheduleMobilePrevWeekBtn", () => shiftMobileScheduleWeek(-1));
+    bindClick("scheduleMobileNextWeekBtn", () => shiftMobileScheduleWeek(1));
+    bindClick("scheduleMobileEditBtn", () => openTeacherSchedule(clampMobileScheduleDate(scheduleMobileDate)));
+    $("scheduleMobileDateInput").addEventListener("change", event => {
+      scheduleMobileDate = clampMobileScheduleDate(event.target.value);
+      renderTeacherSchedule();
+    });
     bindClick("exportScheduleBtn", exportTeacherSchedule);
     bindClick("saveTeacherScheduleBtn", saveTeacherSchedule);
     bindClick("clearTeacherScheduleBtn", clearTeacherSchedule);
@@ -11413,6 +11577,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     });
     window.addEventListener("resize", () => {
       if (activeView === "profileView") renderProfile();
+      if (activeView === "scheduleView") renderTeacherSchedule();
       requestAnimationFrame(syncMobileScrollHints);
     });
     window.addEventListener("pagehide", () => {
