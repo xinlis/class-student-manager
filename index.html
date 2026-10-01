@@ -73,6 +73,7 @@
       display: grid;
       gap: 2px;
     }
+    .mobile-view-nav { display: none; }
     .nav-group-title {
       padding: 16px 20px 7px;
       color: #111827;
@@ -2164,7 +2165,7 @@
         position: sticky;
         top: 0;
         z-index: 60;
-        height: 52px;
+        height: 58px;
         overflow: hidden;
         border-bottom: 1px solid #dbe3ec;
         background: rgba(255, 255, 255, .97);
@@ -2172,15 +2173,31 @@
         backdrop-filter: blur(12px);
       }
       .brand { display: none; }
+      .mobile-view-nav {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 9px;
+        height: 58px;
+        padding: 7px 10px;
+      }
+      .mobile-view-nav span {
+        color: #475569;
+        font-size: 12px;
+        font-weight: 750;
+        white-space: nowrap;
+      }
+      .mobile-view-nav select {
+        width: 100%;
+        min-height: 42px;
+        border-color: #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 15px;
+        font-weight: 750;
+      }
       .side-nav {
-        height: 52px;
-        padding: 7px 8px;
-        gap: 6px;
-        overflow-x: auto;
-        overflow-y: hidden;
-        scroll-snap-type: x proximity;
-        scrollbar-width: none;
-        -webkit-overflow-scrolling: touch;
+        display: none;
       }
       .side-nav::-webkit-scrollbar { display: none; }
       .nav-item,
@@ -2395,14 +2412,129 @@
       }
       .table-wrap thead th:first-child { z-index: 4; background: #f8fafc; }
       .entry-column-switches {
-        max-height: 42vh;
-        overflow-y: auto;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-height: none;
+        overflow: visible;
         padding: 9px;
         gap: 9px 12px;
       }
-      .entry-column-switches label { min-height: 34px; }
+      .entry-column-switches label {
+        min-width: 0;
+        min-height: 38px;
+        white-space: normal;
+      }
+      .entry-column-switches .entry-date-control,
+      .entry-column-switches .entry-switches-title,
+      .entry-column-switches .entry-switches-tip {
+        grid-column: 1 / -1;
+      }
+      .entry-column-switches .entry-date-control input { flex: 1; width: 100%; }
+      .entry-column-switches .test-config { display: grid; grid-template-columns: auto 1fr; }
+      .entry-column-switches .test-config input { width: 100%; min-width: 0; }
       .initial-filter-bar,
       .roster-initial-keyboard { -webkit-overflow-scrolling: touch; }
+
+      .mobile-scroll-hint {
+        margin: 7px 2px 6px;
+        color: #2563eb;
+        font-size: 12px;
+        font-weight: 700;
+        text-align: center;
+      }
+      #profileView .profile-controls {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      #profileView #profileSearch,
+      #profileView .profile-range-actions { grid-column: 1 / -1; }
+      #profileView .profile-controls label {
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+      }
+      #profileView .profile-controls input,
+      #profileView .profile-controls select { width: 100%; min-width: 0; }
+      #profileView .profile-range-actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+      #profileView .student-list { max-height: 230px; }
+      #profileView .student-item { min-height: 48px; }
+      #profileView .profile-title-row {
+        align-items: stretch;
+        flex-direction: column;
+      }
+      #profileView .profile-title-row button { width: 100%; }
+      #profileView .profile-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      #profileView .student-info-panel { height: auto; }
+      #profileView canvas {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 230px;
+      }
+      #profileView .history-table { max-height: 62vh; }
+
+      .management-page-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+        gap: 7px;
+      }
+      .management-page-actions button { width: 100%; }
+      .dorm-room-grid { grid-template-columns: 1fr; }
+      .schedule-matrix-wrap { max-width: 100%; -webkit-overflow-scrolling: touch; }
+
+      #eventView .event-entry-toolbar {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: stretch;
+        gap: 8px;
+      }
+      #eventView .event-entry-toolbar label {
+        display: grid;
+        align-items: stretch;
+        gap: 4px;
+        min-width: 0;
+        white-space: normal;
+      }
+      #eventView .event-student-field,
+      #eventView .event-search-field { grid-column: 1 / -1; }
+      #eventView .event-student-picker {
+        grid-template-columns: 1fr;
+        min-width: 0;
+      }
+      #eventView .event-entry-toolbar input,
+      #eventView .event-entry-toolbar select { width: 100%; min-width: 0; }
+      #eventView .communication-box > .toolbar {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+      }
+      #eventView .communication-box > .toolbar button { width: 100%; }
+
+      #entryView .table-wrap th:nth-child(1),
+      #entryView .table-wrap td:nth-child(1),
+      #subjectView .table-wrap th:nth-child(1),
+      #subjectView .table-wrap td:nth-child(1) { width: 42px; min-width: 42px; }
+      #entryView .table-wrap th:nth-child(2),
+      #entryView .table-wrap td:nth-child(2),
+      #subjectView .table-wrap th:nth-child(2),
+      #subjectView .table-wrap td:nth-child(2) {
+        position: sticky;
+        left: 42px;
+        z-index: 2;
+        min-width: 92px;
+        background: #fff;
+        box-shadow: 1px 0 0 var(--line);
+      }
+      #entryView .table-wrap thead th:nth-child(2),
+      #subjectView .table-wrap thead th:nth-child(2) {
+        z-index: 4;
+        background: #f8fafc;
+      }
 
       .modal {
         align-items: end;
@@ -2453,6 +2585,21 @@
   <div class="admin-shell">
     <aside class="sidebar" id="sidebar">
       <div class="brand" aria-label="系统导航"></div>
+      <label class="mobile-view-nav" for="mobileViewSelect">
+        <span>当前功能</span>
+        <select id="mobileViewSelect" aria-label="选择功能页面">
+          <option value="profileView">学生档案</option>
+          <option value="rosterView">学生名单</option>
+          <option value="seatView">座位与考勤</option>
+          <option value="dormView">宿舍管理</option>
+          <option value="scheduleView">课程与排班</option>
+          <option value="entryView">每日录入</option>
+          <option value="summaryView">今日需关注</option>
+          <option value="subjectView">单科成绩</option>
+          <option value="eventView">随手记</option>
+          <option value="settingsView">系统设置</option>
+        </select>
+      </label>
       <nav class="side-nav" aria-label="系统模块">
         <button class="tab nav-item active" data-view="profileView"><span class="nav-mark">●</span>学生档案</button>
         <button class="tab nav-item" data-view="rosterView"><span class="nav-mark">■</span>学生名单</button>
@@ -5711,6 +5858,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function syncActiveView() {
       ["entryView", "subjectView", "eventView", "summaryView", "profileView", "rosterView", "seatView", "dormView", "scheduleView", "settingsView"].forEach(id => $(id).classList.toggle("hidden", id !== activeView));
       document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.view === activeView));
+      const mobileViewSelect = $("mobileViewSelect");
+      if (mobileViewSelect && [...mobileViewSelect.options].some(option => option.value === activeView)) {
+        mobileViewSelect.value = activeView;
+      }
       const meta = VIEW_META[activeView] || VIEW_META.entryView;
       if ($("topModuleName")) $("topModuleName").textContent = meta.module;
       if ($("topPageName")) $("topPageName").textContent = meta.page;
@@ -5758,6 +5909,21 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (activeView === "dormView") renderDormManagement();
       if (activeView === "scheduleView") renderTeacherSchedule();
       if (activeView === "settingsView") renderSystemSettings();
+      requestAnimationFrame(syncMobileScrollHints);
+    }
+
+    function syncMobileScrollHints() {
+      document.querySelectorAll(".mobile-scroll-hint").forEach(hint => hint.remove());
+      if (!window.matchMedia("(max-width: 860px)").matches) return;
+      const root = $(activeView);
+      if (!root) return;
+      root.querySelectorAll(".table-wrap, .event-table-wrap, .history-table, .seat-board-scroll, .seat-wall-scroll, .schedule-calendar, .schedule-matrix-wrap").forEach(container => {
+        if (container.offsetParent === null || container.scrollWidth <= container.clientWidth + 8) return;
+        const hint = document.createElement("div");
+        hint.className = "mobile-scroll-hint";
+        hint.textContent = "← 左右滑动查看完整内容 →";
+        container.before(hint);
+      });
     }
 
     function renderEntryStats(date) {
@@ -7218,6 +7384,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         btn.addEventListener("click", () => {
           selectedStudent = btn.dataset.name;
           renderProfile();
+          if (window.matchMedia("(max-width: 860px)").matches) {
+            setTimeout(() => document.querySelector("#profileView .chart-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
+          }
         });
       });
     }
@@ -11242,7 +11411,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       });
       event.target.value = "";
     });
-    window.addEventListener("resize", () => activeView === "profileView" && renderProfile());
+    window.addEventListener("resize", () => {
+      if (activeView === "profileView") renderProfile();
+      requestAnimationFrame(syncMobileScrollHints);
+    });
     window.addEventListener("pagehide", () => {
       try {
         persistState(state);
@@ -11256,6 +11428,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     bindClick("sidebarToggleBtn", () => {
       document.querySelector(".admin-shell")?.classList.toggle("sidebar-collapsed");
     });
+    $("mobileViewSelect")?.addEventListener("change", event => setView(event.target.value));
     $("globalSearchInput").addEventListener("input", event => applyGlobalSearch(event.target.value));
     render();
     restoreFromIndexedDbIfNeeded();
