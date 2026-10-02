@@ -2147,6 +2147,212 @@
       .entry-column-switches .entry-switches-title { flex-basis: 100%; }
       .entry-column-switches .entry-switches-tip { flex-basis: 100%; margin-left: 0; white-space: normal; }
     }
+
+    /* Desktop workbench theme: calm navigation, clear hierarchy and compact records. */
+    @media (min-width: 861px) {
+      :root {
+        --bg: #f3f6fb;
+        --line: #e2e8f0;
+        --blue: #2f6fec;
+        --shadow: 0 3px 12px rgba(15, 23, 42, .055);
+      }
+      body { background: var(--bg); color: #202939; }
+      .admin-shell {
+        grid-template-columns: 224px minmax(0, 1fr);
+        background: var(--bg);
+      }
+      .admin-shell.sidebar-collapsed { grid-template-columns: 72px minmax(0, 1fr); }
+      .sidebar {
+        color: #cbd5e1;
+        background: #101a31;
+        border-right: 0;
+        box-shadow: 8px 0 24px rgba(15, 23, 42, .1);
+        scrollbar-color: #334155 transparent;
+      }
+      .brand {
+        height: 72px;
+        gap: 11px;
+        padding: 0 16px;
+        border-bottom: 1px solid rgba(148, 163, 184, .14);
+        color: #fff;
+      }
+      .brand-badge {
+        width: 38px;
+        height: 38px;
+        display: inline-grid;
+        place-items: center;
+        flex: 0 0 auto;
+        border-radius: 10px;
+        background: linear-gradient(145deg, #38bdf8, #2563eb);
+        box-shadow: 0 7px 18px rgba(37, 99, 235, .32);
+        font-size: 17px;
+        font-weight: 850;
+      }
+      .brand-copy { min-width: 0; display: grid; gap: 3px; }
+      .brand-copy strong { overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+      .brand-copy small { color: #8492a8; font-size: 11px; font-weight: 600; }
+      .admin-shell.sidebar-collapsed .brand { padding: 0; justify-content: center; }
+      .admin-shell.sidebar-collapsed .brand::before { content: none; }
+      .admin-shell.sidebar-collapsed .brand-copy { display: none; }
+      .side-nav { gap: 3px; padding: 12px 9px 24px; }
+      .nav-group-title {
+        margin: 9px 8px 3px !important;
+        padding: 13px 4px 5px;
+        border-top: 1px solid rgba(148, 163, 184, .13) !important;
+        color: #728097;
+        font-size: 11px;
+        font-weight: 750;
+        letter-spacing: .08em;
+      }
+      .nav-group-title:first-of-type { border-top: 0 !important; }
+      .nav-group-title .nav-mark { display: none; }
+      .nav-item {
+        width: 100%;
+        height: 42px;
+        padding: 0 13px;
+        border-radius: 9px;
+        color: #b6c2d5;
+        font-size: 14px;
+        font-weight: 650;
+      }
+      .nav-child-item { padding-left: 17px; }
+      .nav-item:hover { color: #fff; background: rgba(148, 163, 184, .12); }
+      .nav-item.active {
+        color: #fff;
+        border-right: 0;
+        background: #2f6fec;
+        box-shadow: 0 7px 18px rgba(37, 99, 235, .28);
+      }
+      .nav-mark { color: #91a0b6; }
+      .nav-item.active .nav-mark { color: #fff; }
+      .admin-shell.sidebar-collapsed .nav-group-title { display: none; }
+      .admin-shell.sidebar-collapsed .nav-item {
+        width: 46px;
+        height: 42px;
+        margin: 1px auto;
+        border-radius: 10px;
+      }
+
+      header {
+        background: rgba(255, 255, 255, .98);
+        border-bottom: 1px solid #e5eaf1;
+        box-shadow: 0 1px 0 rgba(15, 23, 42, .02);
+      }
+      .topbar {
+        min-height: 72px;
+        padding: 9px 24px;
+        grid-template-columns: 36px minmax(340px, 1fr) minmax(390px, 520px);
+        gap: 14px;
+      }
+      .menu-button {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        color: #475569;
+      }
+      .menu-button:hover { color: #1d4ed8; background: #eff6ff; }
+      .top-title { gap: 5px; }
+      .top-title h1 { color: #172033; font-size: 18px; font-weight: 800; }
+      .breadcrumb { color: #94a3b8; }
+      .breadcrumb strong { color: #64748b; }
+      .course-switcher {
+        min-height: 36px;
+        border-color: #bbf7d0;
+        border-radius: 9px;
+        background: #f0fdf4;
+      }
+      .top-tools {
+        display: grid;
+        grid-template-columns: minmax(120px, 1fr) auto auto;
+        gap: 9px;
+      }
+      .top-search { width: 100%; height: 38px; border-radius: 9px; background: #f8fafc; }
+      .top-tools > button,
+      .data-tools > summary { min-height: 38px; border-radius: 9px; font-weight: 700; }
+
+      main {
+        max-width: 1660px;
+        padding: 24px 24px 48px;
+      }
+      .roster-page-head,
+      .management-page-head,
+      .settings-page-head { margin-bottom: 18px; }
+      .roster-page-title,
+      .management-page-head h2,
+      .settings-page-head h2 { color: #202939; font-size: 24px; letter-spacing: -.02em; }
+      button {
+        min-height: 36px;
+        padding: 0 13px;
+        border-color: #d9e0ea;
+        border-radius: 8px;
+        font-weight: 650;
+      }
+      button:hover { border-color: #aeb9c8; background: #f8fafc; }
+      button.primary { box-shadow: 0 4px 10px rgba(37, 99, 235, .18); }
+      input, select, textarea {
+        min-height: 38px;
+        padding: 7px 10px;
+        border-color: #d9e0ea;
+        border-radius: 8px;
+      }
+      input::placeholder, textarea::placeholder { color: #98a2b3; }
+      .stats { gap: 10px; margin-bottom: 14px; }
+      .stat {
+        min-height: 84px;
+        padding: 13px 15px;
+        border-color: #e1e7ef;
+        border-radius: 11px;
+        box-shadow: var(--shadow);
+      }
+      .stat .num { color: #182230; font-size: 25px; }
+      .stat .label { margin-top: 5px; color: #7b8798; }
+      .panel,
+      .roster-filter-bar,
+      .dorm-toolbar,
+      .schedule-toolbar,
+      .schedule-fast-actions,
+      .dorm-room-card {
+        border-color: #e1e7ef;
+        border-radius: 11px;
+        box-shadow: var(--shadow);
+      }
+      .panel-head { padding: 13px 15px; background: #fbfcfe; }
+      .panel-title { font-size: 16px; }
+      .detail-panel { padding: 16px; }
+      .roster-filter-bar,
+      .dorm-toolbar { padding: 14px; gap: 12px; }
+      .roster-initial-keyboard {
+        margin-top: -7px;
+        padding: 10px 14px;
+        border-color: #e1e7ef;
+        box-shadow: var(--shadow);
+      }
+      .roster-initial-key { border-radius: 7px; }
+      .table-wrap { background: #fff; }
+      table { border-collapse: separate; }
+      th, td { height: 48px; padding: 10px 11px; border-color: #edf1f5; }
+      th { color: #526075; background: #f8fafc; font-size: 12px; }
+      tbody tr:nth-child(even) td { background: #fcfdff; }
+      tr:hover td { background: #f5f8fd !important; }
+      .roster-avatar { width: 34px; height: 34px; box-shadow: inset 0 0 0 1px rgba(37, 99, 235, .08); }
+      .student-pill { min-height: 26px; }
+      .modal { background: rgba(15, 23, 42, .48); backdrop-filter: blur(2px); }
+      .modal-box { border-radius: 14px; border-color: #e2e8f0; }
+    }
+    @media (min-width: 861px) and (max-width: 1200px) {
+      .admin-shell { grid-template-columns: 200px minmax(0, 1fr); }
+      .admin-shell.sidebar-collapsed { grid-template-columns: 72px minmax(0, 1fr); }
+      .topbar {
+        grid-template-columns: 36px minmax(0, 1fr);
+        padding: 10px 18px;
+      }
+      .top-tools {
+        grid-column: 1 / -1;
+        grid-template-columns: minmax(160px, 1fr) auto auto;
+      }
+      .top-search { flex: 1 1 auto; width: auto; }
+      main { padding: 20px 18px 42px; }
+    }
     /* Mobile workspace: compact header, thumb-friendly controls and scrollable data. */
     @media (max-width: 860px) {
       html { scroll-padding-top: 108px; }
@@ -2663,7 +2869,13 @@
 <body>
   <div class="admin-shell">
     <aside class="sidebar" id="sidebar">
-      <div class="brand" aria-label="系统导航"></div>
+      <div class="brand" aria-label="系统导航">
+        <span class="brand-badge">学</span>
+        <span class="brand-copy">
+          <strong>学生管理工作台</strong>
+          <small id="brandOrgName">陕西天行</small>
+        </span>
+      </div>
       <label class="mobile-view-nav" for="mobileViewSelect">
         <span>当前功能</span>
         <select id="mobileViewSelect" aria-label="选择功能页面">
@@ -4250,8 +4462,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function renderHeader() {
       const title = `${classNameText()}学生档案与成绩管理系统`;
       document.title = title;
-      if ($("appTitle")) $("appTitle").textContent = title;
-      if (document.querySelector(".brand")) document.querySelector(".brand").textContent = state.systemSettings?.organizationName || "学生管理";
+      if ($("appTitle")) $("appTitle").textContent = `${classNameText()}学生管理工作台`;
+      if ($("brandOrgName")) $("brandOrgName").textContent = state.systemSettings?.organizationName || "学生管理";
       if ($("headerCourseName")) $("headerCourseName").textContent = classNameText();
       if ($("headerCourseDates")) {
         $("headerCourseDates").textContent = state.courseStartDate || state.courseEndDate
