@@ -1106,6 +1106,9 @@
     .profile-status-badge.closed { background: #f1f5f9; color: #64748b; }
     .profile-back-button { flex: 0 0 auto; }
     .profile-subnav {
+      position: sticky;
+      top: 52px;
+      z-index: 12;
       display: flex;
       align-items: center;
       gap: 4px;
@@ -1113,6 +1116,8 @@
       padding: 0 2px 8px;
       margin: 0 -2px 14px;
       border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, .98);
+      box-shadow: 0 5px 10px rgba(15, 23, 42, .03);
       scrollbar-width: thin;
     }
     .profile-subnav button {
@@ -1132,6 +1137,7 @@
       color: #2563eb;
       background: #eff6ff;
     }
+    .profile-tab-hidden { display: none !important; }
     .profile-title-actions {
       display: flex;
       align-items: center;
@@ -2729,6 +2735,7 @@
       #profileView .profile-title-actions .primary { grid-column: 1 / -1; }
       #profileView .profile-title-actions button { width: 100%; }
       #profileView .profile-subnav {
+        top: 58px;
         margin-bottom: 10px;
         padding-bottom: 5px;
         -webkit-overflow-scrolling: touch;
@@ -3426,14 +3433,14 @@
           <div class="mentor-panel" id="stageProfilePanel"></div>
           <div class="ai-panel" id="recentQuickNotePanel"></div>
           <div class="ai-panel" id="aiAnalysisPanel"></div>
-          <div class="chart-toolbar">
+          <div class="chart-toolbar" id="profileChartToolbar">
             <div class="chart-mode" role="group" aria-label="成绩折线切换">
               <button id="dailyChartBtn" class="active" type="button">日测</button>
               <button id="subjectChartBtn" type="button">单科</button>
             </div>
           </div>
           <canvas id="scoreChart" width="900" height="300"></canvas>
-          <details class="history-fold" open>
+          <details class="history-fold" id="profileDailyHistory" open>
             <summary>每日记录</summary>
             <div class="history-table">
               <table>
@@ -3444,7 +3451,7 @@
               </table>
             </div>
           </details>
-          <details class="history-fold">
+          <details class="history-fold" id="profileSubjectHistory">
             <summary>单科记录</summary>
             <div class="history-table">
               <table>
@@ -4080,6 +4087,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     let editingQuickNoteId = "";
     let currentAiPrompt = "";
     let profileChartMode = "daily";
+    let activeProfileTab = "basic";
+    let lastLayoutWidth = window.innerWidth;
     let selectedSubjectExamKey = "";
     let subjectEntryOpen = false;
     let editingSeatNumber = 0;
@@ -6199,6 +6208,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function setView(viewId) {
+      if (viewId === "profileView" && activeView !== "profileView") activeProfileTab = "basic";
       activeView = viewId;
       syncActiveView();
       render();
@@ -7650,7 +7660,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       renderProfileChart(records, subjectTests);
       renderHistory(records);
       renderSubjectHistory(subjectTests);
-      setActiveProfileTab("basic");
+      handleProfileTab(activeProfileTab);
     }
 
     function setActiveProfileTab(tab) {
@@ -7659,9 +7669,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       });
     }
 
-    function scrollProfileTo(elementId) {
-      const target = $(elementId);
-      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    function showProfileSections(...visibleIds) {
+      const allIds = [
+        "studentInfoPanel", "profileKpis", "profileDetailPanel", "mentorNotePanel",
+        "stageProfilePanel", "recentQuickNotePanel", "aiAnalysisPanel", "profileChartToolbar",
+        "scoreChart", "profileDailyHistory", "profileSubjectHistory"
+      ];
+      const visible = new Set(visibleIds);
+      allIds.forEach(id => $(id)?.classList.toggle("profile-tab-hidden", !visible.has(id)));
     }
 
     function handleProfileTab(tab) {
@@ -7671,24 +7686,38 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const subjectTests = getStudentSubjectTests(student.name);
       const events = getStudentEvents(student.name);
       const quickNotes = getStudentQuickNotes(student.name);
+      activeProfileTab = tab;
       setActiveProfileTab(tab);
       const detailActions = {
         attendance: "profileAttendance",
-        daily: "profileDailyScores",
         homework: "profileHomework",
         question: "profileQuestions",
         correction: "profileCorrections",
-        subject: "profileSubject",
-        entry: "profileDaily",
         communication: "profileCommunications",
         leave: "profileLeave",
         departure: "profileDeparture",
         quicknote: "profileQuickNotes"
       };
-      if (tab === "basic") return scrollProfileTo("studentInfoPanel");
-      if (tab === "performance") return scrollProfileTo("stageProfilePanel");
+      if (tab === "basic") return showProfileSections("studentInfoPanel", "profileKpis", "mentorNotePanel", "aiAnalysisPanel");
+      if (tab === "performance") return showProfileSections("stageProfilePanel");
+      if (tab === "daily") {
+        profileChartMode = "daily";
+        showProfileSections("profileChartToolbar", "scoreChart", "profileDailyHistory");
+        renderProfileChart(records, subjectTests);
+        return;
+      }
+      if (tab === "subject") {
+        profileChartMode = "subject";
+        showProfileSections("profileChartToolbar", "scoreChart", "profileSubjectHistory");
+        renderProfileChart(records, subjectTests);
+        return;
+      }
+      if (tab === "entry") return showProfileSections("profileDailyHistory");
       const action = detailActions[tab];
-      if (action) renderProfileDetail(action, records, subjectTests, events, quickNotes, true);
+      if (action) {
+        renderProfileDetail(action, records, subjectTests, events, quickNotes, false);
+        showProfileSections("profileDetailPanel");
+      }
     }
 
     function studentInfoItem(label, value, wide = false) {
@@ -8065,7 +8094,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function profileAttendancePeriodText(record, field) {
-      const status = record?.[field] || "正常";
+      const statusKey = record?.[field] || "normal";
+      const status = ATTENDANCE_LABELS[statusKey] || statusKey || "正常";
       const remark = String(record?.[`${field}Remark`] || "").trim();
       const present = Boolean(record?.[`${field}Present`]);
       return `${status}${present && status !== "正常" ? "（计入实到）" : ""}${remark ? ` · ${remark}` : ""}`;
@@ -8077,7 +8107,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         <td>${escapeHtml(profileAttendancePeriodText(record, "am"))}</td>
         <td>${escapeHtml(profileAttendancePeriodText(record, "pm"))}</td>
         <td>${escapeHtml(profileAttendancePeriodText(record, "night"))}</td>
-        <td>${escapeHtml(record.note || "")}</td>
+        <td>${escapeHtml(record.remark || "")}</td>
       </tr>`;
     }
 
@@ -8098,7 +8128,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         };
       }
       if (action === "profileLeave") {
-        const leaveRows = attendanceRecords.filter(record => [record.am, record.pm, record.night].includes("请假"));
+        const leaveRows = attendanceRecords.filter(record => [record.am, record.pm, record.night].some(status => status === "leave" || ATTENDANCE_LABELS[status] === "请假"));
         return {
           title: "请假记录",
           sub: "只列出上午、下午或晚自习登记过请假的日期。",
@@ -11969,7 +11999,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       event.target.value = "";
     });
     window.addEventListener("resize", () => {
-      if (activeView === "profileView") renderProfile();
+      if (Math.abs(window.innerWidth - lastLayoutWidth) < 2) return;
+      lastLayoutWidth = window.innerWidth;
       if (activeView === "scheduleView") renderTeacherSchedule();
       requestAnimationFrame(syncMobileScrollHints);
     });
