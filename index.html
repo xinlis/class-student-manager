@@ -1037,9 +1037,7 @@
       padding: 12px;
     }
     .profile-layout {
-      display: grid;
-      grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
-      gap: 12px;
+      display: block;
       min-width: 0;
     }
     .side, .chart-panel {
@@ -1083,6 +1081,13 @@
       justify-content: space-between;
       gap: 10px;
       margin-bottom: 10px;
+    }
+    .profile-title-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
     }
     .student-info-panel {
       border: 1px solid var(--line);
@@ -2656,32 +2661,16 @@
         font-weight: 700;
         text-align: center;
       }
-      #profileView .profile-controls {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
-      }
-      #profileView #profileSearch,
-      #profileView .profile-range-actions { grid-column: 1 / -1; }
-      #profileView .profile-controls label {
-        display: grid;
-        gap: 4px;
-        min-width: 0;
-      }
-      #profileView .profile-controls input,
-      #profileView .profile-controls select { width: 100%; min-width: 0; }
-      #profileView .profile-range-actions {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 6px;
-      }
-      #profileView .student-list { max-height: 230px; }
-      #profileView .student-item { min-height: 48px; }
       #profileView .profile-title-row {
         align-items: stretch;
         flex-direction: column;
       }
-      #profileView .profile-title-row button { width: 100%; }
+      #profileView .profile-title-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+      }
+      #profileView .profile-title-actions button { width: 100%; }
       #profileView .profile-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       #profileView .student-info-panel { height: auto; }
       #profileView canvas {
@@ -2879,8 +2868,7 @@
       <label class="mobile-view-nav" for="mobileViewSelect">
         <span>当前功能</span>
         <select id="mobileViewSelect" aria-label="选择功能页面">
-          <option value="profileView">学生档案</option>
-          <option value="rosterView">学生名单</option>
+          <option value="rosterView">学生管理</option>
           <option value="seatView">座位与考勤</option>
           <option value="dormView">宿舍管理</option>
           <option value="scheduleView">课程与排班</option>
@@ -2892,8 +2880,7 @@
         </select>
       </label>
       <nav class="side-nav" aria-label="系统模块">
-        <button class="tab nav-item active" data-view="profileView"><span class="nav-mark">●</span>学生档案</button>
-        <button class="tab nav-item" data-view="rosterView"><span class="nav-mark">■</span>学生名单</button>
+        <button class="tab nav-item active" data-view="rosterView"><span class="nav-mark">●</span>学生管理</button>
         <button class="tab nav-item" data-view="seatView"><span class="nav-mark">▦</span>座位</button>
         <div class="nav-group-title"><span class="nav-mark">▤</span>住宿与课程</div>
         <button class="tab nav-item nav-child-item" data-view="dormView"><span class="nav-mark">·</span>宿舍管理</button>
@@ -3336,32 +3323,19 @@
     </section>
 
     <section id="profileView" class="hidden">
+      <input id="startDate" type="hidden" value="">
+      <input id="endDate" type="hidden" value="">
       <div class="profile-layout">
-        <aside class="side">
-          <div class="profile-controls">
-            <input id="profileSearch" type="search" placeholder="序号 / 姓名首字母 / 学校">
-            <label>来源
-              <select id="profileSourceFilter">
-                <option value="">全部</option>
-              </select>
-            </label>
-            <label>起 <input id="startDate" type="date"></label>
-            <label>止 <input id="endDate" type="date"></label>
-            <div class="profile-range-actions" aria-label="档案日期快捷筛选">
-              <button id="profileRangeTermBtn" class="small" type="button">本期</button>
-              <button id="profileRange30Btn" class="small" type="button">近30天</button>
-              <button id="profileRangeAllBtn" class="small" type="button">全部</button>
-            </div>
-          </div>
-          <div class="student-list" id="studentList"></div>
-        </aside>
         <div class="chart-panel">
           <div class="profile-title-row">
             <div>
               <h2 class="panel-title" id="profileTitle">学生档案</h2>
               <div class="sub" id="profileSub"></div>
             </div>
-            <button id="exportStudentArchiveBtn" class="primary" type="button">导出当前学生档案</button>
+            <div class="profile-title-actions">
+              <button id="backToRosterBtn" type="button">← 返回学生名单</button>
+              <button id="exportStudentArchiveBtn" class="primary" type="button">导出当前学生档案</button>
+            </div>
           </div>
           <div class="student-info-panel" id="studentInfoPanel"></div>
           <div class="profile-kpis" id="profileKpis"></div>
@@ -4039,7 +4013,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       subjectView: { module: "考试管理", page: "单科", searchId: "subjectSearch" },
       eventView: { module: "考试管理", page: "随手记", searchId: "eventSearch" },
       summaryView: { module: "考试管理", page: "今日需关注", searchId: "" },
-      profileView: { module: "学生档案", page: "一人一档", searchId: "profileSearch" },
+      profileView: { module: "学生管理", page: "学生档案", searchId: "" },
       rosterView: { module: "学生管理", page: "学生名单", searchId: "rosterSearchInput" },
       seatView: { module: "班级管理", page: "座位", searchId: "" },
       dormView: { module: "住宿与课程", page: "宿舍管理", searchId: "dormSearchInput" },
@@ -6155,10 +6129,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function syncActiveView() {
       ["entryView", "subjectView", "eventView", "summaryView", "profileView", "rosterView", "seatView", "dormView", "scheduleView", "settingsView"].forEach(id => $(id).classList.toggle("hidden", id !== activeView));
-      document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.view === activeView));
+      const activeNavView = activeView === "profileView" ? "rosterView" : activeView;
+      document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.view === activeNavView));
       const mobileViewSelect = $("mobileViewSelect");
-      if (mobileViewSelect && [...mobileViewSelect.options].some(option => option.value === activeView)) {
-        mobileViewSelect.value = activeView;
+      const mobileView = activeView === "profileView" ? "rosterView" : activeView;
+      if (mobileViewSelect && [...mobileViewSelect.options].some(option => option.value === mobileView)) {
+        mobileViewSelect.value = mobileView;
       }
       const meta = VIEW_META[activeView] || VIEW_META.entryView;
       if ($("topModuleName")) $("topModuleName").textContent = meta.module;
@@ -7568,13 +7544,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function renderProfile() {
-      renderSourceFilterOptions();
-      const source = $("profileSourceFilter")?.value || "";
-      const candidates = state.students.filter(student => !source || student.source_class === source);
-      const student = candidates.find(item => item.name === selectedStudent) || candidates[0] || state.students[0];
-      if (!student) return;
+      const student = state.students.find(item => item.name === selectedStudent) || state.students[0];
+      if (!student) {
+        setView("rosterView");
+        return;
+      }
       selectedStudent = student.name;
-      renderStudentList();
       const records = getStudentRecords(student.name);
       const subjectTests = getStudentSubjectTests(student.name);
       const events = getStudentEvents(student.name);
@@ -11522,13 +11497,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         saveQuickNote();
       }
     });
-    $("profileSearch").addEventListener("input", renderProfile);
-    $("profileSourceFilter").addEventListener("change", renderProfile);
-    $("startDate").addEventListener("change", renderProfile);
-    $("endDate").addEventListener("change", renderProfile);
-    $("profileRangeTermBtn").addEventListener("click", () => setProfileDateRange("term"));
-    $("profileRange30Btn").addEventListener("click", () => setProfileDateRange("30"));
-    $("profileRangeAllBtn").addEventListener("click", () => setProfileDateRange("all"));
+    $("backToRosterBtn").addEventListener("click", () => setView("rosterView"));
     $("exportStudentArchiveBtn").addEventListener("click", exportCurrentStudentArchive);
     bindClick("resetDefaultsBtn", () => {
       ensureDate($("dateInput").value || today());
