@@ -1077,10 +1077,60 @@
     }
     .profile-title-row {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
       gap: 10px;
-      margin-bottom: 10px;
+      margin-bottom: 16px;
+    }
+    .profile-heading {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+    .profile-heading-copy { min-width: 0; }
+    .profile-heading .panel-title { margin-bottom: 4px; }
+    .profile-status-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: #ecfdf3;
+      color: #16a34a;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .profile-status-badge.away { background: #fff7ed; color: #ea580c; }
+    .profile-status-badge.closed { background: #f1f5f9; color: #64748b; }
+    .profile-back-button { flex: 0 0 auto; }
+    .profile-subnav {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      overflow-x: auto;
+      padding: 0 2px 8px;
+      margin: 0 -2px 14px;
+      border-bottom: 1px solid var(--line);
+      scrollbar-width: thin;
+    }
+    .profile-subnav button {
+      flex: 0 0 auto;
+      min-height: 40px;
+      padding: 0 14px;
+      border: 0;
+      border-bottom: 3px solid transparent;
+      border-radius: 0;
+      background: transparent;
+      color: #64748b;
+      font-weight: 750;
+    }
+    .profile-subnav button:hover { background: #f8fafc; color: #2563eb; }
+    .profile-subnav button.active {
+      border-bottom-color: #2563eb;
+      color: #2563eb;
+      background: #eff6ff;
     }
     .profile-title-actions {
       display: flex;
@@ -2665,12 +2715,24 @@
         align-items: stretch;
         flex-direction: column;
       }
+      #profileView .profile-heading {
+        align-items: flex-start;
+        display: grid;
+        grid-template-columns: auto 1fr;
+      }
+      #profileView .profile-status-badge { grid-column: 2; justify-self: start; }
       #profileView .profile-title-actions {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         width: 100%;
       }
+      #profileView .profile-title-actions .primary { grid-column: 1 / -1; }
       #profileView .profile-title-actions button { width: 100%; }
+      #profileView .profile-subnav {
+        margin-bottom: 10px;
+        padding-bottom: 5px;
+        -webkit-overflow-scrolling: touch;
+      }
       #profileView .profile-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       #profileView .student-info-panel { height: auto; }
       #profileView canvas {
@@ -3328,15 +3390,35 @@
       <div class="profile-layout">
         <div class="chart-panel">
           <div class="profile-title-row">
-            <div>
-              <h2 class="panel-title" id="profileTitle">学生档案</h2>
-              <div class="sub" id="profileSub"></div>
+            <div class="profile-heading">
+              <button id="backToRosterBtn" class="profile-back-button" type="button">‹ 返回名单</button>
+              <div class="profile-heading-copy">
+                <h2 class="panel-title" id="profileTitle">学生档案</h2>
+                <div class="sub" id="profileSub"></div>
+              </div>
+              <span id="profileStatusBadge" class="profile-status-badge">在班</span>
             </div>
             <div class="profile-title-actions">
-              <button id="backToRosterBtn" type="button">← 返回学生名单</button>
+              <button id="profileTopEditBtn" type="button">编辑资料</button>
+              <button id="profileTopQuickNoteBtn" type="button">写随手记</button>
               <button id="exportStudentArchiveBtn" class="primary" type="button">导出当前学生档案</button>
             </div>
           </div>
+          <nav class="profile-subnav" id="profileSubnav" aria-label="学生档案子目录">
+            <button class="active" type="button" data-profile-tab="basic">基本资料</button>
+            <button type="button" data-profile-tab="attendance">考勤</button>
+            <button type="button" data-profile-tab="daily">每日一测</button>
+            <button type="button" data-profile-tab="homework">作业</button>
+            <button type="button" data-profile-tab="question">提问</button>
+            <button type="button" data-profile-tab="correction">纠错</button>
+            <button type="button" data-profile-tab="subject">单科成绩</button>
+            <button type="button" data-profile-tab="performance">每日表现</button>
+            <button type="button" data-profile-tab="entry">每日录入</button>
+            <button type="button" data-profile-tab="communication">沟通记录</button>
+            <button type="button" data-profile-tab="leave">请假记录</button>
+            <button type="button" data-profile-tab="departure">离班记录</button>
+            <button type="button" data-profile-tab="quicknote">随手记</button>
+          </nav>
           <div class="student-info-panel" id="studentInfoPanel"></div>
           <div class="profile-kpis" id="profileKpis"></div>
           <div class="profile-detail-panel" id="profileDetailPanel"></div>
@@ -7556,6 +7638,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const quickNotes = getStudentQuickNotes(student.name);
       $("profileTitle").textContent = `${student.name} 的学生档案`;
       $("profileSub").textContent = `${student.student_id ? `编号 ${student.student_id} · ` : ""}${student.gender || "未知性别"} · ${student.school || "未填写原学校"} · ${student.status || "未填写状态"}`;
+      const profileStatus = isStudentArchived(student) ? "临时封存" : (student.status || "在班");
+      $("profileStatusBadge").textContent = profileStatus;
+      $("profileStatusBadge").className = `profile-status-badge${["请假", "休学"].includes(profileStatus) ? " away" : (["结课", "离班", "临时封存"].includes(profileStatus) ? " closed" : "")}`;
       renderStudentInfo(student);
       renderProfileKpis(records, subjectTests, events, quickNotes);
       renderMentorNote(student);
@@ -7565,6 +7650,45 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       renderProfileChart(records, subjectTests);
       renderHistory(records);
       renderSubjectHistory(subjectTests);
+      setActiveProfileTab("basic");
+    }
+
+    function setActiveProfileTab(tab) {
+      document.querySelectorAll("#profileSubnav [data-profile-tab]").forEach(button => {
+        button.classList.toggle("active", button.dataset.profileTab === tab);
+      });
+    }
+
+    function scrollProfileTo(elementId) {
+      const target = $(elementId);
+      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function handleProfileTab(tab) {
+      const student = state.students.find(item => item.name === selectedStudent);
+      if (!student) return;
+      const records = getStudentRecords(student.name);
+      const subjectTests = getStudentSubjectTests(student.name);
+      const events = getStudentEvents(student.name);
+      const quickNotes = getStudentQuickNotes(student.name);
+      setActiveProfileTab(tab);
+      const detailActions = {
+        attendance: "profileAttendance",
+        daily: "profileDailyScores",
+        homework: "profileHomework",
+        question: "profileQuestions",
+        correction: "profileCorrections",
+        subject: "profileSubject",
+        entry: "profileDaily",
+        communication: "profileCommunications",
+        leave: "profileLeave",
+        departure: "profileDeparture",
+        quicknote: "profileQuickNotes"
+      };
+      if (tab === "basic") return scrollProfileTo("studentInfoPanel");
+      if (tab === "performance") return scrollProfileTo("stageProfilePanel");
+      const action = detailActions[tab];
+      if (action) renderProfileDetail(action, records, subjectTests, events, quickNotes, true);
     }
 
     function studentInfoItem(label, value, wide = false) {
@@ -7934,12 +8058,92 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (shouldScroll) panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
 
+    function profileAttendanceRecords(name) {
+      return Object.values(state.attendanceRecords || {})
+        .filter(record => record.name === name)
+        .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+    }
+
+    function profileAttendancePeriodText(record, field) {
+      const status = record?.[field] || "正常";
+      const remark = String(record?.[`${field}Remark`] || "").trim();
+      const present = Boolean(record?.[`${field}Present`]);
+      return `${status}${present && status !== "正常" ? "（计入实到）" : ""}${remark ? ` · ${remark}` : ""}`;
+    }
+
+    function profileAttendanceRowHtml(record) {
+      return `<tr>
+        <td>${escapeHtml(record.date || "")}</td>
+        <td>${escapeHtml(profileAttendancePeriodText(record, "am"))}</td>
+        <td>${escapeHtml(profileAttendancePeriodText(record, "pm"))}</td>
+        <td>${escapeHtml(profileAttendancePeriodText(record, "night"))}</td>
+        <td>${escapeHtml(record.note || "")}</td>
+      </tr>`;
+    }
+
     function profileDetailContent(action, records, subjectTests, events, quickNotes = []) {
       const scoredRecords = records.filter(record => parseScore(record.score) !== null);
       const latestRecord = scoredRecords[scoredRecords.length - 1];
       const subjectScored = subjectTests.filter(test => parseScore(test.score) !== null);
+      const attendanceRecords = profileAttendanceRecords(selectedStudent);
       const mapRows = (items, emptyText, mapper) => items.length ? items.map(mapper).join("") : `<tr><td colspan="7" class="empty">${emptyText}</td></tr>`;
       const dailyDetailHead = `<tr><th>日期</th><th>分数</th><th>理解题</th><th>知识点</th><th>纠错</th><th>作业</th></tr>`;
+      const attendanceHead = `<tr><th>日期</th><th>上午</th><th>下午</th><th>晚自习</th><th>备注</th></tr>`;
+      if (action === "profileAttendance") {
+        return {
+          title: "考勤记录",
+          sub: "上午、下午和晚自习分别展示，异常备注与是否计入实到一并保留。",
+          head: attendanceHead,
+          body: attendanceRecords.length ? attendanceRecords.map(profileAttendanceRowHtml).join("") : `<tr><td colspan="5" class="empty">暂无考勤记录</td></tr>`
+        };
+      }
+      if (action === "profileLeave") {
+        const leaveRows = attendanceRecords.filter(record => [record.am, record.pm, record.night].includes("请假"));
+        return {
+          title: "请假记录",
+          sub: "只列出上午、下午或晚自习登记过请假的日期。",
+          head: attendanceHead,
+          body: leaveRows.length ? leaveRows.map(profileAttendanceRowHtml).join("") : `<tr><td colspan="5" class="empty">暂无请假记录</td></tr>`
+        };
+      }
+      if (action === "profileQuestions") {
+        const questionRows = records.filter(record => String(record.knowledge_question || "").trim());
+        return {
+          title: "知识点提问记录",
+          sub: "展示每日录入中的 A/B/C 提问评判结果。",
+          head: `<tr><th>日期</th><th>提问结果</th><th>日测分数</th><th>知识点</th><th>纠错</th></tr>`,
+          body: questionRows.length ? questionRows.map(record => `<tr><td>${escapeHtml(record.date)}</td><td>${escapeHtml(record.knowledge_question)}</td><td>${escapeHtml(record.score || "")}</td><td>${escapeHtml(knowledgePointText(record))}</td><td>${escapeHtml(dailyCorrectionText(record))}</td></tr>`).join("") : `<tr><td colspan="5" class="empty">暂无知识点提问记录</td></tr>`
+        };
+      }
+      if (action === "profileCorrections") {
+        const correctionRows = records.filter(record => String(record.correction || "").trim() || (parseScore(record.score) !== null && !isDailyFullScore(record)));
+        return {
+          title: "纠错记录",
+          sub: "展示需要纠错、正在纠错以及已完成纠错的每日记录。",
+          head: dailyDetailHead,
+          body: mapRows(correctionRows, "暂无纠错记录", profileDailyRowHtml)
+        };
+      }
+      if (action === "profileQuickNotes") {
+        return {
+          title: "随手记",
+          sub: "该学生的全部随手记，按日期从新到旧排列。",
+          head: `<tr><th>日期</th><th>时间</th><th>类型</th><th>内容</th><th>后续动作</th><th>状态</th></tr>`,
+          body: quickNotes.length ? quickNotes.map(note => `<tr><td>${escapeHtml(note.date)}</td><td>${escapeHtml(note.time || "")}</td><td>${escapeHtml(normalizeQuickNoteType(note.type))}</td><td>${escapeHtml(note.content || "")}</td><td>${escapeHtml(note.followUp || "")}</td><td>${escapeHtml(quickNoteStatus(note))}</td></tr>`).join("") : `<tr><td colspan="6" class="empty">暂无随手记</td></tr>`
+        };
+      }
+      if (action === "profileDeparture") {
+        const pattern = /离班|退班|结课|封存/;
+        const departureItems = studentCommunicationItems(quickNotes, events).filter(item => pattern.test(`${item.type || ""} ${item.content || ""} ${item.followUp || ""}`));
+        const student = state.students.find(item => item.name === selectedStudent);
+        const archivedText = student?.archived_at ? `；封存时间 ${String(student.archived_at).slice(0, 10)}` : "";
+        return {
+          title: "离班记录",
+          sub: `当前状态：${student?.archived ? "临时封存" : (student?.status || "在班")}${archivedText}`,
+          head: `<tr><th>日期</th><th>来源</th><th>类型</th><th>内容</th><th>状态</th></tr>`,
+          body: departureItems.length ? departureItems.map(item => `<tr><td>${escapeHtml(item.date || "")}</td><td>${escapeHtml(item.source)}</td><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.content || "")}</td><td>${escapeHtml(item.displayStatus || "")}</td></tr>`).join("") : `<tr><td colspan="5" class="empty">暂无离班相关记录</td></tr>`
+        };
+      }
       if (action === "profileDailyScores") {
         return {
           title: "日测分数明细",
@@ -11498,6 +11702,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }
     });
     $("backToRosterBtn").addEventListener("click", () => setView("rosterView"));
+    $("profileTopEditBtn").addEventListener("click", () => {
+      const index = state.students.findIndex(student => student.name === selectedStudent);
+      if (index >= 0) startEditStudent(index);
+    });
+    $("profileTopQuickNoteBtn").addEventListener("click", () => openQuickNoteModal(selectedStudent));
+    document.querySelectorAll("#profileSubnav [data-profile-tab]").forEach(button => {
+      button.addEventListener("click", () => handleProfileTab(button.dataset.profileTab));
+    });
     $("exportStudentArchiveBtn").addEventListener("click", exportCurrentStudentArchive);
     bindClick("resetDefaultsBtn", () => {
       ensureDate($("dateInput").value || today());
