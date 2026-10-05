@@ -1337,6 +1337,105 @@
       color: var(--ink);
       line-height: 1.6;
     }
+    .seat-workbench-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .seat-workbench-toolbar label { display: inline-flex; align-items: center; gap: 6px; }
+    .seat-workbench-toolbar select { min-width: 150px; }
+    .seat-plan-notice {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin: 0 0 10px;
+      padding: 9px 11px;
+      border: 1px solid #bfdbfe;
+      border-radius: 9px;
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+    .classroom-canvas-scroll { overflow: auto; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #f1f5f9; }
+    .classroom-canvas-stage { position: relative; margin: 0 auto; }
+    .classroom-canvas-stage > .classroom-canvas { position: absolute; left: 0; top: 0; }
+    .classroom-canvas {
+      min-width: 720px;
+      min-height: 480px;
+      margin: 0;
+      transform-origin: left top;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      background-color: #fff;
+      background-image: linear-gradient(#eef2f7 1px, transparent 1px), linear-gradient(90deg, #eef2f7 1px, transparent 1px);
+      background-size: 20px 20px;
+      overflow: hidden;
+      touch-action: pan-x pan-y;
+    }
+    .classroom-element { position: absolute; box-sizing: border-box; user-select: none; }
+    .classroom-element.seat {
+      display: grid;
+      place-content: center;
+      gap: 2px;
+      padding: 4px;
+      border: 1px solid #9fb3c8;
+      border-radius: 8px;
+      background: #fff;
+      color: #26364a;
+      text-align: center;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .classroom-element.seat:hover { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, .12); }
+    .classroom-element.seat.zone-a { border-color: #5fcdb8; background: #f0fdfa; color: #115e59; }
+    .classroom-element.seat.zone-a.occupied { border-color: #36b69f; background: #ccfbf1; color: #134e4a; }
+    .classroom-element.seat.zone-b { border-color: #c4a2eb; background: #faf5ff; color: #6b21a8; }
+    .classroom-element.seat.zone-b.occupied { border-color: #a875df; background: #f3e8ff; color: #581c87; }
+    .classroom-element.seat:not(.zone-a):not(.zone-b).occupied { border-color: #6fc8b5; background: #ecfdf7; color: #14532d; }
+    .classroom-element.seat.occupied.att-late { border-color: #f59e0b; background: #fffbeb; color: #b45309; }
+    .classroom-element.seat.occupied.att-early { border-color: #8b5cf6; background: #f5f3ff; color: #6d28d9; }
+    .classroom-element.seat.occupied.att-leave { border-color: #fb923c; background: #fff7ed; color: #c2410c; }
+    .classroom-element.seat.occupied.att-absent { border-color: #ef4444; background: #fef2f2; color: #b91c1c; }
+    .classroom-element.seat.occupied.att-unreported { border-color: #94a3b8; background: #f1f5f9; color: #334155; }
+    .classroom-element.seat.locked::after {
+      content: "🔒";
+      position: absolute;
+      right: 2px;
+      top: 1px;
+      font-size: 10px;
+    }
+    .classroom-element.seat.drop-target { outline: 3px solid #2563eb; outline-offset: 2px; }
+    .classroom-element.seat .student-name { font-size: 14px; font-weight: 800; line-height: 1.15; }
+    .classroom-element.seat .seat-empty { font-size: 11px; color: #64748b; line-height: 1.1; }
+    .classroom-element.seat .seat-label { font-size: 10px; color: currentColor; opacity: .72; }
+    .classroom-element.podium { display: grid; place-items: center; border: 1px solid #60a5fa; border-radius: 8px; background: #dbeafe; color: #1d4ed8; font-weight: 800; }
+    .classroom-element.door { display: grid; place-items: center; border: 2px solid #f59e0b; border-radius: 3px; background: #fffbeb; color: #b45309; font-weight: 750; }
+    .classroom-element.aisle { display: grid; place-items: center; border: 1px dashed #94a3b8; background: rgba(226, 232, 240, .62); color: #64748b; font-size: 12px; }
+    .classroom-element.unavailable { display: grid; place-items: center; border: 1px dashed #ef4444; background: repeating-linear-gradient(135deg, #fff1f2, #fff1f2 8px, #ffe4e6 8px, #ffe4e6 16px); color: #be123c; font-weight: 750; }
+    .classroom-zone-label { position: absolute; top: 8px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; pointer-events: none; }
+    .classroom-zone-label.zone-a { left: 10px; background: #dbeafe; color: #1d4ed8; }
+    .classroom-zone-label.zone-b { right: 10px; background: #f3e8ff; color: #7e22ce; }
+    .modal-box.seat-dialog-box { max-height: calc(100vh - 28px); overflow: auto; }
+    .modal-box.classroom-editor-box { width: min(1180px, calc(100vw - 28px)); max-width: 1180px; max-height: calc(100vh - 28px); overflow: auto; }
+    .classroom-editor-layout { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 12px; margin-top: 12px; }
+    .classroom-editor-toolbar { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0; }
+    .classroom-editor-toolbar button.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+    .classroom-pattern-builder { margin: 12px 0; padding: 12px; border: 1px solid #bfdbfe; border-radius: 10px; background: #eff6ff; }
+    .classroom-pattern-builder strong { display: block; margin-bottom: 5px; color: #1e3a8a; }
+    .classroom-pattern-builder textarea { width: 100%; min-height: 78px; margin-top: 8px; resize: vertical; }
+    .classroom-pattern-builder .actions { margin-top: 8px; }
+    .classroom-editor-canvas-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: #f1f5f9; padding: 10px; }
+    .classroom-editor-canvas { position: relative; min-width: 720px; min-height: 480px; background-color: #fff; background-image: linear-gradient(#e8edf4 1px, transparent 1px), linear-gradient(90deg, #e8edf4 1px, transparent 1px); background-size: 20px 20px; border: 1px solid #cbd5e1; border-radius: 8px; touch-action: none; }
+    .classroom-editor-canvas .classroom-element { cursor: move; }
+    .classroom-editor-canvas .classroom-element.selected { outline: 3px solid #2563eb; outline-offset: 2px; }
+    .classroom-editor-side { display: grid; align-content: start; gap: 10px; padding: 11px; border: 1px solid var(--line); border-radius: 10px; background: #f8fafc; }
+    .classroom-editor-side label { display: grid; gap: 5px; font-size: 12px; font-weight: 700; }
+    .classroom-editor-side input, .classroom-editor-side select, .classroom-editor-side textarea { width: 100%; }
+    .seat-preference-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 12px; }
+    .seat-preference-grid label { display: grid; gap: 5px; }
+    .auto-seat-preview { border-color: #86efac; background: #f0fdf4; color: #166534; }
+    @media (max-width: 860px) {
+      .classroom-editor-layout { grid-template-columns: 1fr; }
+      .classroom-editor-side { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .classroom-editor-side .actions { grid-column: 1 / -1; }
+      .seat-preference-grid { grid-template-columns: 1fr; }
+    }
     .stage-record-content {
       display: grid;
       gap: 5px;
@@ -3125,28 +3224,50 @@
         <div class="panel-head">
           <div>
             <h2 class="panel-title">班级座位表</h2>
-            <div class="sub">当天默认全员正常；点击学生座位可手动修改上午、下午和晚自习考勤。</div>
+            <div class="sub" id="seatClassroomSummary">教室布局、学生排座和考勤共用同一份当前方案。</div>
           </div>
           <div class="seat-toolbar">
             <label>考勤日期 <input id="seatDateInput" class="compact-date" type="date"></label>
-            <button id="seatLayoutBtn" type="button">座位布局设置</button>
-            <button id="seatFillBtn" class="primary" type="button">快速安排未入座</button>
+            <button id="seatLayoutBtn" type="button">教室管理 / 编辑布局</button>
+            <button id="seatFillBtn" class="primary" type="button">自动排座</button>
             <button id="exportAttendanceBtn" type="button">导出考勤总表</button>
             <button id="seatExportBtn" type="button">导出座位表</button>
-            <button id="seatClearAllBtn" class="danger" type="button">清空座位</button>
           </div>
         </div>
         <div class="detail-panel">
-          <div class="seat-board-scroll">
-            <div class="seat-board">
-              <div id="seatPodium" class="seat-podium">讲台</div>
-              <div id="seatGrid" class="seat-grid"></div>
-            </div>
+          <div class="seat-mode-tabs" aria-label="座位操作模式">
+            <button class="active" type="button" data-seat-operation-mode="attendance">考勤模式</button>
+            <button type="button" data-seat-operation-mode="arrange">排座模式</button>
+          </div>
+          <div class="seat-workbench-toolbar">
+            <label>教室 <select id="seatClassroomSelect"></select></label>
+            <button id="seatBindClassroomBtn" type="button">绑定所选教室</button>
+            <label>座位方案 <select id="seatPlanSelect"></select></label>
+            <button id="seatSetCurrentPlanBtn" type="button">设为当前</button>
+            <button id="seatNewPlanBtn" type="button">新建方案</button>
+            <button id="seatCopyPlanBtn" type="button">复制当前</button>
+            <button id="seatDeletePlanBtn" type="button" class="danger">删除方案</button>
+            <button id="seatUndoBtn" type="button">撤销调整</button>
+          </div>
+        </div>
+        <div id="seatPlanNotice" class="seat-plan-notice hidden"></div>
+        <div class="detail-panel">
+          <div class="classroom-canvas-scroll" id="classroomCanvasScroll">
+            <div id="classroomCanvasStage" class="classroom-canvas-stage"><div id="classroomCanvas" class="classroom-canvas"></div></div>
           </div>
           <div class="attendance-legend"><span class="sub">状态图例：</span><span class="tag att-normal">正常</span><span class="tag att-late">迟到</span><span class="tag att-early">早退</span><span class="tag att-leave">请假</span><span class="tag att-absent">旷课</span><span class="tag att-unreported">未报到</span></div>
         </div>
-        <div class="detail-panel">
-          <h3 class="detail-title">未安排学生</h3>
+        <div class="detail-panel" id="seatUnassignedPanel">
+          <div class="panel-head">
+            <div>
+              <h3 class="detail-title">未安排学生</h3>
+              <div class="sub">可逐个安排，也可按当前学生名单顺序从前往后一次排入。</div>
+            </div>
+            <div class="actions">
+              <button id="seatRosterOrderBtn" class="primary" type="button">按名单顺序一键排座</button>
+              <button id="openSeatPairBtn" type="button">安排两人坐一起</button>
+            </div>
+          </div>
           <div id="seatUnassigned" class="seat-unassigned"></div>
         </div>
       </div>
@@ -3691,13 +3812,38 @@
       </div>
     </div>
   </div>
-  <div class="modal hidden" id="seatEditModal">
-    <div class="modal-box">
+  <div class="modal hidden" id="seatArrangeModal">
+    <div class="modal-box seat-dialog-box">
       <h3 id="seatEditTitle">编辑座位</h3>
       <div class="sub" id="seatEditHint">选择学生后保存；学生已在其他座位时会自动调换。</div>
-      <label style="display:grid;gap:7px;margin-top:14px">安排学生
+      <label id="seatStudentField" style="display:grid;gap:7px;margin-top:14px">安排学生
         <select id="seatStudentSelect"></select>
       </label>
+      <label id="seatLockedField" class="seat-layout-check" style="margin-top:10px"><input id="seatLockedInput" type="checkbox"> 锁定这个学生的当前座位</label>
+      <div class="seat-preference-grid" id="seatPreferencePanel">
+        <label>位置偏好
+          <select id="seatPreferencePositionInput"><option value="any">不限制</option><option value="front">优先前排</option><option value="rear">优先后排</option><option value="aisle">靠过道</option><option value="wall">靠墙</option></select>
+        </label>
+        <label>区域偏好
+          <select id="seatPreferenceZoneInput"><option value="">不限制</option><option value="A">A 区</option><option value="B">B 区</option></select>
+        </label>
+        <label style="grid-column:1/-1">特殊备注
+          <input id="seatPreferenceNoteInput" type="text" placeholder="例如：近视、纪律原因、需要方便进出">
+        </label>
+      </div>
+      <div class="actions" style="margin-top:14px">
+        <button id="saveSeatEditBtn" class="primary" type="button">确定调整</button>
+        <button id="openSeatStudentProfileBtn" type="button">查看学生档案</button>
+        <button id="shiftSeatEditBtn" type="button">移除并让后面顺延</button>
+        <button id="clearSeatEditBtn" type="button">清空这个座位</button>
+        <button id="closeSeatEditBtn" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal hidden" id="seatAttendanceModal">
+    <div class="modal-box seat-dialog-box">
+      <h3 id="seatAttendanceTitle">登记考勤</h3>
+      <div class="sub" id="seatAttendanceHint">这里只登记考勤，不会改变学生座位。</div>
       <div id="seatQuickAttendancePanel" class="hidden" style="margin-top:14px">
         <div class="detail-title">快速登记考勤 · <span id="seatQuickAttendanceDate"></span></div>
         <div class="mentor-grid">
@@ -3723,36 +3869,110 @@
         <div class="sub" style="margin-top:8px">例如选择“请假”、备注“晚到一会”，再勾选“已到校”，请假和备注会保留，但实到人数不减少。</div>
       </div>
       <div class="actions" style="margin-top:14px">
-        <button id="saveSeatEditBtn" class="primary" type="button">保存座位和考勤</button>
-        <button id="clearSeatEditBtn" type="button">清空这个座位</button>
-        <button id="closeSeatEditBtn" type="button">取消</button>
+        <button id="saveSeatAttendanceBtn" class="primary" type="button">保存考勤</button>
+        <button id="openSeatAttendanceProfileBtn" type="button">查看学生档案</button>
+        <button id="closeSeatAttendanceBtn" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal hidden" id="seatPairModal">
+    <div class="modal-box seat-dialog-box">
+      <h3>安排两人坐一起</h3>
+      <div class="sub">系统自动抽出名单编号较小的学生，并向编号较大的学生位置移动；中间座位依次顺延，不是直接交换。</div>
+      <div class="mentor-grid" style="margin-top:14px">
+        <label>第一名学生 <select id="seatPairStudentA"></select></label>
+        <label>第二名学生 <select id="seatPairStudentB"></select></label>
+      </div>
+      <div id="seatPairPreview" class="seat-plan-notice" style="margin-top:12px"></div>
+      <div class="actions" style="margin-top:14px">
+        <button id="confirmSeatPairBtn" class="primary" type="button">确认安排在一起</button>
+        <button id="closeSeatPairBtn" type="button">取消</button>
       </div>
     </div>
   </div>
   <div class="modal hidden" id="seatLayoutModal">
-    <div class="modal-box seat-layout-box">
-      <h3>座位布局设置</h3>
-      <div class="mentor-grid" style="margin-top:12px">
-        <label>行数 <input id="seatLayoutRowsInput" type="number" min="1" max="20" inputmode="numeric"></label>
-        <label>列数 <input id="seatLayoutColsInput" type="number" min="1" max="30" inputmode="numeric"></label>
-        <label style="grid-column:1/-1">讲台
-          <select id="seatLayoutPodiumInput"><option value="show">显示（教室前方）</option><option value="hide">隐藏</option></select>
-        </label>
+    <div class="modal-box classroom-editor-box">
+      <h3>教室管理与自由布局编辑器</h3>
+      <div class="sub">每个座位和设施都是独立对象，可自由拖动。Shift 点击可批量选择；布局保存后，当前班级可绑定该教室。</div>
+      <div class="seat-workbench-toolbar" style="margin-top:12px">
+        <label>教室模板 <select id="classroomEditorSelect"></select></label>
+        <button id="newClassroomBtn" type="button">新建空白教室</button>
+        <button id="newABClassroomBtn" type="button">新建 80 座 A/B 模板</button>
+        <button id="copyClassroomBtn" type="button">复制教室</button>
+        <button id="deleteClassroomBtn" type="button" class="danger">删除教室</button>
       </div>
-      <div class="seat-layout-section">
-        <h4>过道位置</h4>
-        <div class="sub" style="margin-bottom:8px">勾选后会在对应列的后面留出过道。</div>
-        <div class="seat-aisle-options" id="seatAisleOptions"></div>
+      <div class="mentor-grid" style="margin-top:10px">
+        <label>教室名称 <input id="classroomNameInput" type="text"></label>
+        <label>画布宽度 <input id="classroomWidthInput" type="number" min="600" max="2400" step="20"></label>
+        <label>画布高度 <input id="classroomHeightInput" type="number" min="400" max="1600" step="20"></label>
       </div>
-      <div class="seat-layout-section">
-        <h4>墙位 / 不可用位置</h4>
-        <div class="sub" style="margin-bottom:8px">点击座位格标记墙位、柱子或不能坐人的位置；再次点击可恢复为普通座位。</div>
-        <div class="seat-wall-scroll"><div class="seat-wall-grid" id="seatWallGrid"></div></div>
+      <div class="classroom-pattern-builder">
+        <strong>按每排座位数量快速生成</strong>
+        <div class="sub">每行代表一排，逗号代表过道。例如 <code>6,5,6</code> = 6 个座位｜过道｜5 个座位｜过道｜6 个座位。各排可以不同；<code>6,5,6 × 6</code> 可连续生成 6 排。</div>
+        <textarea id="classroomRowPatternInput" placeholder="例如：&#10;6,5,6 × 4&#10;6,4,6&#10;6,5,6"></textarea>
+        <div class="actions">
+          <button id="generateClassroomRowsBtn" type="button" class="primary">按输入生成座位</button>
+          <span class="sub">生成后可继续拖动、删除、复制、改编号和调整 A/B 区。</span>
+        </div>
       </div>
-      <div class="seat-layout-warning">修改行列数、过道或墙位不会删除学生和原座位数据。超出当前范围或落在墙位上的学生会显示为“未安排”；以后恢复该位置时，原座位仍可重新显示。</div>
+      <div class="classroom-editor-toolbar" id="classroomEditorToolbar">
+        <button type="button" data-classroom-tool="select" class="active">选择 / 拖动</button>
+        <button type="button" data-classroom-tool="seat">添加座位</button>
+        <button type="button" data-classroom-tool="podium">添加讲台</button>
+        <button type="button" data-classroom-tool="door">添加门</button>
+        <button type="button" data-classroom-tool="aisle">添加过道</button>
+        <button type="button" data-classroom-tool="unavailable">不可用位置</button>
+        <button id="selectAllSeatsBtn" type="button">选择全部座位</button>
+        <button id="clearClassroomSelectionBtn" type="button">取消选择</button>
+      </div>
+      <div class="classroom-editor-layout">
+        <div class="classroom-editor-canvas-wrap"><div id="classroomEditorCanvas" class="classroom-editor-canvas"></div></div>
+        <div class="classroom-editor-side">
+          <strong>所选对象</strong>
+          <div class="sub" id="classroomSelectionSummary">未选择对象</div>
+          <label>名称 / 座位编号 <input id="classroomElementNameInput" type="text"></label>
+          <label>区域 <select id="classroomElementZoneInput"><option value="">无区域</option><option value="A">A 区</option><option value="B">B 区</option></select></label>
+          <label>X <input id="classroomElementXInput" type="number" step="10"></label>
+          <label>Y <input id="classroomElementYInput" type="number" step="10"></label>
+          <label>宽度 <input id="classroomElementWidthInput" type="number" min="20" step="5"></label>
+          <label>高度 <input id="classroomElementHeightInput" type="number" min="20" step="5"></label>
+          <label class="seat-layout-check"><input id="classroomElementEnabledInput" type="checkbox" checked> 可用</label>
+          <label class="seat-layout-check"><input id="classroomElementAisleInput" type="checkbox"> 靠过道</label>
+          <label class="seat-layout-check"><input id="classroomElementWallInput" type="checkbox"> 靠墙</label>
+          <div class="actions">
+            <button id="applyClassroomElementBtn" type="button">应用属性</button>
+            <button id="setZoneABtn" type="button">设为 A 区</button>
+            <button id="setZoneBBtn" type="button">设为 B 区</button>
+            <button id="duplicateClassroomElementsBtn" type="button">复制所选</button>
+            <button id="duplicateClassroomRowBtn" type="button">复制整排</button>
+            <button id="alignClassroomHorizontalBtn" type="button">水平对齐</button>
+            <button id="alignClassroomVerticalBtn" type="button">垂直对齐</button>
+            <button id="deleteClassroomElementsBtn" type="button" class="danger">删除所选</button>
+          </div>
+        </div>
+      </div>
       <div class="actions" style="margin-top:14px">
-        <button id="saveSeatLayoutBtn" class="primary" type="button">保存布局</button>
+        <button id="saveSeatLayoutBtn" class="primary" type="button">保存教室模板</button>
+        <button id="bindEditedClassroomBtn" type="button">保存并绑定当前班级</button>
         <button id="closeSeatLayoutBtn" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal hidden" id="autoSeatModal">
+    <div class="modal-box">
+      <h3>基础自动排座</h3>
+      <div class="sub">先生成预览，不会直接覆盖当前方案。确认后才保存。</div>
+      <div class="mentor-grid" style="margin-top:12px">
+        <label>排座方式 <select id="autoSeatOrderInput"><option value="random">随机排座</option><option value="front">从前往后</option></select></label>
+        <label>空位策略 <select id="autoSeatEmptyInput"><option value="rear">空位优先在后排</option><option value="even">空位均匀分布</option></select></label>
+        <label class="seat-layout-check"><input id="autoSeatKeepLockedInput" type="checkbox" checked disabled> 保留锁定学生（必须）</label>
+        <label class="seat-layout-check"><input id="autoSeatBalanceZoneInput" type="checkbox" checked> A/B 区尽量平均</label>
+      </div>
+      <div id="autoSeatPreviewSummary" class="seat-plan-notice auto-seat-preview hidden" style="margin-top:12px"></div>
+      <div class="actions" style="margin-top:14px">
+        <button id="generateAutoSeatPreviewBtn" class="primary" type="button">生成预览</button>
+        <button id="confirmAutoSeatBtn" type="button" disabled>确认并保存为新方案</button>
+        <button id="cancelAutoSeatPreviewBtn" type="button">取消</button>
       </div>
     </div>
   </div>
@@ -4094,6 +4314,18 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     let editingSeatNumber = 0;
     let seatLayoutDraft = null;
     let seatDragName = "";
+    let editingSeatId = "";
+    let editingSeatStudentUid = "";
+    let seatViewingPlanId = "";
+    let seatDragStudentUid = "";
+    let seatUndoStack = [];
+    let autoSeatPreview = null;
+    let classroomEditorDraft = null;
+    let classroomEditorTool = "select";
+    let classroomSelectedIds = new Set();
+    let classroomPointerDrag = null;
+    let seatOperationMode = "attendance";
+    let seatModalMode = "attendance";
     let cloudSaveTimer = null;
     let cloudBusy = false;
     let pendingSessionRosterRows = [];
@@ -4173,6 +4405,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         entryColumnDates: {},
         homeworkNames: [...DEFAULT_HOMEWORK_NAMES],
         seatAssignments: {},
+        classrooms: [],
+        classroomId: "",
+        seatingPlans: [],
+        currentSeatingPlanId: "",
         attendanceRecords: {},
         dormInspections: [],
         teacherSchedules: {},
@@ -4200,6 +4436,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         entryColumnDates: parsed.entryColumnDates && typeof parsed.entryColumnDates === "object" ? parsed.entryColumnDates : {},
         homeworkNames: Array.isArray(parsed.homeworkNames) ? parsed.homeworkNames : [...DEFAULT_HOMEWORK_NAMES],
         seatAssignments: parsed.seatAssignments && typeof parsed.seatAssignments === "object" ? { ...parsed.seatAssignments } : {},
+        classrooms: Array.isArray(parsed.classrooms) ? parsed.classrooms : [],
+        classroomId: String(parsed.classroomId || ""),
+        seatingPlans: Array.isArray(parsed.seatingPlans) ? parsed.seatingPlans : [],
+        currentSeatingPlanId: String(parsed.currentSeatingPlanId || ""),
         attendanceRecords: parsed.attendanceRecords && typeof parsed.attendanceRecords === "object" ? { ...parsed.attendanceRecords } : {},
         dormInspections: Array.isArray(parsed.dormInspections) ? parsed.dormInspections : [],
         teacherSchedules: parsed.teacherSchedules && typeof parsed.teacherSchedules === "object" ? { ...parsed.teacherSchedules } : {},
@@ -4269,6 +4509,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       normalizeEntryColumnDates(target);
       normalizeHomeworkNames(target);
       normalizeSystemSettings(target);
+      normalizeSeatingState(target);
       Object.values(target.records || {}).forEach(record => {
         if (record.homework === "A-") record.homework = "A";
         if (!record.homework) record.homework = "A";
@@ -4337,6 +4578,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function normalizeStudent(student, index) {
+      student.uid = String(student.uid || student.studentUid || "").trim() || `student-${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`;
       student.student_id = Number.isInteger(index)
         ? String(index + 1).padStart(3, "0")
         : String(student.student_id || student.studentId || "").trim();
@@ -4352,6 +4594,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       student.parent_phone = String(student.parent_phone || student.parentPhone || "").replace(/\s+/g, "").trim();
       student.dormitory = String(student.dormitory || student.dorm || "").trim();
       student.remark = String(student.remark || student.notes || "").trim();
+      const seatPreference = student.seatPreference && typeof student.seatPreference === "object" ? student.seatPreference : {};
+      student.seatPreference = {
+        position: ["any", "front", "rear", "aisle", "wall"].includes(seatPreference.position) ? seatPreference.position : "any",
+        zoneId: ["A", "B"].includes(seatPreference.zoneId) ? seatPreference.zoneId : "",
+        note: String(seatPreference.note || "").trim()
+      };
       student.archived = student.archived === true;
       student.archived_at = student.archived ? String(student.archived_at || student.archivedAt || "").trim() : "";
       student.archive_reason = student.archived ? String(student.archive_reason || student.archiveReason || "").trim() : "";
@@ -4602,6 +4850,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         student.archived = true;
         student.archived_at = new Date().toISOString();
         student.archive_reason = "暂不在线下班级";
+        const plan = currentSeatingPlan();
+        const seatId = plan?.assignments?.[student.uid];
+        if (seatId) student.archived_seat_id = seatId;
+        if (plan) {
+          delete plan.assignments[student.uid];
+          plan.lockedStudentUids = plan.lockedStudentUids.filter(uid => uid !== student.uid);
+        }
         const seat = seatNumberOf(student.name);
         if (seat) student.archived_seat = seat;
         delete state.seatAssignments[student.name];
@@ -4622,7 +4877,16 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         student.archived = false;
         student.archived_at = "";
         student.archive_reason = "";
+        const plan = currentSeatingPlan();
+        if (plan && student.archived_seat_id && !Object.values(plan.assignments).includes(student.archived_seat_id) && enabledClassroomSeats(planClassroom(plan)).some(seat => seat.id === student.archived_seat_id)) {
+          plan.assignments[student.uid] = student.archived_seat_id;
+        }
+        delete student.archived_seat_id;
         const savedSeat = Number(student.archived_seat);
+        if (plan && savedSeat && !plan.assignments[student.uid]) {
+          const migratedSeat = enabledClassroomSeats(planClassroom(plan)).find(seat => Number(seat.order) === savedSeat && !Object.values(plan.assignments).includes(seat.id));
+          if (migratedSeat) plan.assignments[student.uid] = migratedSeat.id;
+        }
         if (savedSeat && !seatNameAt(savedSeat) && !isWallSeat(savedSeat)) state.seatAssignments[student.name] = savedSeat;
         delete student.archived_seat;
       });
@@ -4749,7 +5013,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function attendanceRowsForExport(date) {
       return [["日期", "学生编号", "姓名", "班级", "座位", "上午", "上午备注", "上午计入实到", "下午", "下午备注", "下午计入实到", "晚自习", "晚自习备注", "晚自习计入实到", "到校时间", "离校时间", "其他备注"], ...activeStudents().map((student, index) => {
         const record = attendanceRecord(date, student.name) || {};
-        const seat = seatNumberOf(student.name);
+        const seat = rosterSeatText(student.name);
         return [date, student.student_id || String(index + 1).padStart(3, "0"), student.name, student.class_name || classNameText(), seat || "", ATTENDANCE_LABELS[record.am] || "未记录", record.amRemark || "", record.amPresent ? "是" : "", ATTENDANCE_LABELS[record.pm] || "未记录", record.pmRemark || "", record.pmPresent ? "是" : "", ATTENDANCE_LABELS[record.night] || "未记录", record.nightRemark || "", record.nightPresent ? "是" : "", record.arriveAt || "", record.leaveAt || "", record.remark || ""];
       })];
     }
@@ -4827,7 +5091,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const header = ["日期", "学生编号", "姓名", "班级", "座位", "上午", "上午备注", "上午计入实到", "下午", "下午备注", "下午计入实到", "晚自习", "晚自习备注", "晚自习计入实到", "到校时间", "离校时间", "其他备注"];
       const rows = Object.values(state.attendanceRecords || {}).sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.name).localeCompare(String(b.name))).map(record => {
         const student = state.students.find(item => item.name === record.name) || {};
-        const seat = seatNumberOf(record.name);
+        const seat = rosterSeatText(record.name);
         return [record.date, student.student_id || "", record.name, student.class_name || classNameText(), seat || "", ATTENDANCE_LABELS[record.am] || "未记录", record.amRemark || "", record.amPresent ? "是" : "", ATTENDANCE_LABELS[record.pm] || "未记录", record.pmRemark || "", record.pmPresent ? "是" : "", ATTENDANCE_LABELS[record.night] || "未记录", record.nightRemark || "", record.nightPresent ? "是" : "", record.arriveAt || "", record.leaveAt || "", record.remark || ""];
       });
       return [header, ...rows];
@@ -5027,6 +5291,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("seatEditModal").classList.add("hidden");
     }
 
+    function openSeatStudentProfile() {
+      const student = state.students.find(item => item.uid === $("seatStudentSelect").value);
+      if (!student) return showToast("当前座位没有学生");
+      selectedStudent = student.name;
+      closeSeatEditor();
+      setView("profileView");
+    }
+
     function saveSeatEdit() {
       if (!editingSeatNumber) return closeSeatEditor();
       const selectedName = $("seatStudentSelect").value;
@@ -5187,6 +5459,1251 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       closeSeatLayout();
       render();
       showToast("座位布局已保存，原座位数据未删除");
+    }
+
+    // 自由教室布局与座位方案（兼容旧数字座位表）
+    function seatingId(prefix) {
+      return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function classroomElementLabel(type) {
+      return { seat: "座位", podium: "讲台", door: "门", aisle: "过道", unavailable: "不可用" }[type] || type;
+    }
+
+    function buildLegacyClassroom(target) {
+      const settings = target.systemSettings || DEFAULT_SYSTEM_SETTINGS;
+      const rows = Math.min(20, Math.max(1, Number(settings.seatRows) || 6));
+      const cols = Math.min(30, Math.max(1, Number(settings.seatCols) || 14));
+      const walls = new Set((settings.wallSeats || []).map(Number));
+      const aisles = new Set((settings.seatAisles || []).map(Number));
+      const zoneBoundary = [...aisles].filter(col => col > 0 && col < cols).sort((a, b) => a - b).at(-1) || Math.ceil(cols / 2);
+      const seatWidth = 64;
+      const seatHeight = 50;
+      const gapX = 12;
+      const gapY = 16;
+      const left = 42;
+      const top = 105;
+      const aisleWidth = 34;
+      const xForCol = col => left + (col - 1) * (seatWidth + gapX) + [...aisles].filter(value => value < col).length * aisleWidth;
+      const width = Math.max(760, xForCol(cols) + seatWidth + 42);
+      const height = Math.max(480, top + rows * (seatHeight + gapY) + 35);
+      const elements = [];
+      if (settings.podiumVisible !== false) {
+        elements.push({ id: "legacy-podium", type: "podium", name: "讲台", x: Math.round(width / 2 - 150), y: 24, width: 300, height: 48, enabled: true });
+      }
+      for (let row = 1; row <= rows; row += 1) {
+        for (let col = 1; col <= cols; col += 1) {
+          const order = (row - 1) * cols + col;
+          const base = { id: `legacy-seat-${order}`, x: xForCol(col), y: top + (row - 1) * (seatHeight + gapY), width: seatWidth, height: seatHeight, enabled: true };
+          if (walls.has(order)) elements.push({ ...base, id: `legacy-unavailable-${order}`, type: "unavailable", name: "不可用位置", enabled: false, legacyOrder: order });
+          else elements.push({ ...base, type: "seat", seatId: `legacy-seat-${order}`, seatName: String(order), name: `${order}号`, zoneId: col <= zoneBoundary ? "A" : "B", order, nearAisle: aisles.has(col - 1) || aisles.has(col), nearWall: col === 1 || col === cols });
+        }
+      }
+      [...aisles].filter(col => col > 0 && col < cols).forEach(col => {
+        const x = xForCol(col) + seatWidth + 5;
+        elements.push({ id: `legacy-aisle-${col}`, type: "aisle", name: "过道", x, y: top - 8, width: aisleWidth - 10, height: rows * (seatHeight + gapY) - gapY + 16, enabled: true });
+      });
+      return { id: seatingId("classroom"), name: `${target.className || DEFAULT_CLASS_NAME}教室`, width, height, source: "legacy-grid", zoneRuleVersion: 2, zones: [{ id: "A", name: "A 区" }, { id: "B", name: "B 区" }], elements, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    }
+
+    function buildABClassroom(name = "80座 A/B 教室") {
+      const width = 980;
+      const height = 690;
+      const elements = [
+        { id: seatingId("podium"), type: "podium", name: "讲台", x: 340, y: 24, width: 300, height: 50, enabled: true },
+        { id: seatingId("door"), type: "door", name: "前门", x: 20, y: 30, width: 58, height: 80, enabled: true },
+        { id: seatingId("aisle"), type: "aisle", name: "中央过道", x: 469, y: 95, width: 42, height: 555, enabled: true }
+      ];
+      let order = 0;
+      for (let row = 0; row < 8; row += 1) {
+        for (let col = 0; col < 10; col += 1) {
+          order += 1;
+          const zoneId = col < 5 ? "A" : "B";
+          const localCol = col < 5 ? col : col - 5;
+          const x = 70 + localCol * 78 + (zoneId === "B" ? 490 : 0);
+          const y = 105 + row * 68;
+          elements.push({ id: seatingId("seat"), seatId: seatingId("seatref"), type: "seat", seatName: String(order), name: `${order}号`, zoneId, x, y, width: 64, height: 50, enabled: true, order, nearAisle: localCol === 4 || localCol === 0, nearWall: localCol === 0 || localCol === 4 });
+        }
+      }
+      return { id: seatingId("classroom"), name, width, height, zones: [{ id: "A", name: "A 区" }, { id: "B", name: "B 区" }], elements, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    }
+
+    function normalizeClassroom(raw, index) {
+      const classroom = raw && typeof raw === "object" ? raw : {};
+      const validTypes = new Set(["seat", "podium", "door", "aisle", "unavailable"]);
+      const ids = new Set();
+      const elements = (Array.isArray(classroom.elements) ? classroom.elements : []).map((element, elementIndex) => {
+        const type = validTypes.has(element?.type) ? element.type : "seat";
+        let id = String(element?.id || element?.seatId || `element-${index}-${elementIndex}`).trim();
+        if (!id || ids.has(id)) id = seatingId(type);
+        ids.add(id);
+        const normalized = {
+          id,
+          type,
+          name: String(element?.name || element?.seatName || classroomElementLabel(type)).trim(),
+          x: Math.max(0, Math.round(Number(element?.x) || 0)),
+          y: Math.max(0, Math.round(Number(element?.y) || 0)),
+          width: Math.max(20, Math.round(Number(element?.width) || (type === "seat" ? 64 : 100))),
+          height: Math.max(20, Math.round(Number(element?.height) || (type === "seat" ? 50 : 50))),
+          enabled: element?.enabled !== false
+        };
+        if (type === "seat") Object.assign(normalized, {
+          seatId: id,
+          seatName: String(element?.seatName || element?.name || elementIndex + 1),
+          zoneId: ["A", "B"].includes(element?.zoneId) ? element.zoneId : "",
+          order: Number(element?.order) || elementIndex + 1,
+          nearAisle: Boolean(element?.nearAisle),
+          nearWall: Boolean(element?.nearWall)
+        });
+        return normalized;
+      });
+      return {
+        id: String(classroom.id || seatingId("classroom")),
+        name: String(classroom.name || `教室 ${index + 1}`).trim() || `教室 ${index + 1}`,
+        width: Math.min(2400, Math.max(600, Math.round(Number(classroom.width) || 980))),
+        height: Math.min(1600, Math.max(400, Math.round(Number(classroom.height) || 690))),
+        capacity: elements.filter(item => item.type === "seat" && item.enabled !== false).length,
+        zones: [{ id: "A", name: "A 区" }, { id: "B", name: "B 区" }],
+        source: String(classroom.source || ""),
+        zoneRuleVersion: Math.max(0, Number(classroom.zoneRuleVersion) || 0),
+        layoutPattern: String(classroom.layoutPattern || ""),
+        elements,
+        createdAt: classroom.createdAt || new Date().toISOString(),
+        updatedAt: classroom.updatedAt || classroom.createdAt || new Date().toISOString()
+      };
+    }
+
+    function repairLegacyClassroomZones(target) {
+      const settings = target.systemSettings || DEFAULT_SYSTEM_SETTINGS;
+      const cols = Math.min(30, Math.max(1, Number(settings.seatCols) || 14));
+      const aisles = new Set((settings.seatAisles || []).map(Number));
+      const zoneBoundary = [...aisles].filter(col => col > 0 && col < cols).sort((a, b) => a - b).at(-1) || Math.ceil(cols / 2);
+      target.classrooms.forEach(classroom => {
+        if (classroom.zoneRuleVersion >= 2) return;
+        const legacySeats = classroom.elements.filter(item => item.type === "seat" && /^legacy-seat-\d+$/.test(item.id));
+        if (!legacySeats.length) return;
+        legacySeats.forEach(seat => {
+          const order = Number(seat.order) || Number(seat.id.replace("legacy-seat-", ""));
+          const col = ((order - 1) % cols) + 1;
+          seat.zoneId = col <= zoneBoundary ? "A" : "B";
+          seat.nearAisle = aisles.has(col - 1) || aisles.has(col);
+          seat.nearWall = col === 1 || col === cols;
+        });
+        classroom.source = "legacy-grid";
+        classroom.zoneRuleVersion = 2;
+      });
+    }
+
+    function normalizeSeatingState(target) {
+      target.classrooms = (Array.isArray(target.classrooms) ? target.classrooms : []).map(normalizeClassroom);
+      if (!target.classrooms.length) target.classrooms.push(normalizeClassroom(buildLegacyClassroom(target), 0));
+      repairLegacyClassroomZones(target);
+      if (!target.classrooms.some(item => item.id === target.classroomId)) target.classroomId = target.classrooms[0].id;
+      const studentUids = new Set(target.students.map(student => student.uid));
+      target.seatingPlans = (Array.isArray(target.seatingPlans) ? target.seatingPlans : []).map((plan, index) => {
+        const classroomId = target.classrooms.some(item => item.id === plan?.classroomId) ? plan.classroomId : target.classroomId;
+        const classroom = target.classrooms.find(item => item.id === classroomId);
+        const seatIds = new Set(classroom.elements.filter(item => item.type === "seat").map(item => item.id));
+        const assignments = {};
+        Object.entries(plan?.assignments && typeof plan.assignments === "object" ? plan.assignments : {}).forEach(([uid, seatId]) => {
+          if (studentUids.has(uid) && seatIds.has(String(seatId))) assignments[uid] = String(seatId);
+        });
+        return {
+          id: String(plan?.id || seatingId("plan")),
+          name: String(plan?.name || `座位方案 ${index + 1}`).trim(),
+          classSessionId: String(plan?.classSessionId || target.sessionId || ""),
+          classroomId,
+          assignments,
+          lockedStudentUids: [...new Set((Array.isArray(plan?.lockedStudentUids) ? plan.lockedStudentUids : []).filter(uid => studentUids.has(uid) && assignments[uid]))],
+          createdAt: plan?.createdAt || new Date().toISOString(),
+          updatedAt: plan?.updatedAt || plan?.createdAt || new Date().toISOString()
+        };
+      });
+      if (!target.seatingPlans.length) {
+        const classroom = target.classrooms.find(item => item.id === target.classroomId);
+        const assignments = {};
+        Object.entries(target.seatAssignments || {}).forEach(([name, oldSeat]) => {
+          const student = target.students.find(item => item.name === name);
+          const seat = classroom.elements.find(item => item.type === "seat" && (Number(item.order) === Number(oldSeat) || String(item.seatName) === String(oldSeat)));
+          if (student && seat) assignments[student.uid] = seat.id;
+        });
+        target.seatingPlans.push({ id: seatingId("plan"), name: `${today()} 迁移方案`, classSessionId: target.sessionId, classroomId: target.classroomId, assignments, lockedStudentUids: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      }
+      if (!target.seatingPlans.some(item => item.id === target.currentSeatingPlanId)) target.currentSeatingPlanId = target.seatingPlans[0].id;
+      const current = target.seatingPlans.find(item => item.id === target.currentSeatingPlanId);
+      if (current) target.classroomId = current.classroomId;
+      syncLegacySeatAssignments(target);
+    }
+
+    function studentSeatUid(student) {
+      return String(student?.uid || "");
+    }
+
+    function classroomById(id) {
+      return state.classrooms.find(item => item.id === id) || null;
+    }
+
+    function currentClassroom() {
+      return classroomById(state.classroomId) || state.classrooms[0] || null;
+    }
+
+    function currentSeatingPlan() {
+      return state.seatingPlans.find(item => item.id === state.currentSeatingPlanId) || state.seatingPlans[0] || null;
+    }
+
+    function viewedSeatingPlan() {
+      return state.seatingPlans.find(item => item.id === seatViewingPlanId) || currentSeatingPlan();
+    }
+
+    function planClassroom(plan = viewedSeatingPlan()) {
+      return classroomById(plan?.classroomId) || currentClassroom();
+    }
+
+    function enabledClassroomSeats(classroom = currentClassroom()) {
+      return (classroom?.elements || []).filter(item => item.type === "seat" && item.enabled !== false).sort((a, b) => Number(a.order || 0) - Number(b.order || 0) || a.y - b.y || a.x - b.x);
+    }
+
+    function seatForStudent(student, plan = currentSeatingPlan()) {
+      if (!student || !plan) return null;
+      return planClassroom(plan)?.elements.find(item => item.type === "seat" && item.id === plan.assignments?.[studentSeatUid(student)]) || null;
+    }
+
+    function studentForSeatId(seatId, plan = viewedSeatingPlan()) {
+      if (!plan) return null;
+      const uid = Object.keys(plan.assignments || {}).find(studentUid => plan.assignments[studentUid] === seatId);
+      return state.students.find(student => student.uid === uid) || null;
+    }
+
+    function syncLegacySeatAssignments(target = state) {
+      const plan = target.seatingPlans?.find(item => item.id === target.currentSeatingPlanId);
+      const classroom = target.classrooms?.find(item => item.id === plan?.classroomId);
+      if (!plan || !classroom) return;
+      const next = {};
+      target.students.forEach(student => {
+        const seatId = plan.assignments?.[student.uid];
+        const seat = classroom.elements.find(item => item.type === "seat" && item.id === seatId);
+        if (seat) next[student.name] = Number(seat.order) || seat.seatName || seat.id;
+      });
+      target.seatAssignments = next;
+    }
+
+    function pushSeatUndo(plan = currentSeatingPlan()) {
+      if (!plan) return;
+      seatUndoStack.push({ planId: plan.id, assignments: { ...(plan.assignments || {}) }, lockedStudentUids: [...(plan.lockedStudentUids || [])] });
+      if (seatUndoStack.length > 30) seatUndoStack.shift();
+    }
+
+    function undoSeatAdjustment() {
+      const snapshot = seatUndoStack.pop();
+      if (!snapshot) return showToast("当前没有可撤销的座位调整");
+      const plan = state.seatingPlans.find(item => item.id === snapshot.planId);
+      if (!plan) return showToast("原座位方案已不存在");
+      plan.assignments = { ...snapshot.assignments };
+      plan.lockedStudentUids = [...snapshot.lockedStudentUids];
+      plan.updatedAt = new Date().toISOString();
+      syncLegacySeatAssignments();
+      saveState();
+      seatViewingPlanId = plan.id;
+      renderSeats();
+      showToast("已撤销上一次座位调整");
+    }
+
+    function seatNumberOf(name) {
+      const student = state.students.find(item => item.name === name);
+      const seat = seatForStudent(student, currentSeatingPlan());
+      return seat ? (Number(seat.order) || seat.seatName || seat.id) : 0;
+    }
+
+    function seatNameAt(number) {
+      const plan = currentSeatingPlan();
+      const classroom = planClassroom(plan);
+      const seat = classroom?.elements.find(item => item.type === "seat" && (Number(item.order) === Number(number) || item.seatName === String(number) || item.id === String(number)));
+      return studentForSeatId(seat?.id, plan)?.name || "";
+    }
+
+    function seatUnassignedStudents(plan = viewedSeatingPlan()) {
+      const validSeatIds = new Set(enabledClassroomSeats(planClassroom(plan)).map(item => item.id));
+      return activeStudents().filter(student => !validSeatIds.has(plan?.assignments?.[student.uid]));
+    }
+
+    function assignRosterToSeatsInOrder() {
+      const plan = currentSeatingPlan();
+      if (!plan || viewedSeatingPlan()?.id !== plan.id || autoSeatPreview) return showToast("请先回到当前座位方案");
+      const seats = enabledClassroomSeats(planClassroom(plan));
+      if (!seats.length) return showToast("当前教室没有可用座位");
+      const students = activeStudents();
+      if (!students.length) return showToast("当前学生名单为空");
+      if (Object.keys(plan.assignments || {}).length && !confirm("将按当前学生名单顺序重新排座。锁定学生保留原位，其余座位会重新安排，是否继续？")) return;
+      pushSeatUndo(plan);
+      const seatIds = new Set(seats.map(seat => seat.id));
+      const studentUids = new Set(students.map(student => student.uid));
+      const locked = new Set((plan.lockedStudentUids || []).filter(uid => studentUids.has(uid) && seatIds.has(plan.assignments?.[uid])));
+      const assignments = {};
+      locked.forEach(uid => { assignments[uid] = plan.assignments[uid]; });
+      const lockedSeatIds = new Set(Object.values(assignments));
+      const availableSeats = seats.filter(seat => !lockedSeatIds.has(seat.id));
+      const movableStudents = students.filter(student => !locked.has(student.uid));
+      movableStudents.slice(0, availableSeats.length).forEach((student, index) => { assignments[student.uid] = availableSeats[index].id; });
+      plan.assignments = assignments;
+      plan.lockedStudentUids = [...locked];
+      plan.updatedAt = new Date().toISOString();
+      syncLegacySeatAssignments();
+      saveState();
+      renderSeats();
+      const arranged = Object.keys(assignments).length;
+      showToast(`已按名单顺序安排 ${arranged} 名学生${students.length > seats.length ? `，另有 ${students.length - seats.length} 人暂无座位` : ""}`);
+    }
+
+    function shiftSeatAssignmentsForward(plan, removedSeatId) {
+      if (!plan || !removedSeatId) return { removedUid: "", movedCount: 0 };
+      const seats = enabledClassroomSeats(planClassroom(plan));
+      const startIndex = seats.findIndex(seat => seat.id === removedSeatId);
+      if (startIndex < 0) return { removedUid: "", movedCount: 0 };
+      const uidBySeatId = new Map(Object.entries(plan.assignments || {}).map(([uid, seatId]) => [seatId, uid]));
+      const removedUid = uidBySeatId.get(removedSeatId) || "";
+      if (!removedUid) return { removedUid: "", movedCount: 0 };
+      const locked = new Set(plan.lockedStudentUids || []);
+      const segmentSeats = [seats[startIndex]];
+      for (let index = startIndex + 1; index < seats.length; index += 1) {
+        const uid = uidBySeatId.get(seats[index].id);
+        if (uid && locked.has(uid)) break;
+        segmentSeats.push(seats[index]);
+      }
+      const movingUids = segmentSeats.slice(1).map(seat => uidBySeatId.get(seat.id)).filter(Boolean);
+      delete plan.assignments[removedUid];
+      movingUids.forEach(uid => { delete plan.assignments[uid]; });
+      movingUids.forEach((uid, index) => { plan.assignments[uid] = segmentSeats[index].id; });
+      plan.lockedStudentUids = [...locked].filter(uid => uid !== removedUid && plan.assignments[uid]);
+      return { removedUid, movedCount: movingUids.length };
+    }
+
+    function studentRosterNumber(student) {
+      const index = state.students.findIndex(item => item.uid === student?.uid);
+      return String(student?.student_id || (index >= 0 ? index + 1 : "")).padStart(3, "0");
+    }
+
+    function selectedSeatPairData() {
+      const plan = currentSeatingPlan();
+      const studentA = state.students.find(student => student.uid === $("seatPairStudentA").value);
+      const studentB = state.students.find(student => student.uid === $("seatPairStudentB").value);
+      if (!plan || !studentA || !studentB || studentA.uid === studentB.uid) return { error: "请选择两名不同的学生" };
+      const indexA = state.students.findIndex(student => student.uid === studentA.uid);
+      const indexB = state.students.findIndex(student => student.uid === studentB.uid);
+      const mover = indexA <= indexB ? studentA : studentB;
+      const target = mover.uid === studentA.uid ? studentB : studentA;
+      const seats = enabledClassroomSeats(planClassroom(plan));
+      const moverSeatId = plan.assignments?.[mover.uid];
+      const targetSeatId = plan.assignments?.[target.uid];
+      const moverSeatIndex = seats.findIndex(seat => seat.id === moverSeatId);
+      const targetSeatIndex = seats.findIndex(seat => seat.id === targetSeatId);
+      if (moverSeatIndex < 0 || targetSeatIndex < 0) return { error: "两名学生都需要先安排座位" };
+      if (Math.abs(moverSeatIndex - targetSeatIndex) === 1) return { error: `${mover.name} 与 ${target.name} 已经在连续座位，无需调整`, alreadyAdjacent: true };
+      const uidBySeatId = new Map(Object.entries(plan.assignments || {}).map(([uid, seatId]) => [seatId, uid]));
+      const from = Math.min(moverSeatIndex, targetSeatIndex);
+      const to = Math.max(moverSeatIndex, targetSeatIndex);
+      const affectedUids = seats.slice(from, to + 1).map(seat => uidBySeatId.get(seat.id)).filter(Boolean);
+      const lockedUid = affectedUids.find(uid => plan.lockedStudentUids.includes(uid));
+      if (lockedUid) {
+        const lockedStudent = state.students.find(student => student.uid === lockedUid);
+        return { error: `移动范围内有锁定学生${lockedStudent ? `“${lockedStudent.name}”` : ""}，请先解锁` };
+      }
+      const moverSeat = seats[moverSeatIndex];
+      const targetSeat = seats[targetSeatIndex];
+      const targetFinalIndex = targetSeatIndex + (moverSeatIndex < targetSeatIndex ? -1 : 1);
+      return { plan, seats, mover, target, moverSeatIndex, targetSeatIndex, moverSeat, targetSeat, targetFinalSeat: seats[targetFinalIndex], uidBySeatId, from, to };
+    }
+
+    function updateSeatPairPreview() {
+      const preview = $("seatPairPreview");
+      const confirmButton = $("confirmSeatPairBtn");
+      const data = selectedSeatPairData();
+      if (data.error) {
+        preview.textContent = data.error;
+        confirmButton.disabled = true;
+        return;
+      }
+      const directionText = data.moverSeatIndex < data.targetSeatIndex ? "向前顺延" : "向后顺延";
+      preview.innerHTML = `抽出名单小号 <strong>${escapeHtml(studentRosterNumber(data.mover))} · ${escapeHtml(data.mover.name)}</strong>（当前座位 ${escapeHtml(data.moverSeat.seatName)}），中间座位${directionText}；小号进入原座位 ${escapeHtml(data.targetSeat.seatName)}，名单大号 <strong>${escapeHtml(studentRosterNumber(data.target))} · ${escapeHtml(data.target.name)}</strong> 移至座位 ${escapeHtml(data.targetFinalSeat.seatName)}，两人最终相邻。`;
+      confirmButton.disabled = false;
+    }
+
+    function openSeatPairModal() {
+      const plan = currentSeatingPlan();
+      if (!plan || viewedSeatingPlan()?.id !== plan.id || autoSeatPreview) return showToast("请先回到当前座位方案");
+      const assignedStudents = activeStudents().filter(student => plan.assignments?.[student.uid]);
+      if (assignedStudents.length < 2) return showToast("至少需要两名已安排座位的学生");
+      const options = assignedStudents.map(student => {
+        const seat = seatForStudent(student, plan);
+        return `<option value="${escapeHtml(student.uid)}">${escapeHtml(studentRosterNumber(student))} · ${escapeHtml(student.name)}（座位 ${escapeHtml(seat?.seatName || "-")}）</option>`;
+      }).join("");
+      $("seatPairStudentA").innerHTML = options;
+      $("seatPairStudentB").innerHTML = options;
+      $("seatPairStudentA").value = assignedStudents[0].uid;
+      $("seatPairStudentB").value = assignedStudents[1].uid;
+      updateSeatPairPreview();
+      $("seatPairModal").classList.remove("hidden");
+    }
+
+    function closeSeatPairModal() {
+      $("seatPairModal").classList.add("hidden");
+    }
+
+    function confirmSeatPair() {
+      const data = selectedSeatPairData();
+      if (data.error) return showToast(data.error);
+      const currentUids = data.seats.map(seat => data.uidBySeatId.get(seat.id) || "");
+      const nextUids = [...currentUids];
+      if (data.moverSeatIndex < data.targetSeatIndex) {
+        for (let index = data.moverSeatIndex; index < data.targetSeatIndex; index += 1) nextUids[index] = currentUids[index + 1];
+      } else {
+        for (let index = data.moverSeatIndex; index > data.targetSeatIndex; index -= 1) nextUids[index] = currentUids[index - 1];
+      }
+      nextUids[data.targetSeatIndex] = data.mover.uid;
+      pushSeatUndo(data.plan);
+      const affectedUids = currentUids.slice(data.from, data.to + 1).filter(Boolean);
+      affectedUids.forEach(uid => { delete data.plan.assignments[uid]; });
+      for (let index = data.from; index <= data.to; index += 1) {
+        if (nextUids[index]) data.plan.assignments[nextUids[index]] = data.seats[index].id;
+      }
+      data.plan.updatedAt = new Date().toISOString();
+      syncLegacySeatAssignments();
+      saveState();
+      closeSeatPairModal();
+      renderSeats();
+      showToast(`${data.mover.name} 已移动到 ${data.target.name} 身边，中间座位已顺延`);
+    }
+
+    function usableSeatNumbers() {
+      return enabledClassroomSeats().map(item => Number(item.order) || item.seatName);
+    }
+
+    function isWallSeat(number) {
+      const classroom = currentClassroom();
+      return !classroom?.elements.some(item => item.type === "seat" && item.enabled !== false && (Number(item.order) === Number(number) || item.seatName === String(number) || item.id === String(number)));
+    }
+
+    function seatingAssignmentsForRender(plan) {
+      return autoSeatPreview?.sourcePlanId === plan?.id ? autoSeatPreview.assignments : (plan?.assignments || {});
+    }
+
+    function setSeatOperationMode(mode) {
+      seatOperationMode = mode === "arrange" ? "arrange" : "attendance";
+      document.querySelectorAll("[data-seat-operation-mode]").forEach(button => button.classList.toggle("active", button.dataset.seatOperationMode === seatOperationMode));
+      renderSeats();
+    }
+
+    function fitClassroomCanvasToContainer() {
+      const scroll = $("classroomCanvasScroll");
+      const stage = $("classroomCanvasStage");
+      const canvas = $("classroomCanvas");
+      if (!scroll || !stage || !canvas) return;
+      canvas.style.transform = "none";
+      const naturalWidth = canvas.offsetWidth;
+      const naturalHeight = canvas.offsetHeight;
+      const scrollStyle = getComputedStyle(scroll);
+      const horizontalPadding = (parseFloat(scrollStyle.paddingLeft) || 0) + (parseFloat(scrollStyle.paddingRight) || 0);
+      const availableWidth = Math.max(0, scroll.clientWidth - horizontalPadding - 2);
+      const scale = availableWidth && naturalWidth ? Math.min(1, availableWidth / naturalWidth) : 1;
+      stage.style.width = `${Math.ceil(naturalWidth * scale)}px`;
+      stage.style.height = `${Math.ceil(naturalHeight * scale)}px`;
+      canvas.style.transform = `scale(${scale})`;
+      canvas.dataset.displayScale = scale.toFixed(4);
+    }
+
+    function renderSeats() {
+      const attendanceDate = $("seatDateInput").value || today();
+      ensureAttendanceDefaultsForDate(attendanceDate);
+      const plan = viewedSeatingPlan();
+      const classroom = planClassroom(plan);
+      if (!plan || !classroom) return;
+      if (!seatViewingPlanId) seatViewingPlanId = plan.id;
+      const assignments = seatingAssignmentsForRender(plan);
+      const students = activeStudents();
+      const seats = enabledClassroomSeats(classroom);
+      const assignedCount = students.filter(student => seats.some(seat => seat.id === assignments[student.uid])).length;
+      const attendanceCounts = attendanceStudentCounts(attendanceDate);
+      $("seatStats").innerHTML = [
+        statHtml("学生人数", students.length), statHtml("总座位数", seats.length), statHtml("已安排", assignedCount), statHtml("空余座位", Math.max(0, seats.length - assignedCount)), statHtml("今日出勤率", `${attendanceCounts.rate}%`), statHtml("考勤异常", attendanceCounts.abnormal)
+      ].join("");
+      $("seatClassroomSummary").textContent = `${classNameText()} · ${classroom.name} · 当前方案：${plan.name}`;
+      $("seatClassroomSelect").innerHTML = state.classrooms.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}（${enabledClassroomSeats(item).length}座）</option>`).join("");
+      $("seatClassroomSelect").value = state.classroomId;
+      $("seatPlanSelect").innerHTML = state.seatingPlans.map(item => `<option value="${escapeHtml(item.id)}">${item.id === state.currentSeatingPlanId ? "当前 · " : ""}${escapeHtml(item.name)}</option>`).join("");
+      $("seatPlanSelect").value = plan.id;
+      const historical = plan.id !== state.currentSeatingPlanId;
+      document.querySelectorAll("[data-seat-operation-mode]").forEach(button => button.classList.toggle("active", button.dataset.seatOperationMode === seatOperationMode));
+      $("seatUnassignedPanel").classList.toggle("hidden", seatOperationMode !== "arrange");
+      $("seatSetCurrentPlanBtn").disabled = !historical;
+      $("seatDeletePlanBtn").disabled = !historical;
+      const notice = $("seatPlanNotice");
+      if (autoSeatPreview) {
+        notice.className = "seat-plan-notice auto-seat-preview";
+        notice.innerHTML = `<span>正在预览自动排座，尚未保存。</span><button type="button" id="openAutoSeatConfirmBtn">返回确认</button>`;
+      } else if (historical) {
+        notice.className = "seat-plan-notice";
+        notice.innerHTML = `<span>正在查看历史方案“${escapeHtml(plan.name)}”，当前为只读。点击“设为当前”可恢复。</span>`;
+      } else notice.className = "seat-plan-notice hidden";
+      const canvas = $("classroomCanvas");
+      canvas.style.width = `${classroom.width}px`;
+      canvas.style.height = `${classroom.height}px`;
+      canvas.innerHTML = `<span class="classroom-zone-label zone-a">A 区</span><span class="classroom-zone-label zone-b">B 区</span>` + classroom.elements.map(element => {
+        const style = `left:${element.x}px;top:${element.y}px;width:${element.width}px;height:${element.height}px`;
+        if (element.type !== "seat") return `<div class="classroom-element ${element.type}" style="${style}" title="${escapeHtml(element.name)}">${escapeHtml(element.name)}</div>`;
+        const studentUid = Object.keys(assignments).find(uid => assignments[uid] === element.id);
+        const student = state.students.find(item => item.uid === studentUid);
+        const locked = plan.lockedStudentUids.includes(studentUid);
+        const attendanceStatus = student ? worstAttendance(attendanceRecord(attendanceDate, student.name)) : "";
+        const attendanceClass = student ? ` att-${attendanceStatus}` : "";
+        const zoneClass = element.zoneId === "A" ? "zone-a" : element.zoneId === "B" ? "zone-b" : "";
+        const draggable = seatOperationMode === "arrange" && student && !historical && !autoSeatPreview && !locked;
+        return `<button class="classroom-element seat ${zoneClass} ${student ? `occupied${attendanceClass}` : ""} ${locked ? "locked" : ""}" type="button" style="${style}" data-free-seat-id="${escapeHtml(element.id)}" ${student ? `data-seat-student-uid="${escapeHtml(student.uid)}"` : ""} ${draggable ? `draggable="true"` : ""} title="${escapeHtml(element.seatName)} · ${escapeHtml(element.zoneId ? `${element.zoneId}区` : "未分区")}">
+          <span class="seat-label">${escapeHtml(element.seatName)}${element.zoneId ? ` · ${escapeHtml(element.zoneId)}区` : ""}</span>
+          ${student ? `<span class="student-name">${escapeHtml(student.name)}</span>` : `<span class="seat-empty">空位</span>`}
+        </button>`;
+      }).join("");
+      fitClassroomCanvasToContainer();
+      $("seatUnassigned").innerHTML = seatUnassignedStudents(plan).map(student => `<button class="seat-student-chip" type="button" data-unassigned-uid="${escapeHtml(student.uid)}">${escapeHtml(student.name)} · 安排座位</button>`).join("") || `<div class="seat-empty-note">全部学生都已安排座位</div>`;
+      canvas.querySelectorAll("[data-free-seat-id]").forEach(button => {
+        button.addEventListener("click", () => {
+          if (seatOperationMode === "attendance" && !button.dataset.seatStudentUid) return showToast("这是空座位；切换到排座模式可以安排学生");
+          openSeatEditor(button.dataset.freeSeatId);
+        });
+        button.addEventListener("dragstart", event => {
+          seatDragStudentUid = button.dataset.seatStudentUid || "";
+          event.dataTransfer?.setData("text/plain", seatDragStudentUid);
+        });
+        button.addEventListener("dragover", event => {
+          if (!seatDragStudentUid || historical || autoSeatPreview) return;
+          event.preventDefault();
+          button.classList.add("drop-target");
+        });
+        button.addEventListener("dragleave", () => button.classList.remove("drop-target"));
+        button.addEventListener("drop", event => {
+          event.preventDefault();
+          button.classList.remove("drop-target");
+          moveStudentToFreeSeat(seatDragStudentUid || event.dataTransfer?.getData("text/plain"), button.dataset.freeSeatId);
+          seatDragStudentUid = "";
+        });
+      });
+      document.querySelectorAll("[data-unassigned-uid]").forEach(button => button.addEventListener("click", () => {
+        const firstEmpty = seats.find(seat => !Object.values(plan.assignments).includes(seat.id));
+        if (!firstEmpty) return showToast("当前教室没有空座位");
+        openSeatEditor(firstEmpty.id, button.dataset.unassignedUid);
+      }));
+      $("openAutoSeatConfirmBtn")?.addEventListener("click", () => $("autoSeatModal").classList.remove("hidden"));
+    }
+
+    function moveStudentToFreeSeat(studentUid, targetSeatId) {
+      const plan = currentSeatingPlan();
+      if (!plan || viewedSeatingPlan()?.id !== plan.id || autoSeatPreview) return;
+      const sourceSeatId = plan.assignments[studentUid];
+      if (!sourceSeatId || sourceSeatId === targetSeatId) return;
+      if (plan.lockedStudentUids.includes(studentUid)) return showToast("该学生座位已锁定，请先解锁");
+      const targetUid = Object.keys(plan.assignments).find(uid => plan.assignments[uid] === targetSeatId);
+      if (targetUid && plan.lockedStudentUids.includes(targetUid)) return showToast("目标座位的学生已锁定，不能调换");
+      pushSeatUndo(plan);
+      plan.assignments[studentUid] = targetSeatId;
+      if (targetUid) plan.assignments[targetUid] = sourceSeatId;
+      plan.updatedAt = new Date().toISOString();
+      syncLegacySeatAssignments();
+      saveState();
+      renderSeats();
+      showToast(targetUid ? "两名学生已调换座位" : "学生已移动到空座位");
+    }
+
+    function openSeatEditor(seatId, preferredUid = "") {
+      const plan = viewedSeatingPlan();
+      if (!plan || plan.id !== state.currentSeatingPlanId || autoSeatPreview) return showToast("历史或预览方案为只读，请先设为当前方案");
+      const seat = planClassroom(plan)?.elements.find(item => item.type === "seat" && item.id === String(seatId));
+      if (!seat || seat.enabled === false) return;
+      editingSeatId = seat.id;
+      const currentStudent = studentForSeatId(seat.id, plan);
+      seatModalMode = seatOperationMode;
+      editingSeatStudentUid = currentStudent?.uid || "";
+      if (seatModalMode === "attendance") {
+        if (!currentStudent) return showToast("这是空座位；切换到排座模式可以安排学生");
+        $("seatAttendanceTitle").textContent = `登记考勤 · ${currentStudent.name}`;
+        $("seatAttendanceHint").textContent = `${seat.zoneId ? `${seat.zoneId} 区 · ` : ""}${seat.seatName}，这里只登记 ${$("seatDateInput").value || today()} 的考勤，不改变座位。`;
+        renderSeatQuickAttendance(currentStudent.name);
+        $("seatAttendanceModal").classList.remove("hidden");
+        return;
+      }
+      $("seatEditTitle").textContent = `编辑座位 ${seat.seatName}`;
+      $("seatEditHint").textContent = `${seat.zoneId ? `${seat.zoneId} 区 · ` : ""}选择学生后确定；已在其他座位的学生会与当前学生调换。本窗口不登记考勤。`;
+      $("seatStudentSelect").innerHTML = `<option value="">保持为空位</option>` + activeStudents().map(student => {
+        const assignedSeat = seatForStudent(student, plan);
+        return `<option value="${escapeHtml(student.uid)}">${escapeHtml(student.name)}${assignedSeat ? `（${escapeHtml(assignedSeat.seatName)}）` : "（未安排）"}</option>`;
+      }).join("");
+      $("seatStudentSelect").value = preferredUid || currentStudent?.uid || "";
+      $("shiftSeatEditBtn").classList.toggle("hidden", !currentStudent);
+      updateSeatEditorStudentFields();
+      $("seatArrangeModal").classList.remove("hidden");
+    }
+
+    function updateSeatEditorStudentFields() {
+      const plan = currentSeatingPlan();
+      const uid = $("seatStudentSelect").value;
+      const student = state.students.find(item => item.uid === uid);
+      $("openSeatStudentProfileBtn").disabled = !student;
+      $("seatLockedInput").checked = Boolean(uid && plan?.lockedStudentUids.includes(uid));
+      $("seatLockedInput").disabled = !uid;
+      $("seatPreferencePanel").classList.toggle("hidden", !student);
+      if (!student) return;
+      $("seatPreferencePositionInput").value = student.seatPreference?.position || "any";
+      $("seatPreferenceZoneInput").value = student.seatPreference?.zoneId || "";
+      $("seatPreferenceNoteInput").value = student.seatPreference?.note || "";
+    }
+
+    function closeSeatEditor() {
+      editingSeatId = "";
+      editingSeatStudentUid = "";
+      $("seatArrangeModal").classList.add("hidden");
+      $("seatAttendanceModal").classList.add("hidden");
+      $("seatQuickAttendancePanel").classList.add("hidden");
+    }
+
+    function saveSeatEdit() {
+      const plan = currentSeatingPlan();
+      if (!plan || !editingSeatId) return closeSeatEditor();
+      const selectedUid = $("seatStudentSelect").value;
+      const currentUid = Object.keys(plan.assignments).find(uid => plan.assignments[uid] === editingSeatId) || "";
+      if (currentUid && currentUid !== selectedUid && plan.lockedStudentUids.includes(currentUid)) return showToast("当前学生座位已锁定，请先单独解锁后再调整");
+      if (selectedUid && selectedUid !== currentUid && plan.lockedStudentUids.includes(selectedUid)) return showToast("所选学生座位已锁定，请先到原座位解锁");
+      pushSeatUndo(plan);
+      if (!selectedUid) {
+        if (currentUid) delete plan.assignments[currentUid];
+      } else if (selectedUid !== currentUid) {
+        const oldSeatId = plan.assignments[selectedUid];
+        plan.assignments[selectedUid] = editingSeatId;
+        if (currentUid) {
+          if (oldSeatId) plan.assignments[currentUid] = oldSeatId;
+          else delete plan.assignments[currentUid];
+        }
+      }
+      const locks = new Set(plan.lockedStudentUids || []);
+      if (selectedUid && $("seatLockedInput").checked) locks.add(selectedUid);
+      else if (selectedUid) locks.delete(selectedUid);
+      if (currentUid && currentUid !== selectedUid) locks.delete(currentUid);
+      plan.lockedStudentUids = [...locks].filter(uid => plan.assignments[uid]);
+      const student = state.students.find(item => item.uid === selectedUid);
+      if (student) {
+        student.seatPreference = { position: $("seatPreferencePositionInput").value, zoneId: $("seatPreferenceZoneInput").value, note: $("seatPreferenceNoteInput").value.trim() };
+      }
+      plan.updatedAt = new Date().toISOString();
+      syncLegacySeatAssignments();
+      saveState();
+      closeSeatEditor();
+      renderSeats();
+      showToast("座位、锁定和偏好已保存");
+    }
+
+    function saveSeatAttendance() {
+      const student = state.students.find(item => item.uid === editingSeatStudentUid);
+      if (!student) return closeSeatEditor();
+      saveSeatQuickAttendance(student.name);
+      saveState();
+      closeSeatEditor();
+      renderSeats();
+      showToast("考勤已保存，座位未改变");
+    }
+
+    function openSeatAttendanceStudentProfile() {
+      const student = state.students.find(item => item.uid === editingSeatStudentUid);
+      if (!student) return showToast("当前座位没有学生");
+      selectedStudent = student.name;
+      closeSeatEditor();
+      setView("profileView");
+    }
+
+    function clearCurrentSeat() {
+      const plan = currentSeatingPlan();
+      const uid = Object.keys(plan?.assignments || {}).find(studentUid => plan.assignments[studentUid] === editingSeatId);
+      if (!plan || !uid) return closeSeatEditor();
+      pushSeatUndo(plan);
+      delete plan.assignments[uid];
+      plan.lockedStudentUids = plan.lockedStudentUids.filter(item => item !== uid);
+      plan.updatedAt = new Date().toISOString();
+      syncLegacySeatAssignments();
+      saveState();
+      closeSeatEditor();
+      renderSeats();
+      showToast("该座位已清空，学生档案未受影响");
+    }
+
+    function removeCurrentSeatAndShift() {
+      const plan = currentSeatingPlan();
+      if (!plan || !editingSeatId) return closeSeatEditor();
+      const uid = Object.keys(plan.assignments || {}).find(studentUid => plan.assignments[studentUid] === editingSeatId);
+      if (!uid) return showToast("当前座位没有学生");
+      if (plan.lockedStudentUids.includes(uid)) return showToast("当前学生座位已锁定，请先解锁后再顺延");
+      const student = state.students.find(item => item.uid === uid);
+      pushSeatUndo(plan);
+      const result = shiftSeatAssignmentsForward(plan, editingSeatId);
+      plan.updatedAt = new Date().toISOString();
+      syncLegacySeatAssignments();
+      saveState();
+      closeSeatEditor();
+      renderSeats();
+      showToast(`已移出 ${student?.name || "当前学生"}，后方 ${result.movedCount} 名学生已顺延`);
+    }
+
+    function assignStudentToFirstEmpty(name) {
+      const student = state.students.find(item => item.name === name || item.uid === name);
+      const plan = currentSeatingPlan();
+      const seat = enabledClassroomSeats(planClassroom(plan)).find(item => !Object.values(plan.assignments).includes(item.id));
+      if (!student || !seat) return showToast("当前没有可用空座位");
+      pushSeatUndo(plan);
+      plan.assignments[student.uid] = seat.id;
+      syncLegacySeatAssignments();
+      saveState();
+      renderSeats();
+    }
+
+    function fillUnassignedSeats() {
+      openAutoSeatModal();
+    }
+
+    function clearAllSeats() {
+      const plan = currentSeatingPlan();
+      if (!plan || !Object.keys(plan.assignments).length) return showToast("当前方案已经是空的");
+      if (!confirm("确定清空当前座位方案吗？历史方案和学生档案不会删除。")) return;
+      pushSeatUndo(plan);
+      plan.assignments = {};
+      plan.lockedStudentUids = [];
+      syncLegacySeatAssignments();
+      saveState();
+      renderSeats();
+    }
+
+    function exportSeatWorkbook() {
+      const plan = viewedSeatingPlan();
+      const classroom = planClassroom(plan);
+      const rows = [["方案", "教室", "座位", "区域", "X", "Y", "状态", "学生", "学校层次", "锁定", "位置偏好", "区域偏好", "特殊备注"]];
+      enabledClassroomSeats(classroom).forEach(seat => {
+        const student = studentForSeatId(seat.id, plan);
+        rows.push([plan.name, classroom.name, seat.seatName, seat.zoneId || "", seat.x, seat.y, student ? "已安排" : "空位", student?.name || "", student?.school_level || "", student && plan.lockedStudentUids.includes(student.uid) ? "是" : "", student?.seatPreference?.position || "", student?.seatPreference?.zoneId || "", student?.seatPreference?.note || ""]);
+      });
+      const facilities = [["类型", "名称", "X", "Y", "宽", "高"], ...classroom.elements.filter(item => item.type !== "seat").map(item => [classroomElementLabel(item.type), item.name, item.x, item.y, item.width, item.height])];
+      const unassigned = seatUnassignedStudents(plan);
+      const workbook = buildXlsxWorkbook([["座位方案", rows], ["教室设施", facilities], ["未安排学生", [["序号", "姓名", "学校", "层次"], ...unassigned.map((student, index) => [index + 1, student.name, student.school || "", student.school_level || ""])]]]);
+      download(`${safeFileClassName()}-${plan.name}-座位表-${today()}.xlsx`, workbook, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      showToast("自由布局座位表已导出");
+    }
+
+    function createSeatPlan(name, classroomId, assignments = {}, lockedStudentUids = []) {
+      return { id: seatingId("plan"), name, classSessionId: state.sessionId, classroomId, assignments: { ...assignments }, lockedStudentUids: [...lockedStudentUids], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    }
+
+    function newSeatPlan() {
+      const name = prompt("请输入新座位方案名称：", `${today()} 新座位方案`);
+      if (!name?.trim()) return;
+      const plan = createSeatPlan(name.trim(), state.classroomId);
+      state.seatingPlans.push(plan);
+      state.currentSeatingPlanId = plan.id;
+      seatViewingPlanId = plan.id;
+      seatUndoStack = [];
+      syncLegacySeatAssignments();
+      saveState();
+      renderSeats();
+    }
+
+    function copyCurrentSeatPlan() {
+      const source = viewedSeatingPlan();
+      if (!source) return;
+      const name = prompt("请输入复制后的方案名称：", `${today()} ${source.name}副本`);
+      if (!name?.trim()) return;
+      const plan = createSeatPlan(name.trim(), source.classroomId, source.assignments, source.lockedStudentUids);
+      state.seatingPlans.push(plan);
+      state.currentSeatingPlanId = plan.id;
+      state.classroomId = plan.classroomId;
+      seatViewingPlanId = plan.id;
+      seatUndoStack = [];
+      syncLegacySeatAssignments();
+      saveState();
+      renderSeats();
+    }
+
+    function setViewedPlanCurrent() {
+      const plan = viewedSeatingPlan();
+      if (!plan || plan.id === state.currentSeatingPlanId) return;
+      if (!confirm(`确定恢复“${plan.name}”为当前座位方案吗？原当前方案会保留在历史中。`)) return;
+      state.currentSeatingPlanId = plan.id;
+      state.classroomId = plan.classroomId;
+      seatUndoStack = [];
+      syncLegacySeatAssignments();
+      saveState();
+      renderSeats();
+      showToast("历史座位方案已恢复为当前方案");
+    }
+
+    function deleteViewedSeatPlan() {
+      const plan = viewedSeatingPlan();
+      if (!plan || plan.id === state.currentSeatingPlanId) return showToast("当前方案不能删除，请先将其他方案设为当前");
+      if (!confirm(`确定删除非当前方案“${plan.name}”吗？`)) return;
+      state.seatingPlans = state.seatingPlans.filter(item => item.id !== plan.id);
+      seatViewingPlanId = state.currentSeatingPlanId;
+      saveState();
+      renderSeats();
+    }
+
+    function bindSelectedClassroom() {
+      const classroomId = $("seatClassroomSelect").value;
+      const classroom = classroomById(classroomId);
+      if (!classroom || classroomId === state.classroomId) return showToast("当前班级已经绑定这个教室");
+      if (!confirm(`确定将 ${classNameText()} 绑定到“${classroom.name}”吗？系统会建立一个新的空座位方案，原方案保留在历史中。`)) return;
+      state.classroomId = classroom.id;
+      const plan = createSeatPlan(`${today()} ${classroom.name}`, classroom.id);
+      state.seatingPlans.push(plan);
+      state.currentSeatingPlanId = plan.id;
+      seatViewingPlanId = plan.id;
+      seatUndoStack = [];
+      syncLegacySeatAssignments();
+      saveState();
+      renderSeats();
+      showToast("班级已绑定新教室");
+    }
+
+    function openSeatLayout() {
+      const classroom = currentClassroom();
+      if (!classroom) return;
+      classroomEditorDraft = JSON.parse(JSON.stringify(classroom));
+      classroomSelectedIds = new Set();
+      classroomEditorTool = "select";
+      renderClassroomEditor();
+      $("seatLayoutModal").classList.remove("hidden");
+    }
+
+    function closeSeatLayout() {
+      classroomEditorDraft = null;
+      classroomSelectedIds = new Set();
+      $("seatLayoutModal").classList.add("hidden");
+    }
+
+    function classroomNextSeatName(draft = classroomEditorDraft) {
+      const used = new Set(draft.elements.filter(item => item.type === "seat").map(item => String(item.seatName)));
+      let number = 1;
+      while (used.has(String(number))) number += 1;
+      return String(number);
+    }
+
+    function parseClassroomRowPattern(value) {
+      const rows = [];
+      const normalizedLines = [];
+      String(value || "").split(/\r?\n/).forEach((rawLine, lineIndex) => {
+        let line = rawLine.trim();
+        if (!line) return;
+        let repeat = 1;
+        const repeatMatch = line.match(/^(.*?)\s*[xX×*]\s*(\d+)\s*$/);
+        if (repeatMatch) {
+          line = repeatMatch[1].trim();
+          repeat = Number(repeatMatch[2]);
+        }
+        const tokens = line.split(/[,，\s]+/).filter(Boolean);
+        if (!tokens.length || tokens.some(token => !/^\d+$/.test(token))) throw new Error(`第 ${lineIndex + 1} 行格式不正确`);
+        const groups = tokens.map(Number);
+        if (groups.some(count => count < 1 || count > 30)) throw new Error(`第 ${lineIndex + 1} 行每组座位数应为 1–30`);
+        if (repeat < 1 || repeat > 20) throw new Error(`第 ${lineIndex + 1} 行重复排数应为 1–20`);
+        if (rows.length + repeat > 20) throw new Error("最多生成 20 排座位");
+        for (let index = 0; index < repeat; index += 1) rows.push([...groups]);
+        normalizedLines.push(`${groups.join(",")}${repeat > 1 ? ` × ${repeat}` : ""}`);
+      });
+      if (!rows.length) throw new Error("请先输入每排座位数量");
+      const seatCount = rows.reduce((sum, groups) => sum + groups.reduce((rowSum, count) => rowSum + count, 0), 0);
+      if (seatCount > 300) throw new Error("一次最多生成 300 个座位");
+      return { rows, seatCount, normalizedText: normalizedLines.join("\n") };
+    }
+
+    function generateClassroomRows() {
+      if (!classroomEditorDraft) return;
+      let parsed;
+      try {
+        parsed = parseClassroomRowPattern($("classroomRowPatternInput").value);
+      } catch (error) {
+        return showToast(error.message || "排结构格式不正确");
+      }
+      const oldSeats = classroomEditorDraft.elements.filter(item => item.type === "seat");
+      const oldAisles = classroomEditorDraft.elements.filter(item => item.type === "aisle");
+      if ((oldSeats.length || oldAisles.length) && !confirm(`将用新结构替换当前草稿中的 ${oldSeats.length} 个座位和 ${oldAisles.length} 条过道。讲台、门和不可用位置会保留；保存后原座位上的学生会变为未安排。是否继续？`)) return;
+
+      const seatWidth = 64;
+      const seatHeight = 50;
+      const seatGap = 12;
+      const aisleWidth = 30;
+      const aisleGap = 46;
+      const rowGap = 18;
+      const left = 42;
+      const top = 110;
+      const rowWidth = groups => groups.reduce((sum, count) => sum + count * seatWidth + Math.max(0, count - 1) * seatGap, 0) + Math.max(0, groups.length - 1) * aisleGap;
+      const maxRowWidth = Math.max(...parsed.rows.map(rowWidth));
+      const requiredWidth = Math.ceil((maxRowWidth + left * 2) / 20) * 20;
+      if (requiredWidth > 2400) return showToast("当前排结构过宽，请减少每排座位数或分组数量");
+
+      const preserved = classroomEditorDraft.elements.filter(item => !["seat", "aisle"].includes(item.type));
+      if (!preserved.some(item => item.type === "podium")) {
+        preserved.push({ id: seatingId("podium"), type: "podium", name: "讲台", x: Math.max(20, Math.round((Math.max(760, requiredWidth) - 300) / 2)), y: 24, width: 300, height: 50, enabled: true });
+      }
+      const generated = [];
+      let order = 0;
+      parsed.rows.forEach((groups, rowIndex) => {
+        let x = left + Math.round((maxRowWidth - rowWidth(groups)) / 2);
+        const y = top + rowIndex * (seatHeight + rowGap);
+        groups.forEach((count, groupIndex) => {
+          for (let seatIndex = 0; seatIndex < count; seatIndex += 1) {
+            order += 1;
+            const id = seatingId("seat");
+            generated.push({
+              id,
+              seatId: id,
+              type: "seat",
+              seatName: String(order),
+              name: `${order}号`,
+              zoneId: groups.length > 1 && groupIndex === groups.length - 1 ? "B" : "A",
+              x,
+              y,
+              width: seatWidth,
+              height: seatHeight,
+              enabled: true,
+              order,
+              nearAisle: (groupIndex > 0 && seatIndex === 0) || (groupIndex < groups.length - 1 && seatIndex === count - 1),
+              nearWall: (groupIndex === 0 && seatIndex === 0) || (groupIndex === groups.length - 1 && seatIndex === count - 1)
+            });
+            x += seatWidth + (seatIndex < count - 1 ? seatGap : 0);
+          }
+          if (groupIndex < groups.length - 1) {
+            generated.push({ id: seatingId("aisle"), type: "aisle", name: "过道", x: x + 8, y: y - 4, width: aisleWidth, height: seatHeight + 8, enabled: true });
+            x += aisleGap;
+          }
+        });
+      });
+      classroomEditorDraft.elements = [...preserved, ...generated];
+      classroomEditorDraft.layoutPattern = parsed.normalizedText;
+      classroomEditorDraft.width = Math.max(760, requiredWidth);
+      classroomEditorDraft.height = Math.max(480, Math.ceil((top + parsed.rows.length * (seatHeight + rowGap) + 30) / 20) * 20);
+      classroomSelectedIds = new Set();
+      classroomEditorTool = "select";
+      renderClassroomEditor();
+      showToast(`已生成 ${parsed.rows.length} 排、${parsed.seatCount} 个座位，可继续拖动微调`);
+    }
+
+    function renderClassroomEditor() {
+      if (!classroomEditorDraft) return;
+      const classroomOptions = state.classrooms.some(item => item.id === classroomEditorDraft.id) ? state.classrooms : [...state.classrooms, classroomEditorDraft];
+      $("classroomEditorSelect").innerHTML = classroomOptions.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}${state.classrooms.some(saved => saved.id === item.id) ? "" : "（未保存）"}</option>`).join("");
+      $("classroomEditorSelect").value = classroomEditorDraft.id;
+      $("classroomNameInput").value = classroomEditorDraft.name;
+      $("classroomWidthInput").value = classroomEditorDraft.width;
+      $("classroomHeightInput").value = classroomEditorDraft.height;
+      $("classroomRowPatternInput").value = classroomEditorDraft.layoutPattern || "";
+      document.querySelectorAll("[data-classroom-tool]").forEach(button => button.classList.toggle("active", button.dataset.classroomTool === classroomEditorTool));
+      const canvas = $("classroomEditorCanvas");
+      canvas.style.width = `${classroomEditorDraft.width}px`;
+      canvas.style.height = `${classroomEditorDraft.height}px`;
+      canvas.innerHTML = classroomEditorDraft.elements.map(element => `<div class="classroom-element ${element.type} ${classroomSelectedIds.has(element.id) ? "selected" : ""}" style="left:${element.x}px;top:${element.y}px;width:${element.width}px;height:${element.height}px" data-editor-element-id="${escapeHtml(element.id)}"><span>${escapeHtml(element.type === "seat" ? element.seatName : element.name)}</span></div>`).join("");
+      bindClassroomEditorInteractions();
+      renderClassroomSelectionProperties();
+    }
+
+    function bindClassroomEditorInteractions() {
+      const canvas = $("classroomEditorCanvas");
+      canvas.onclick = event => {
+        if (event.target !== canvas || classroomEditorTool === "select") return;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = classroomEditorDraft.width / rect.width;
+        const scaleY = classroomEditorDraft.height / rect.height;
+        const x = Math.max(0, Math.round(((event.clientX - rect.left) * scaleX) / 10) * 10);
+        const y = Math.max(0, Math.round(((event.clientY - rect.top) * scaleY) / 10) * 10);
+        const type = classroomEditorTool;
+        const size = type === "seat" ? [64, 50] : type === "podium" ? [260, 50] : type === "door" ? [60, 80] : type === "aisle" ? [48, 280] : [90, 70];
+        const seatName = type === "seat" ? classroomNextSeatName() : "";
+        const element = { id: seatingId(type), type, name: type === "seat" ? `${seatName}号` : classroomElementLabel(type), x, y, width: size[0], height: size[1], enabled: type !== "unavailable" };
+        if (type === "seat") Object.assign(element, { seatId: element.id, seatName, zoneId: x < classroomEditorDraft.width / 2 ? "A" : "B", order: Number(seatName) || classroomEditorDraft.elements.length + 1, nearAisle: false, nearWall: false });
+        classroomEditorDraft.elements.push(element);
+        classroomSelectedIds = new Set([element.id]);
+        renderClassroomEditor();
+      };
+      canvas.querySelectorAll("[data-editor-element-id]").forEach(node => {
+        node.addEventListener("pointerdown", event => {
+          event.stopPropagation();
+          const id = node.dataset.editorElementId;
+          if (event.shiftKey) {
+            if (classroomSelectedIds.has(id)) classroomSelectedIds.delete(id);
+            else classroomSelectedIds.add(id);
+          } else if (!classroomSelectedIds.has(id)) classroomSelectedIds = new Set([id]);
+          classroomEditorTool = "select";
+          const originals = classroomEditorDraft.elements.filter(item => classroomSelectedIds.has(item.id)).map(item => ({ id: item.id, x: item.x, y: item.y }));
+          classroomPointerDrag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, originals };
+          try { node.setPointerCapture?.(event.pointerId); } catch {}
+          canvas.querySelectorAll("[data-editor-element-id]").forEach(item => item.classList.toggle("selected", classroomSelectedIds.has(item.dataset.editorElementId)));
+          renderClassroomSelectionProperties();
+        });
+        node.addEventListener("pointermove", event => {
+          if (!classroomPointerDrag || classroomPointerDrag.pointerId !== event.pointerId) return;
+          const dx = Math.round((event.clientX - classroomPointerDrag.startX) / 10) * 10;
+          const dy = Math.round((event.clientY - classroomPointerDrag.startY) / 10) * 10;
+          classroomPointerDrag.originals.forEach(original => {
+            const element = classroomEditorDraft.elements.find(item => item.id === original.id);
+            if (element) {
+              element.x = Math.max(0, Math.min(classroomEditorDraft.width - element.width, original.x + dx));
+              element.y = Math.max(0, Math.min(classroomEditorDraft.height - element.height, original.y + dy));
+              const target = canvas.querySelector(`[data-editor-element-id="${CSS.escape(element.id)}"]`);
+              if (target) { target.style.left = `${element.x}px`; target.style.top = `${element.y}px`; }
+            }
+          });
+        });
+        node.addEventListener("pointerup", event => {
+          if (classroomPointerDrag?.pointerId === event.pointerId) classroomPointerDrag = null;
+          renderClassroomSelectionProperties();
+        });
+      });
+    }
+
+    function renderClassroomSelectionProperties() {
+      const selected = classroomEditorDraft?.elements.filter(item => classroomSelectedIds.has(item.id)) || [];
+      $("classroomSelectionSummary").textContent = selected.length ? `已选择 ${selected.length} 个对象` : "未选择对象";
+      const first = selected[0];
+      const fields = ["classroomElementNameInput", "classroomElementZoneInput", "classroomElementXInput", "classroomElementYInput", "classroomElementWidthInput", "classroomElementHeightInput", "classroomElementEnabledInput", "classroomElementAisleInput", "classroomElementWallInput"];
+      fields.forEach(id => $(id).disabled = !first);
+      if (!first) return;
+      $("classroomElementNameInput").value = first.type === "seat" ? first.seatName : first.name;
+      $("classroomElementZoneInput").value = first.zoneId || "";
+      $("classroomElementXInput").value = first.x;
+      $("classroomElementYInput").value = first.y;
+      $("classroomElementWidthInput").value = first.width;
+      $("classroomElementHeightInput").value = first.height;
+      $("classroomElementEnabledInput").checked = first.enabled !== false;
+      $("classroomElementAisleInput").checked = Boolean(first.nearAisle);
+      $("classroomElementWallInput").checked = Boolean(first.nearWall);
+    }
+
+    function applyClassroomElementProperties() {
+      const selected = classroomEditorDraft.elements.filter(item => classroomSelectedIds.has(item.id));
+      if (!selected.length) return showToast("请先选择对象");
+      const first = selected[0];
+      selected.forEach((element, index) => {
+        if (selected.length === 1) {
+          const name = $("classroomElementNameInput").value.trim();
+          if (element.type === "seat") { element.seatName = name || element.seatName; element.name = `${element.seatName}号`; }
+          else element.name = name || element.name;
+          element.x = Math.max(0, Number($("classroomElementXInput").value) || 0);
+          element.y = Math.max(0, Number($("classroomElementYInput").value) || 0);
+        }
+        element.width = Math.max(20, Number($("classroomElementWidthInput").value) || first.width);
+        element.height = Math.max(20, Number($("classroomElementHeightInput").value) || first.height);
+        element.enabled = $("classroomElementEnabledInput").checked;
+        if (element.type === "seat") {
+          element.zoneId = $("classroomElementZoneInput").value;
+          element.nearAisle = $("classroomElementAisleInput").checked;
+          element.nearWall = $("classroomElementWallInput").checked;
+        }
+      });
+      renderClassroomEditor();
+    }
+
+    function setSelectedClassroomZone(zoneId) {
+      const seats = classroomEditorDraft.elements.filter(item => item.type === "seat" && classroomSelectedIds.has(item.id));
+      if (!seats.length) return showToast("请先选择座位");
+      seats.forEach(seat => seat.zoneId = zoneId);
+      renderClassroomEditor();
+    }
+
+    function duplicateSelectedClassroomElements(rowMode = false) {
+      let selected = classroomEditorDraft.elements.filter(item => classroomSelectedIds.has(item.id));
+      if (!selected.length) return showToast("请先选择要复制的对象");
+      if (rowMode) {
+        const y = selected[0].y;
+        selected = classroomEditorDraft.elements.filter(item => item.type === "seat" && Math.abs(item.y - y) <= 8);
+      }
+      const usedSeatNames = new Set(classroomEditorDraft.elements.filter(item => item.type === "seat").map(item => String(item.seatName)));
+      const nextUniqueSeatName = () => {
+        let number = 1;
+        while (usedSeatNames.has(String(number))) number += 1;
+        usedSeatNames.add(String(number));
+        return String(number);
+      };
+      const copies = selected.map((element, copyIndex) => {
+        const copy = { ...element, id: seatingId(element.type), x: Math.min(classroomEditorDraft.width - element.width, element.x + (rowMode ? 0 : 20)), y: Math.min(classroomEditorDraft.height - element.height, element.y + (rowMode ? element.height + 18 : 20)) };
+        if (copy.type === "seat") { copy.seatId = copy.id; copy.seatName = nextUniqueSeatName(); copy.name = `${copy.seatName}号`; copy.order = classroomEditorDraft.elements.length + copyIndex + 1; }
+        return copy;
+      });
+      classroomEditorDraft.elements.push(...copies);
+      classroomSelectedIds = new Set(copies.map(item => item.id));
+      renderClassroomEditor();
+    }
+
+    function alignSelectedClassroomElements(axis) {
+      const selected = classroomEditorDraft.elements.filter(item => classroomSelectedIds.has(item.id));
+      if (selected.length < 2) return showToast("至少选择两个对象才能对齐");
+      const value = axis === "horizontal" ? selected[0].y : selected[0].x;
+      selected.forEach(item => { if (axis === "horizontal") item.y = value; else item.x = value; });
+      renderClassroomEditor();
+    }
+
+    function deleteSelectedClassroomElements() {
+      if (!classroomSelectedIds.size) return showToast("请先选择对象");
+      const assignedSeatIds = new Set(Object.values(currentSeatingPlan()?.assignments || {}));
+      const assignedCount = classroomEditorDraft.elements.filter(item => classroomSelectedIds.has(item.id) && assignedSeatIds.has(item.id)).length;
+      if (assignedCount && !confirm(`所选位置中有 ${assignedCount} 个已经安排学生。保存布局后这些学生会进入“未安排”，是否继续删除？`)) return;
+      classroomEditorDraft.elements = classroomEditorDraft.elements.filter(item => !classroomSelectedIds.has(item.id));
+      classroomSelectedIds = new Set();
+      renderClassroomEditor();
+    }
+
+    function saveSeatLayout(bindAfterSave = false) {
+      if (!classroomEditorDraft) return;
+      classroomEditorDraft.name = $("classroomNameInput").value.trim() || "未命名教室";
+      classroomEditorDraft.width = Math.min(2400, Math.max(600, Number($("classroomWidthInput").value) || 980));
+      classroomEditorDraft.height = Math.min(1600, Math.max(400, Number($("classroomHeightInput").value) || 690));
+      classroomEditorDraft.updatedAt = new Date().toISOString();
+      classroomEditorDraft = normalizeClassroom(classroomEditorDraft, 0);
+      const index = state.classrooms.findIndex(item => item.id === classroomEditorDraft.id);
+      if (index >= 0) state.classrooms[index] = JSON.parse(JSON.stringify(classroomEditorDraft));
+      else state.classrooms.push(JSON.parse(JSON.stringify(classroomEditorDraft)));
+      if (bindAfterSave && state.classroomId !== classroomEditorDraft.id) {
+        state.classroomId = classroomEditorDraft.id;
+        const plan = createSeatPlan(`${today()} ${classroomEditorDraft.name}`, classroomEditorDraft.id);
+        state.seatingPlans.push(plan);
+        state.currentSeatingPlanId = plan.id;
+        seatViewingPlanId = plan.id;
+      }
+      normalizeSeatingState(state);
+      saveState();
+      closeSeatLayout();
+      renderSeats();
+      showToast(bindAfterSave ? "教室模板已保存并绑定当前班级" : "教室模板已保存");
+    }
+
+    function loadClassroomIntoEditor(id) {
+      const classroom = classroomById(id);
+      if (!classroom) return;
+      classroomEditorDraft = JSON.parse(JSON.stringify(classroom));
+      classroomSelectedIds = new Set();
+      renderClassroomEditor();
+    }
+
+    function newBlankClassroom() {
+      classroomEditorDraft = normalizeClassroom({ id: seatingId("classroom"), name: "新教室", width: 980, height: 690, elements: [], createdAt: new Date().toISOString() }, state.classrooms.length);
+      classroomSelectedIds = new Set();
+      renderClassroomEditor();
+    }
+
+    function newABClassroom() {
+      classroomEditorDraft = buildABClassroom();
+      classroomSelectedIds = new Set();
+      renderClassroomEditor();
+    }
+
+    function copyClassroomTemplate() {
+      if (!classroomEditorDraft) return;
+      classroomEditorDraft = JSON.parse(JSON.stringify(classroomEditorDraft));
+      classroomEditorDraft.id = seatingId("classroom");
+      classroomEditorDraft.name = `${classroomEditorDraft.name} 副本`;
+      classroomEditorDraft.elements.forEach(element => { const oldId = element.id; element.id = seatingId(element.type); if (element.type === "seat") element.seatId = element.id; });
+      classroomEditorDraft.createdAt = new Date().toISOString();
+      classroomSelectedIds = new Set();
+      renderClassroomEditor();
+    }
+
+    function deleteClassroomTemplate() {
+      if (!classroomEditorDraft) return;
+      const used = state.classroomId === classroomEditorDraft.id || state.seatingPlans.some(plan => plan.classroomId === classroomEditorDraft.id);
+      if (used) return showToast("该教室已被班级或历史方案使用，不能删除；可以先复制后修改");
+      if (!confirm(`确定删除教室模板“${classroomEditorDraft.name}”吗？`)) return;
+      state.classrooms = state.classrooms.filter(item => item.id !== classroomEditorDraft.id);
+      loadClassroomIntoEditor(state.classrooms[0]?.id);
+      saveState();
+    }
+
+    function openAutoSeatModal() {
+      autoSeatPreview = null;
+      $("autoSeatPreviewSummary").classList.add("hidden");
+      $("confirmAutoSeatBtn").disabled = true;
+      $("autoSeatModal").classList.remove("hidden");
+    }
+
+    function shuffleArray(list) {
+      const next = [...list];
+      for (let index = next.length - 1; index > 0; index -= 1) {
+        const swap = Math.floor(Math.random() * (index + 1));
+        [next[index], next[swap]] = [next[swap], next[index]];
+      }
+      return next;
+    }
+
+    function generateAutoSeatPreview() {
+      const plan = currentSeatingPlan();
+      const classroom = planClassroom(plan);
+      const allSeats = enabledClassroomSeats(classroom);
+      const students = activeStudents();
+      if (students.length > allSeats.length) return alert(`当前有 ${students.length} 名学生，但教室只有 ${allSeats.length} 个可用座位。请先增加座位或更换教室。`);
+      const keepLocked = true;
+      const balanceZones = $("autoSeatBalanceZoneInput").checked;
+      const randomOrder = $("autoSeatOrderInput").value === "random";
+      const assignments = {};
+      const usedSeatIds = new Set();
+      const locked = keepLocked ? plan.lockedStudentUids.filter(uid => plan.assignments[uid] && allSeats.some(seat => seat.id === plan.assignments[uid])) : [];
+      locked.forEach(uid => { assignments[uid] = plan.assignments[uid]; usedSeatIds.add(plan.assignments[uid]); });
+      let availableSeats = allSeats.filter(seat => !usedSeatIds.has(seat.id));
+      let pendingStudents = students.filter(student => !assignments[student.uid]);
+      pendingStudents.sort((a, b) => {
+        const score = student => (student.seatPreference?.note ? 4 : 0) + (student.seatPreference?.zoneId ? 2 : 0) + (student.seatPreference?.position !== "any" ? 1 : 0);
+        return score(b) - score(a);
+      });
+      if (randomOrder) pendingStudents = shuffleArray(pendingStudents);
+      if ($("autoSeatEmptyInput").value === "even" && availableSeats.length > pendingStudents.length) {
+        const sorted = [...availableSeats].sort((a, b) => a.y - b.y || a.x - b.x);
+        const step = sorted.length / pendingStudents.length;
+        availableSeats = pendingStudents.map((_, index) => sorted[Math.min(sorted.length - 1, Math.floor(index * step))]);
+      }
+      const zoneCounts = { A: 0, B: 0 };
+      Object.values(assignments).forEach(seatId => { const zone = allSeats.find(seat => seat.id === seatId)?.zoneId; if (zoneCounts[zone] !== undefined) zoneCounts[zone] += 1; });
+      pendingStudents.forEach(student => {
+        const preference = student.seatPreference || { position: "any", zoneId: "", note: "" };
+        const candidates = availableSeats.map(seat => {
+          let score = randomOrder ? Math.random() * 50 : -seat.y / 100;
+          if (preference.zoneId) score += seat.zoneId === preference.zoneId ? 10000 : -10000;
+          if (preference.position === "front") score += (classroom.height - seat.y) * 4;
+          if (preference.position === "rear") score += seat.y * 4;
+          if (preference.position === "aisle") score += seat.nearAisle ? 5000 : 0;
+          if (preference.position === "wall") score += seat.nearWall ? 5000 : 0;
+          if (balanceZones && ["A", "B"].includes(seat.zoneId)) score += (Math.min(zoneCounts.A, zoneCounts.B) === zoneCounts[seat.zoneId] ? 400 : 0);
+          if ($("autoSeatEmptyInput").value === "rear" && preference.position === "any") score += (classroom.height - seat.y) * 2;
+          return { seat, score };
+        }).sort((a, b) => b.score - a.score || a.seat.y - b.seat.y || a.seat.x - b.seat.x);
+        const chosen = candidates[0]?.seat;
+        if (!chosen) return;
+        assignments[student.uid] = chosen.id;
+        availableSeats = availableSeats.filter(seat => seat.id !== chosen.id);
+        if (zoneCounts[chosen.zoneId] !== undefined) zoneCounts[chosen.zoneId] += 1;
+      });
+      autoSeatPreview = { sourcePlanId: plan.id, classroomId: classroom.id, assignments, lockedStudentUids: locked, createdAt: new Date().toISOString() };
+      $("autoSeatPreviewSummary").classList.remove("hidden");
+      $("autoSeatPreviewSummary").textContent = `预览已生成：安排 ${Object.keys(assignments).length} 人，空位 ${Math.max(0, allSeats.length - Object.keys(assignments).length)} 个，A区 ${zoneCounts.A} 人，B区 ${zoneCounts.B} 人。`;
+      $("confirmAutoSeatBtn").disabled = false;
+      seatViewingPlanId = plan.id;
+      renderSeats();
+    }
+
+    function confirmAutoSeatPreview() {
+      if (!autoSeatPreview) return;
+      const source = currentSeatingPlan();
+      const plan = createSeatPlan(`${today()} 自动排座`, autoSeatPreview.classroomId, autoSeatPreview.assignments, autoSeatPreview.lockedStudentUids);
+      state.seatingPlans.push(plan);
+      state.currentSeatingPlanId = plan.id;
+      state.classroomId = plan.classroomId;
+      seatViewingPlanId = plan.id;
+      autoSeatPreview = null;
+      seatUndoStack = [];
+      syncLegacySeatAssignments();
+      saveState();
+      $("autoSeatModal").classList.add("hidden");
+      renderSeats();
+      showToast(`自动排座已保存为新方案，原方案“${source?.name || ""}”仍在历史中`);
+    }
+
+    function cancelAutoSeatPreview() {
+      autoSeatPreview = null;
+      $("autoSeatModal").classList.add("hidden");
+      renderSeats();
     }
 
     function editClassName() {
@@ -5361,7 +6878,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         + Object.keys(target.subjectTests || {}).length * 10
         + (target.events?.length || 0) * 10
         + (target.quickNotes?.length || 0) * 10
-        + (target.dormInspections?.length || 0) * 10;
+        + (target.dormInspections?.length || 0) * 10
+        + (target.classrooms?.length || 0) * 5
+        + (target.seatingPlans?.length || 0) * 5;
     }
 
     function shouldUseIndexedDbState(restored) {
@@ -7726,6 +9245,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function renderStudentInfo(student) {
       const index = state.students.indexOf(student);
+      const currentSeat = seatForStudent(student, currentSeatingPlan());
+      const preferenceLabels = { any: "不限制", front: "优先前排", rear: "优先后排", aisle: "靠过道", wall: "靠墙" };
       $("studentInfoPanel").innerHTML = `
         <div class="student-info-head">
           <h3>基础信息</h3>
@@ -7744,6 +9265,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           ${studentInfoItem("家长联系方式", student.parent_phone)}
           ${studentInfoItem("宿舍", student.dormitory)}
           ${studentInfoItem("来源班级", student.source_class)}
+          ${studentInfoItem("当前座位", currentSeat ? `${currentSeat.zoneId ? `${currentSeat.zoneId}区 · ` : ""}${currentSeat.seatName}` : "未安排")}
+          ${studentInfoItem("座位偏好", preferenceLabels[student.seatPreference?.position] || "不限制")}
+          ${studentInfoItem("区域偏好", student.seatPreference?.zoneId ? `${student.seatPreference.zoneId}区` : "不限制")}
+          ${studentInfoItem("座位特殊备注", student.seatPreference?.note, true)}
           ${studentInfoItem("备注", student.remark, true)}
         </div>
       `;
@@ -9394,6 +10919,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
         const next = makeSeedState({ students, records: {}, subjectTests: {}, events: [], quickNotes: [] });
         next.systemSettings = JSON.parse(JSON.stringify(state.systemSettings || DEFAULT_SYSTEM_SETTINGS));
+        next.classrooms = JSON.parse(JSON.stringify(state.classrooms || []));
+        next.classroomId = state.classroomId || next.classrooms[0]?.id || "";
+        next.seatingPlans = [];
+        next.currentSeatingPlanId = "";
         next.className = className;
         next.courseStartDate = startDate;
         next.courseEndDate = endDate;
@@ -9476,6 +11005,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (!student) return;
       const message = `确定删除 ${student.name} 吗？这会同时删除该学生的每日记录、考勤、随手记、单科成绩和沟通历史。`;
       if (!confirm(message)) return;
+      const currentPlan = currentSeatingPlan();
+      const removedSeatId = currentPlan?.assignments?.[student.uid] || "";
+      const shiftedSeatCount = removedSeatId ? shiftSeatAssignmentsForward(currentPlan, removedSeatId).movedCount : 0;
       state.students.splice(index, 1);
       state.students.forEach((item, studentIndex) => { item.student_id = String(studentIndex + 1).padStart(3, "0"); });
       Object.keys(state.records || {}).forEach(key => {
@@ -9490,10 +11022,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         if (state.attendanceRecords[key]?.name === student.name) delete state.attendanceRecords[key];
       });
       if (state.seatAssignments) delete state.seatAssignments[student.name];
+      (state.seatingPlans || []).forEach(plan => {
+        delete plan.assignments?.[student.uid];
+        plan.lockedStudentUids = (plan.lockedStudentUids || []).filter(uid => uid !== student.uid);
+      });
       if (selectedStudent === student.name) selectedStudent = state.students[0]?.name || "";
       saveState();
       render();
-      showToast(`已删除 ${student.name}`);
+      showToast(`已删除 ${student.name}${shiftedSeatCount ? `，当前座位方案中后方 ${shiftedSeatCount} 人已顺延` : ""}`);
     }
 
     function startEditStudent(index) {
@@ -9742,10 +11278,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function rosterSeatText(name) {
-      const seat = seatNumberOf(name);
+      const student = state.students.find(item => item.name === name);
+      const seat = seatForStudent(student, currentSeatingPlan());
       if (!seat) return "未安排";
-      const cols = seatSettings().cols || 1;
-      return `${Math.floor((seat - 1) / cols) + 1}排${((seat - 1) % cols) + 1}号`;
+      return `${seat.zoneId ? `${seat.zoneId}区 · ` : ""}${seat.seatName}`;
     }
 
     function openStudentProfileFromRoster(index) {
@@ -11822,16 +13358,58 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     bindClick("seatClearAllBtn", clearAllSeats);
     bindClick("exportAttendanceBtn", exportAttendanceDay);
     bindClick("saveSeatEditBtn", saveSeatEdit);
+    bindClick("openSeatStudentProfileBtn", openSeatStudentProfile);
+    bindClick("shiftSeatEditBtn", removeCurrentSeatAndShift);
     bindClick("clearSeatEditBtn", clearCurrentSeat);
     bindClick("closeSeatEditBtn", closeSeatEditor);
+    bindClick("saveSeatAttendanceBtn", saveSeatAttendance);
+    bindClick("openSeatAttendanceProfileBtn", openSeatAttendanceStudentProfile);
+    bindClick("closeSeatAttendanceBtn", closeSeatEditor);
     bindClick("saveSeatLayoutBtn", saveSeatLayout);
     bindClick("closeSeatLayoutBtn", closeSeatLayout);
-    $("seatLayoutRowsInput").addEventListener("change", updateSeatLayoutDimensions);
-    $("seatLayoutColsInput").addEventListener("change", updateSeatLayoutDimensions);
+    bindClick("bindEditedClassroomBtn", () => saveSeatLayout(true));
+    bindClick("seatBindClassroomBtn", bindSelectedClassroom);
+    bindClick("seatSetCurrentPlanBtn", setViewedPlanCurrent);
+    bindClick("seatNewPlanBtn", newSeatPlan);
+    bindClick("seatCopyPlanBtn", copyCurrentSeatPlan);
+    bindClick("seatDeletePlanBtn", deleteViewedSeatPlan);
+    bindClick("seatUndoBtn", undoSeatAdjustment);
+    bindClick("seatRosterOrderBtn", assignRosterToSeatsInOrder);
+    bindClick("openSeatPairBtn", openSeatPairModal);
+    bindClick("confirmSeatPairBtn", confirmSeatPair);
+    bindClick("closeSeatPairBtn", closeSeatPairModal);
+    bindClick("newClassroomBtn", newBlankClassroom);
+    bindClick("newABClassroomBtn", newABClassroom);
+    bindClick("generateClassroomRowsBtn", generateClassroomRows);
+    bindClick("copyClassroomBtn", copyClassroomTemplate);
+    bindClick("deleteClassroomBtn", deleteClassroomTemplate);
+    bindClick("selectAllSeatsBtn", () => { classroomSelectedIds = new Set(classroomEditorDraft?.elements.filter(item => item.type === "seat").map(item => item.id) || []); renderClassroomEditor(); });
+    bindClick("clearClassroomSelectionBtn", () => { classroomSelectedIds = new Set(); renderClassroomEditor(); });
+    bindClick("applyClassroomElementBtn", applyClassroomElementProperties);
+    bindClick("setZoneABtn", () => setSelectedClassroomZone("A"));
+    bindClick("setZoneBBtn", () => setSelectedClassroomZone("B"));
+    bindClick("duplicateClassroomElementsBtn", () => duplicateSelectedClassroomElements(false));
+    bindClick("duplicateClassroomRowBtn", () => duplicateSelectedClassroomElements(true));
+    bindClick("alignClassroomHorizontalBtn", () => alignSelectedClassroomElements("horizontal"));
+    bindClick("alignClassroomVerticalBtn", () => alignSelectedClassroomElements("vertical"));
+    bindClick("deleteClassroomElementsBtn", deleteSelectedClassroomElements);
+    bindClick("generateAutoSeatPreviewBtn", generateAutoSeatPreview);
+    bindClick("confirmAutoSeatBtn", confirmAutoSeatPreview);
+    bindClick("cancelAutoSeatPreviewBtn", cancelAutoSeatPreview);
+    document.querySelectorAll("[data-classroom-tool]").forEach(button => button.addEventListener("click", () => {
+      classroomEditorTool = button.dataset.classroomTool;
+      renderClassroomEditor();
+    }));
+    document.querySelectorAll("[data-seat-operation-mode]").forEach(button => button.addEventListener("click", () => setSeatOperationMode(button.dataset.seatOperationMode)));
+    $("classroomEditorSelect").addEventListener("change", event => loadClassroomIntoEditor(event.target.value));
+    $("seatPlanSelect").addEventListener("change", event => { seatViewingPlanId = event.target.value; autoSeatPreview = null; renderSeats(); });
     $("seatDateInput").addEventListener("change", () => {
       renderSeats();
     });
-    $("seatStudentSelect").addEventListener("change", event => renderSeatQuickAttendance(event.target.value));
+    window.addEventListener("resize", () => requestAnimationFrame(fitClassroomCanvasToContainer));
+    $("seatStudentSelect").addEventListener("change", updateSeatEditorStudentFields);
+    $("seatPairStudentA").addEventListener("change", updateSeatPairPreview);
+    $("seatPairStudentB").addEventListener("change", updateSeatPairPreview);
     bindClick("classSessionBtn", openClassSessionModal);
     bindClick("headerCourseSwitcher", openClassSessionModal);
     bindClick("cloudSyncBtn", openCloudSyncModal);
@@ -11869,11 +13447,20 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("editCurrentSessionModal").addEventListener("click", event => {
       if (event.target.id === "editCurrentSessionModal") closeEditCurrentSessionModal();
     });
-    $("seatEditModal").addEventListener("click", event => {
-      if (event.target.id === "seatEditModal") closeSeatEditor();
+    $("seatArrangeModal").addEventListener("click", event => {
+      if (event.target.id === "seatArrangeModal") closeSeatEditor();
+    });
+    $("seatAttendanceModal").addEventListener("click", event => {
+      if (event.target.id === "seatAttendanceModal") closeSeatEditor();
+    });
+    $("seatPairModal").addEventListener("click", event => {
+      if (event.target.id === "seatPairModal") closeSeatPairModal();
     });
     $("seatLayoutModal").addEventListener("click", event => {
       if (event.target.id === "seatLayoutModal") closeSeatLayout();
+    });
+    $("autoSeatModal").addEventListener("click", event => {
+      if (event.target.id === "autoSeatModal") cancelAutoSeatPreview();
     });
     const dataTools = document.querySelector(".data-tools");
     const dataToolsHome = dataTools?.parentNode || null;
