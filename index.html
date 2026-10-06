@@ -814,6 +814,9 @@
     .event-student-picker select { min-width: 0; width: 100%; }
     .event-entry-toolbar .event-search-field { flex: 1 1 320px; }
     .event-entry-toolbar .event-search-field input { min-width: 180px; width: 100%; }
+    .quick-teacher-picker { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .quick-teacher-picker select { min-width: 130px; flex: 1; }
+    .quick-teacher-picker button { flex: 0 0 auto; padding: 8px 10px; }
     .event-table-wrap { overflow-x: auto; }
     .event-table {
       width: 100%;
@@ -1430,6 +1433,18 @@
     .seat-preference-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 12px; }
     .seat-preference-grid label { display: grid; gap: 5px; }
     .auto-seat-preview { border-color: #86efac; background: #f0fdf4; color: #166534; }
+    .quick-center-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .quick-class-badge { display: inline-flex; padding: 7px 11px; border-radius: 9px; background: #eef8f6; color: #227565; font-weight: 800; }
+    .quick-filter-bar { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)) auto; gap: 8px; align-items: end; margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #f8fafc; }
+    .quick-filter-bar label { display: grid; gap: 5px; color: #475467; font-size: 12px; font-weight: 700; }
+    .quick-date-shortcuts { display: flex; gap: 6px; flex-wrap: wrap; }
+    .quick-pin-badge { display: inline-flex; padding: 3px 7px; border-radius: 999px; background: #fff0c2; color: #9a6200; font-size: 12px; font-weight: 800; }
+    .quick-pinned-row td { background: #fffaf0; }
+    .quick-content-cell { min-width: 280px; white-space: pre-wrap; line-height: 1.6; }
+    @media (max-width: 860px) {
+      .quick-filter-bar { grid-template-columns: 1fr; }
+      .quick-date-shortcuts button { flex: 1; }
+    }
     @media (max-width: 860px) {
       .classroom-editor-layout { grid-template-columns: 1fr; }
       .classroom-editor-side { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -3434,43 +3449,58 @@
         <div class="panel-head">
           <div>
             <h2 class="panel-title">随手记</h2>
-            <div class="sub">只管写发生了什么；系统会自动识别迟到、纪律、作业、情绪、表扬和沟通等类型。</div>
+            <div class="sub">记录今天发生的事情，也可以记录班级事务、宿舍情况和老师之间需要交代的内容。</div>
           </div>
+          <div class="quick-center-head"><span class="quick-class-badge" id="quickClassLabel"></span><select id="quickExportScope"><option value="day">当前日期</option><option value="filtered">当前筛选结果</option><option value="range">指定日期范围</option><option value="class">当前班级全部</option></select><button id="exportQuickNotesBtn" class="primary" type="button">导出Excel</button></div>
         </div>
         <div class="detail-panel communication-grid">
           <div class="communication-box">
             <h3>记一条</h3>
             <div class="event-entry-toolbar">
               <label>日期 <input id="eventDateInput" type="date"></label>
-              <label class="event-student-field">学生
+              <label class="event-student-field">关联学生（可选）
                 <span class="event-student-picker">
                   <input id="inlineQuickStudentSearch" type="search" placeholder="姓名 / 首字母 / 编号" autocomplete="off" aria-label="搜索随手记学生">
                   <select id="inlineQuickStudentSelect" aria-label="选择随手记学生"></select>
                 </span>
               </label>
               <label>时间 <input id="inlineQuickTimeInput" type="time"></label>
-              <label class="event-search-field">筛选
-                <input id="eventSearch" type="search" placeholder="序号 / 姓名首字母 / 类型 / 内容">
+              <label>记录老师
+                <span class="quick-teacher-picker">
+                  <select id="inlineQuickTeacherSelect" aria-label="选择记录老师"></select>
+                  <button id="deleteInlineQuickTeacherBtn" class="danger" type="button" title="从老师名单删除当前老师">删除</button>
+                </span>
+              </label>
+              <label class="event-search-field">搜索
+                <input id="eventSearch" type="search" placeholder="内容 / 学生 / 老师">
               </label>
             </div>
             <div class="toolbar" style="align-items:flex-start">
-              <textarea id="inlineQuickContentInput" placeholder="直接写即可，例如：李同学上课玩平板，没收一节课，下次没收一天；家长给孩子请假；晚自习结束去宿舍声音放小。"></textarea>
-              <button id="addInlineQuickNoteBtn" class="primary">保存随手记</button>
+              <textarea id="inlineQuickContentInput" placeholder="记录今天发生的事情……"></textarea>
+              <button id="addInlineQuickNoteBtn" class="primary">添加随手记</button>
             </div>
+            <div class="sub" id="quickTeacherHint" style="margin-top:8px"></div>
           </div>
         </div>
+        <div class="quick-filter-bar">
+          <label>开始日期<input id="quickFilterStart" type="date"></label>
+          <label>结束日期<input id="quickFilterEnd" type="date"></label>
+          <label>学生<select id="quickFilterStudent"><option value="">全部学生</option></select></label>
+          <label>记录老师<select id="quickFilterTeacher"><option value="">全部老师</option></select></label>
+          <label>置顶<select id="quickFilterPinned"><option value="">全部记录</option><option value="pinned">仅置顶</option><option value="normal">仅未置顶</option></select></label>
+          <div class="quick-date-shortcuts"><button id="quickPrevDayBtn" type="button">前一天</button><button id="quickTodayBtn" type="button">今天</button><button id="quickApplyRangeBtn" type="button">查看范围</button><button id="quickClearFilterBtn" type="button">重置</button></div>
+        </div>
+        <div class="sub" id="quickFilterSummary" style="margin-bottom:8px"></div>
         <div class="table-wrap event-table-wrap">
           <table class="event-table">
             <thead>
               <tr>
-                <th>日期</th>
-                <th>序号</th>
-                <th>姓名</th>
+                <th>置顶</th>
+                <th>日期时间</th>
+                <th>关联学生</th>
+                <th>记录老师</th>
                 <th>类型</th>
                 <th>内容</th>
-                <th>后续动作</th>
-                <th>状态</th>
-                <th>创建时间</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -3980,9 +4010,15 @@
     <div class="modal-box quick-modal-box">
       <h3 id="quickNoteModalTitle">随手记</h3>
       <div class="sub">随时记录现场小事；系统会自动分类、归档到学生或全班。</div>
-      <div class="quick-note-grid">
+      <div class="quick-note-grid" style="grid-template-columns: 1fr 1fr">
         <label>学生
           <select id="quickNoteStudentSelect"></select>
+        </label>
+        <label>记录老师
+          <span class="quick-teacher-picker">
+            <select id="quickNoteTeacherSelect"></select>
+            <button id="deleteQuickNoteTeacherBtn" class="danger" type="button" title="从老师名单删除当前老师">删除</button>
+          </span>
         </label>
       </div>
       <div class="quick-note-grid" style="grid-template-columns: 1fr 130px 120px">
@@ -4550,6 +4586,17 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         if (!QUICK_NOTE_LEVELS.includes(note.level)) note.level = "普通";
         note.name = String(note.name || "").trim() || CLASS_NOTE_NAME;
         note.content = String(note.content || "").trim();
+        const linkedStudent = target.students.find(student => student.uid === note.studentId || student.name === note.studentName || student.name === note.name);
+        note.classId = String(note.classId || target.sessionId);
+        note.className = String(note.className || target.className).trim() || target.className;
+        note.teacherId = String(note.teacherId || "");
+        note.teacherName = String(note.teacherName || note.teacher || "未记录老师").trim() || "未记录老师";
+        note.studentId = linkedStudent?.uid || "";
+        note.studentName = linkedStudent?.name || (note.name === CLASS_NOTE_NAME ? "" : note.name);
+        const inferredCreatedAt = new Date(`${note.date}T${note.time || "00:00"}:00`);
+        note.createdAt = note.createdAt || (Number.isNaN(inferredCreatedAt.getTime()) ? new Date().toISOString() : inferredCreatedAt.toISOString());
+        note.updatedAt = note.updatedAt || note.createdAt;
+        note.isPinned = note.isPinned === true;
       });
     }
 
@@ -8606,18 +8653,20 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function renderEvents() {
       renderInlineQuickStudentOptions();
+      renderQuickNoteTeacherOptions("inlineQuickTeacherSelect");
+      renderQuickNoteFilterOptions();
+      $("quickClassLabel").textContent = state.className;
+      $("quickTeacherHint").textContent = "保存前可选择记录老师；如名单中没有，可选择“输入其他老师”。学生可以不关联。";
       const query = $("eventSearch").value.trim();
       const items = getCommunicationTimeline(query);
       $("eventBody").innerHTML = items.map(item => item.kind === "event" ? `
         <tr>
-          <td>${escapeHtml(item.date)}</td>
-          <td class="idx">${recordStudentNumber(item.name)}</td>
-          <td><span class="name">${escapeHtml(recordStudentName(item.name))}</span></td>
+          <td><span class="muted">-</span></td>
+          <td>${escapeHtml(item.date)} ${escapeHtml(item.time || "")}</td>
+          <td><span class="name">${escapeHtml(item.name === CLASS_NOTE_NAME ? "未关联" : recordStudentName(item.name))}</span></td>
+          <td>${escapeHtml(item.teacherName || "历史记录")}</td>
           <td><span class="badge neutral">${escapeHtml(item.type)}</span></td>
-          <td>${escapeHtml(item.content)}</td>
-          <td>${escapeHtml(item.followUp || "")}</td>
-          <td><span class="badge ${item.status === "需跟进" ? "warn" : item.status === "已完成" ? "ok" : "neutral"}">${escapeHtml(item.status)}</span></td>
-          <td>${escapeHtml(formatRecordCreatedAt(item.createdAt))}</td>
+          <td class="quick-content-cell">${escapeHtml(item.content)}</td>
           <td>
             <div class="event-row-actions">
               <button class="small danger event-delete-btn" data-id="${escapeHtml(item.id)}">删除</button>
@@ -8625,40 +8674,111 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           </td>
         </tr>
       ` : `
-        <tr>
-          <td>${escapeHtml(item.date)} ${escapeHtml(item.time || "")}</td>
-          <td class="idx">${recordStudentNumber(item.name)}</td>
-          <td><span class="name">${escapeHtml(recordStudentName(item.name))}</span></td>
+        <tr class="${item.isPinned ? "quick-pinned-row" : ""}">
+          <td>${item.isPinned ? `<span class="quick-pin-badge">置顶</span>` : `<span class="muted">-</span>`}</td>
+          <td>${escapeHtml(item.date)} ${escapeHtml(item.time || "")}${item.updatedAt && item.updatedAt !== item.createdAt ? `<div class="muted">已编辑</div>` : ""}</td>
+          <td><span class="name">${escapeHtml(item.studentName || (item.name === CLASS_NOTE_NAME ? "未关联" : item.name))}</span></td>
+          <td>${escapeHtml(item.teacherName || "未记录老师")}</td>
           <td><span class="badge ${normalizeQuickNoteType(item.type) === "表扬鼓励" ? "ok" : "neutral"}">${escapeHtml(normalizeQuickNoteType(item.type))}</span></td>
-          <td>${escapeHtml(item.content)}</td>
-          <td>${escapeHtml(item.followUp || "") || `<span class="muted">-</span>`}</td>
-          <td><span class="badge ${quickNoteStatusBadgeClass(quickNoteStatus(item))}">${escapeHtml(quickNoteStatus(item))}</span></td>
-          <td>${escapeHtml(formatRecordCreatedAt(item.createdAt))}</td>
+          <td class="quick-content-cell">${escapeHtml(item.content)}</td>
           <td>
             <div class="event-row-actions">
+              <button class="small quick-pin-btn" data-id="${escapeHtml(item.id)}">${item.isPinned ? "取消置顶" : "置顶"}</button>
               <button class="small quick-edit-btn" data-id="${escapeHtml(item.id)}">编辑</button>
-              <button class="small quick-follow-btn" data-id="${escapeHtml(item.id)}">标记跟进</button>
-              <button class="small quick-complete-btn" data-id="${escapeHtml(item.id)}">已跟进</button>
               <button class="small danger quick-timeline-delete-btn" data-id="${escapeHtml(item.id)}">删除</button>
             </div>
           </td>
         </tr>
-      `).join("") || `<tr><td colspan="9" class="empty">暂无随手记</td></tr>`;
+      `).join("") || `<tr><td colspan="7" class="empty">暂无符合条件的随手记</td></tr>`;
+      $("quickFilterSummary").textContent = `${query ? `搜索“${query}”，` : ""}共 ${items.length} 条记录${items.filter(item => item.isPinned).length ? `，置顶 ${items.filter(item => item.isPinned).length} 条` : ""}`;
       document.querySelectorAll(".event-delete-btn").forEach(btn => {
         btn.addEventListener("click", () => deleteEvent(btn.dataset.id));
       });
       document.querySelectorAll(".quick-edit-btn").forEach(btn => {
         btn.addEventListener("click", () => editQuickNote(btn.dataset.id));
       });
-      document.querySelectorAll(".quick-follow-btn").forEach(btn => {
-        btn.addEventListener("click", () => markQuickNoteFollowUp(btn.dataset.id));
-      });
-      document.querySelectorAll(".quick-complete-btn").forEach(btn => {
-        btn.addEventListener("click", () => completeQuickNoteFollowUp(btn.dataset.id));
+      document.querySelectorAll(".quick-pin-btn").forEach(btn => {
+        btn.addEventListener("click", () => toggleQuickNotePin(btn.dataset.id));
       });
       document.querySelectorAll(".quick-timeline-delete-btn").forEach(btn => {
         btn.addEventListener("click", () => deleteQuickNote(btn.dataset.id));
       });
+    }
+
+    function renderQuickNoteFilterOptions() {
+      const studentSelect = $("quickFilterStudent");
+      const teacherSelect = $("quickFilterTeacher");
+      const currentStudent = studentSelect.value;
+      const currentTeacher = teacherSelect.value;
+      studentSelect.innerHTML = `<option value="">全部学生</option><option value="${CLASS_NOTE_NAME}">未关联学生</option>${activeStudents().map(student => `<option value="${escapeHtml(student.uid)}">${escapeHtml(student.name)}</option>`).join("")}`;
+      const teachers = [...new Set((state.quickNotes || []).filter(note => note.classId === state.sessionId).map(note => note.teacherName).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-CN"));
+      teacherSelect.innerHTML = `<option value="">全部老师</option>${teachers.map(teacher => `<option value="${escapeHtml(teacher)}">${escapeHtml(teacher)}</option>`).join("")}`;
+      if ([...studentSelect.options].some(option => option.value === currentStudent)) studentSelect.value = currentStudent;
+      if ([...teacherSelect.options].some(option => option.value === currentTeacher)) teacherSelect.value = currentTeacher;
+    }
+
+    function quickNoteTeacherNames(preferred = "") {
+      const names = [
+        ...configuredTeacherNames(),
+        currentTeacherName(),
+        preferred
+      ].map(normalizeTeacherName).filter(name => name && !["未设置老师", "未记录老师", "历史记录"].includes(name));
+      return [...new Set(names)].sort((a, b) => a.localeCompare(b, "zh-CN"));
+    }
+
+    function renderQuickNoteTeacherOptions(selectId, preferred = "") {
+      const select = $(selectId);
+      if (!select) return;
+      const selected = normalizeTeacherName(preferred || (select.value !== "__custom__" ? select.value : "") || currentTeacherName());
+      const names = quickNoteTeacherNames(selected);
+      select.innerHTML = (!names.length ? `<option value="">请选择记录老师</option>` : "")
+        + names.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")
+        + `<option value="__custom__">＋ 输入其他老师…</option>`;
+      if (selected && [...select.options].some(option => option.value === selected)) select.value = selected;
+      else if (names.length) select.value = names[0];
+      else select.value = "";
+    }
+
+    function chooseCustomQuickNoteTeacher(selectId) {
+      const select = $(selectId);
+      if (!select || select.value !== "__custom__") return;
+      const name = normalizeTeacherName(prompt("请输入记录老师姓名，例如：王老师") || "");
+      if (!name) {
+        renderQuickNoteTeacherOptions(selectId);
+        return;
+      }
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      select.insertBefore(option, select.lastElementChild);
+      select.value = name;
+      const names = configuredTeacherNames();
+      if (!names.includes(name)) {
+        names.push(name);
+        state.systemSettings.teachers = names.join("、");
+        if (!state.systemSettings.currentTeacher) state.systemSettings.currentTeacher = name;
+        saveState();
+      }
+    }
+
+    function deleteQuickNoteTeacher(selectId) {
+      const select = $(selectId);
+      const teacher = normalizeTeacherName(select?.value);
+      if (!teacher || teacher === "__custom__") {
+        showToast("请先选择要删除的老师");
+        return;
+      }
+      if (!confirm(`确定从老师选择名单删除“${teacher}”吗？\n历史随手记中的老师姓名会保留。`)) return;
+      const remaining = configuredTeacherNames().filter(name => name !== teacher);
+      state.systemSettings.teachers = remaining.join("、");
+      if (currentTeacherName() === teacher || normalizeTeacherName(state.systemSettings.currentTeacher) === teacher) {
+        state.systemSettings.currentTeacher = remaining[0] || "";
+      }
+      saveState();
+      const nextTeacher = remaining[0] || "";
+      renderQuickNoteTeacherOptions("inlineQuickTeacherSelect", nextTeacher);
+      renderQuickNoteTeacherOptions("quickNoteTeacherSelect", nextTeacher);
+      showToast(`${teacher}已从选择名单删除，历史记录未修改`);
     }
 
     function renderInlineQuickStudentOptions() {
@@ -8669,7 +8789,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const students = activeStudents().map((student, index) => ({ student, index }))
         .filter(({ student, index }) => matchesStudentSearch(student, index, query));
       select.innerHTML = `
-        <option value="${CLASS_NOTE_NAME}">${CLASS_NOTE_NAME}</option>
+        <option value="${CLASS_NOTE_NAME}">不关联学生 / 全班事务</option>
       ` + students.map(({ student, index }) => `
         <option value="${escapeHtml(student.name)}">#${index + 1} ${escapeHtml(student.name)}${student.school ? ` · ${escapeHtml(student.school)}` : ""}</option>
       `).join("") + (query && !students.length ? `<option value="" disabled>没有匹配的学生</option>` : "");
@@ -8748,11 +8868,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return text || String(content || "").trim();
     }
 
-    function buildQuickNoteData({ name, content, date, time }) {
+    function buildQuickNoteData({ name, content, date, time, teacherName }) {
       const classified = classifyRecordContent(content, "quick");
       const detectedName = detectStudentNameFromContent(content, name || CLASS_NOTE_NAME) || CLASS_NOTE_NAME;
       const followUp = extractFollowUpFromContent(content, classified.level);
       const type = detectedName === CLASS_NOTE_NAME && classified.type === "日常记录" ? "班级提醒" : classified.type;
+      const student = state.students.find(item => item.name === detectedName);
+      const createdAt = new Date().toISOString();
       return {
         id: `quick-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         date: date || today(),
@@ -8763,7 +8885,15 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         status: followUp ? "需跟进" : (classified.level === "需关注" ? "需关注" : "已记录"),
         followUp,
         content: cleanQuickNoteContent(content, detectedName),
-        createdAt: new Date().toISOString()
+        classId: state.sessionId,
+        className: state.className,
+        teacherId: "",
+        teacherName: normalizeTeacherName(teacherName) || currentTeacherName() || "未记录老师",
+        studentId: student?.uid || "",
+        studentName: student?.name || "",
+        createdAt,
+        updatedAt: createdAt,
+        isPinned: false
       };
     }
 
@@ -8778,11 +8908,26 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function getCommunicationTimeline(query) {
-      const events = (state.events || []).map(event => ({ ...event, kind: "event", sortTime: event.createdAt || "" }));
-      const quickNotes = (state.quickNotes || []).map(note => ({ ...note, kind: "quick", sortTime: note.time || note.createdAt || "" }));
+      const start = $("quickFilterStart")?.value || "";
+      const end = $("quickFilterEnd")?.value || "";
+      const studentFilter = $("quickFilterStudent")?.value || "";
+      const teacherFilter = $("quickFilterTeacher")?.value || "";
+      const pinnedFilter = $("quickFilterPinned")?.value || "";
+      const hasSearch = Boolean(String(query || "").trim());
+      const matchesFilters = item => {
+        if (!hasSearch && start && item.date < start) return false;
+        if (!hasSearch && end && item.date > end) return false;
+        if (studentFilter === CLASS_NOTE_NAME && item.name !== CLASS_NOTE_NAME && item.studentId) return false;
+        if (studentFilter && studentFilter !== CLASS_NOTE_NAME && item.studentId !== studentFilter) return false;
+        if (teacherFilter && item.teacherName !== teacherFilter) return false;
+        if (pinnedFilter === "pinned" && !item.isPinned) return false;
+        if (pinnedFilter === "normal" && item.isPinned) return false;
+        return matchesCommunicationSearch(item, query);
+      };
+      const events = (state.events || []).map(event => ({ ...event, kind: "event", teacherName: event.teacherName || "历史记录", studentId: state.students.find(student => student.name === event.name)?.uid || "", isPinned: false, sortTime: event.createdAt || "" })).filter(matchesFilters);
+      const quickNotes = (state.quickNotes || []).filter(note => note.classId === state.sessionId).map(note => ({ ...note, kind: "quick", sortTime: note.time || note.createdAt || "" })).filter(matchesFilters);
       return [...events, ...quickNotes]
-        .filter(item => matchesCommunicationSearch(item, query))
-        .sort((a, b) => `${b.date || ""}${b.sortTime || ""}${b.createdAt || ""}`.localeCompare(`${a.date || ""}${a.sortTime || ""}${a.createdAt || ""}`));
+        .sort((a, b) => Number(b.isPinned) - Number(a.isPinned) || `${b.date || ""}${b.sortTime || ""}${b.createdAt || ""}`.localeCompare(`${a.date || ""}${a.sortTime || ""}${a.createdAt || ""}`));
     }
 
     function matchesCommunicationSearch(item, query) {
@@ -8798,12 +8943,38 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         item.content,
         item.followUp,
         item.status,
-        item.level
+        item.level,
+        item.teacherName
       ], text);
+    }
+
+    function toggleQuickNotePin(id) {
+      const note = (state.quickNotes || []).find(item => item.id === id);
+      if (!note) return;
+      note.isPinned = !note.isPinned;
+      note.updatedAt = new Date().toISOString();
+      saveState();
+      renderEvents();
+      showToast(note.isPinned ? "随手记已置顶" : "已取消置顶");
+    }
+
+    function setQuickNoteDay(dateText) {
+      const date = normalizeDateKey(dateText) || today();
+      $("eventDateInput").value = date;
+      $("quickFilterStart").value = date;
+      $("quickFilterEnd").value = date;
+      renderEvents();
+    }
+
+    function shiftQuickNoteDay(days) {
+      const current = new Date(`${$("eventDateInput").value || today()}T12:00:00`);
+      current.setDate(current.getDate() + days);
+      setQuickNoteDay(localDateText(current));
     }
 
     function addInlineQuickNote() {
       const name = $("inlineQuickStudentSelect").value;
+      const teacherName = $("inlineQuickTeacherSelect").value;
       const content = $("inlineQuickContentInput").value.trim();
       if (!name) {
         showToast("请先选择学生");
@@ -8813,10 +8984,15 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         showToast("请写一句随手记内容");
         return;
       }
+      if (!teacherName || teacherName === "__custom__") {
+        showToast("请选择记录老师");
+        return;
+      }
       const note = buildQuickNoteData({
         name,
         date: $("eventDateInput").value || today(),
         time: $("inlineQuickTimeInput").value || currentTimeText(),
+        teacherName,
         content
       });
       if (!note.name) {
@@ -8869,6 +9045,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function openQuickNoteModal(name = "") {
       editingQuickNoteId = "";
       renderQuickNoteStudentOptions();
+      renderQuickNoteTeacherOptions("quickNoteTeacherSelect");
       $("quickNoteStudentSelect").value = name || CLASS_NOTE_NAME;
       $("quickNoteDateInput").value = $("dateInput").value || today();
       $("quickNoteTimeInput").value = currentTimeText();
@@ -8894,6 +9071,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }
       editingQuickNoteId = note.id;
       renderQuickNoteStudentOptions();
+      renderQuickNoteTeacherOptions("quickNoteTeacherSelect", note.teacherName);
       $("quickNoteStudentSelect").value = [...$("quickNoteStudentSelect").options].some(option => option.value === note.name)
         ? note.name
         : CLASS_NOTE_NAME;
@@ -8911,7 +9089,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function renderQuickNoteStudentOptions() {
       const current = $("quickNoteStudentSelect")?.value || "";
       $("quickNoteStudentSelect").innerHTML = `
-        <option value="${CLASS_NOTE_NAME}">${CLASS_NOTE_NAME}</option>
+        <option value="${CLASS_NOTE_NAME}">不关联学生 / 全班事务</option>
       ` + activeStudents().map((student, index) => `
         <option value="${escapeHtml(student.name)}">#${index + 1} ${escapeHtml(student.name)}</option>
       `).join("");
@@ -8920,6 +9098,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function saveQuickNote() {
       const name = $("quickNoteStudentSelect").value;
+      const teacherName = $("quickNoteTeacherSelect").value;
       const content = $("quickNoteContentInput").value.trim();
       if (!name) {
         showToast("请先选择学生");
@@ -8929,10 +9108,15 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         showToast("请写一句随手记内容");
         return;
       }
+      if (!teacherName || teacherName === "__custom__") {
+        showToast("请选择记录老师");
+        return;
+      }
       const note = buildQuickNoteData({
         name,
         date: $("quickNoteDateInput").value || today(),
         time: $("quickNoteTimeInput").value || currentTimeText(),
+        teacherName,
         content
       });
       if (!note.name) {
@@ -8946,6 +9130,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (original) {
         note.id = original.id;
         note.createdAt = original.createdAt || note.createdAt;
+        note.classId = original.classId || note.classId;
+        note.className = original.className || note.className;
+        note.teacherId = original.teacherId || "";
+        note.isPinned = original.isPinned === true;
         if (original.followUp || ["需跟进", "已跟进", "已完成"].includes(original.status)) {
           note.followUp = original.followUp || "";
           note.status = original.status || "需跟进";
@@ -10485,23 +10673,29 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }
 
       const noteRows = sheets["随手记"];
-      const noteTable = noteRows ? findWorkbookTable(noteRows, [["日期"], ["姓名"], ["内容"]]) : null;
+      const noteTable = noteRows ? findWorkbookTable(noteRows, [["日期"], ["姓名", "学生姓名"], ["内容", "随手记内容", "随手记"]]) : null;
       if (noteTable) {
         const fingerprints = new Set((state.quickNotes || []).map(note => [note.date, note.time, note.name, note.type, note.content].join("|")));
         noteTable.rows.forEach(row => {
-          const name = workbookStudentName(tableCell(noteTable, row, ["姓名", "学生姓名"]), importedStudents) || String(tableCell(noteTable, row, ["姓名"])).trim();
+          const rawName = String(tableCell(noteTable, row, ["姓名", "学生姓名"])).trim();
+          const name = workbookStudentName(rawName, importedStudents) || rawName || CLASS_NOTE_NAME;
           const date = normalizeImportedDate(tableCell(noteTable, row, ["日期"]));
-          const content = String(tableCell(noteTable, row, ["内容", "随手记"])).trim();
-          if (!date || !name || !content) return;
+          const content = String(tableCell(noteTable, row, ["内容", "随手记内容", "随手记"])).trim();
+          if (!date || !content) return;
           const createdAtRaw = tableCell(noteTable, row, ["创建时间"]);
-          const timeMatch = String(createdAtRaw || "").match(/(\d{1,2}:\d{2})/);
+          const explicitTime = String(tableCell(noteTable, row, ["时间"])).trim();
+          const timeMatch = explicitTime.match(/(\d{1,2}:\d{2})/) || String(createdAtRaw || "").match(/(\d{1,2}:\d{2})/);
           const note = {
             id: `quick-${Date.now()}-${Math.random().toString(16).slice(2)}`,
             date, time: timeMatch?.[1] || "", name,
             type: normalizeQuickNoteType(String(tableCell(noteTable, row, ["类型"])).trim()),
             level: "普通", status: String(tableCell(noteTable, row, ["状态"])).trim() || "已记录",
             followUp: String(tableCell(noteTable, row, ["后续动作", "后续"])).trim(), content,
-            createdAt: String(createdAtRaw || "")
+            className: String(tableCell(noteTable, row, ["班级"])).trim() || state.className,
+            teacherName: String(tableCell(noteTable, row, ["记录老师", "老师姓名", "老师"])).trim() || "未记录老师",
+            isPinned: String(tableCell(noteTable, row, ["是否置顶", "置顶"])).trim() === "是",
+            createdAt: String(createdAtRaw || ""),
+            updatedAt: String(tableCell(noteTable, row, ["最后修改时间", "修改时间"])).trim() || String(createdAtRaw || "")
           };
           const fingerprint = [note.date, note.time, note.name, note.type, note.content].join("|");
           if (!fingerprints.has(fingerprint)) {
@@ -11177,7 +11371,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         if (event.name === oldName) event.name = nextName;
       });
       (state.quickNotes || []).forEach(note => {
-        if (note.name === oldName) note.name = nextName;
+        if (note.name === oldName || note.studentName === oldName) {
+          note.name = nextName;
+          note.studentName = nextName;
+          note.studentId = state.students.find(student => student.name === nextName)?.uid || note.studentId || "";
+        }
       });
       Object.entries({ ...(state.attendanceRecords || {}) }).forEach(([key, record]) => {
         if (record.name !== oldName) return;
@@ -12665,42 +12863,74 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return rows;
     }
 
-    function quickNoteRowsForExport() {
+    function quickNoteRowsForExport(noteSource = null, includeLegacyEvents = true) {
       const rows = [
-        ...getQuickNotes().map(note => ({
+        ...(noteSource || getQuickNotes()).map(note => ({
           date: note.date,
           sortTime: note.time || note.createdAt || "",
           createdAt: note.createdAt || "",
-          name: note.name,
+          updatedAt: note.updatedAt || note.createdAt || "",
+          className: note.className || state.className,
+          name: note.studentName || note.name,
+          teacherName: note.teacherName || "未记录老师",
           type: normalizeQuickNoteType(note.type),
           content: note.content,
           followUp: note.followUp || "",
-          status: quickNoteStatus(note)
+          status: quickNoteStatus(note),
+          isPinned: note.isPinned === true
         })),
-        ...(state.events || []).map(event => ({
+        ...(includeLegacyEvents ? (state.events || []).map(event => ({
           date: event.date,
           sortTime: event.createdAt || "",
           createdAt: event.createdAt || "",
+          updatedAt: event.updatedAt || event.createdAt || "",
+          className: event.className || state.className,
           name: event.name,
+          teacherName: event.teacherName || "历史记录",
           type: normalizeQuickNoteType(event.type),
           content: event.content,
           followUp: event.followUp || "",
-          status: event.status || "已记录"
-        }))
+          status: event.status || "已记录",
+          isPinned: false
+        })) : [])
       ].sort(compareSharedRecordsForExport);
       return [
-        ["日期", "序号", "姓名", "类型", "内容", "后续动作", "状态", "创建时间"],
-        ...rows.map(row => [
-          `${row.date || ""}${row.sortTime && row.sortTime.length <= 5 ? ` ${row.sortTime}` : ""}`.trim(),
-          recordStudentNumber(row.name),
-          recordStudentName(row.name),
-          row.type,
+        ["序号", "日期", "时间", "班级", "姓名", "记录老师", "内容", "是否置顶", "类型", "后续动作", "状态", "创建时间", "最后修改时间"],
+        ...rows.map((row, index) => [
+          index + 1,
+          row.date || "",
+          row.sortTime && row.sortTime.length <= 5 ? row.sortTime : "",
+          row.className,
+          row.name === CLASS_NOTE_NAME ? "" : recordStudentName(row.name),
+          row.teacherName,
           row.content,
+          row.isPinned ? "是" : "否",
+          row.type,
           row.followUp,
           row.status,
-          formatRecordCreatedAt(row.createdAt)
+          formatRecordCreatedAt(row.createdAt),
+          formatRecordCreatedAt(row.updatedAt)
         ])
       ];
+    }
+
+    function exportQuickNotes() {
+      const scope = $("quickExportScope").value;
+      const start = $("quickFilterStart").value;
+      const end = $("quickFilterEnd").value;
+      const day = $("eventDateInput").value || today();
+      if (scope === "range" && (!start || !end || start > end)) return showToast("请先设置正确的日期范围");
+      let notes = (state.quickNotes || []).filter(note => note.classId === state.sessionId);
+      if (scope === "day") notes = notes.filter(note => note.date === day);
+      if (scope === "range") notes = notes.filter(note => note.date >= start && note.date <= end);
+      if (scope === "filtered") {
+        const visibleIds = new Set(getCommunicationTimeline($("eventSearch").value.trim()).filter(item => item.kind === "quick").map(item => item.id));
+        notes = notes.filter(note => visibleIds.has(note.id));
+      }
+      const workbook = buildXlsxWorkbook([["随手记", quickNoteRowsForExport(notes, false)]]);
+      const suffix = scope === "day" ? day : scope === "range" ? `${start}至${end}` : scope === "filtered" ? "筛选结果" : "全部";
+      download(`随手记_${safeFileClassName()}_${suffix}.xlsx`, workbook, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      showToast(`已导出 ${notes.length} 条随手记`);
     }
 
     function subjectRowsForExport() {
@@ -13122,6 +13352,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           imported.subjectTests = imported.subjectTests || {};
           state = imported;
           delete state.localSnapshots;
+          normalizeState(state);
           safeLocalRemove(BACKUP_KEY);
           const payload = JSON.stringify(state);
           const mirrored = await mirrorStateToIndexedDb(payload);
@@ -13166,6 +13397,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("dateInput").value = today();
     $("subjectDateInput").value = today();
     $("eventDateInput").value = today();
+    $("quickFilterStart").value = today();
+    $("quickFilterEnd").value = today();
     $("quickNoteDateInput").value = today();
     $("quickNoteTimeInput").value = currentTimeText();
     $("inlineQuickTimeInput").value = currentTimeText();
@@ -13239,8 +13472,27 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       subjectEntryOpen = false;
       renderSubjectTests();
     });
-    $("eventDateInput").addEventListener("change", renderEvents);
+    $("eventDateInput").addEventListener("change", () => setQuickNoteDay($("eventDateInput").value));
     $("eventSearch").addEventListener("input", renderEvents);
+    ["quickFilterStudent", "quickFilterTeacher", "quickFilterPinned"].forEach(id => $(id).addEventListener("change", renderEvents));
+    bindClick("quickPrevDayBtn", () => shiftQuickNoteDay(-1));
+    bindClick("quickTodayBtn", () => setQuickNoteDay(today()));
+    bindClick("quickApplyRangeBtn", () => {
+      const start = $("quickFilterStart").value;
+      const end = $("quickFilterEnd").value;
+      if (!start || !end || start > end) return showToast("请设置正确的日期范围");
+      renderEvents();
+    });
+    bindClick("quickClearFilterBtn", () => {
+      $("eventSearch").value = "";
+      $("quickFilterStudent").value = "";
+      $("quickFilterTeacher").value = "";
+      $("quickFilterPinned").value = "";
+      setQuickNoteDay(today());
+    });
+    bindClick("exportQuickNotesBtn", exportQuickNotes);
+    $("inlineQuickTeacherSelect").addEventListener("change", () => chooseCustomQuickNoteTeacher("inlineQuickTeacherSelect"));
+    bindClick("deleteInlineQuickTeacherBtn", () => deleteQuickNoteTeacher("inlineQuickTeacherSelect"));
     $("inlineQuickStudentSearch").addEventListener("input", renderInlineQuickStudentOptions);
     $("inlineQuickStudentSearch").addEventListener("keydown", event => {
       if (event.key === "Enter") {
@@ -13256,6 +13508,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }
     });
     bindClick("openQuickNoteBtn", () => openQuickNoteModal(CLASS_NOTE_NAME));
+    $("quickNoteTeacherSelect").addEventListener("change", () => chooseCustomQuickNoteTeacher("quickNoteTeacherSelect"));
+    bindClick("deleteQuickNoteTeacherBtn", () => deleteQuickNoteTeacher("quickNoteTeacherSelect"));
     $("saveQuickNoteBtn").addEventListener("click", saveQuickNote);
     $("closeQuickNoteModalBtn").addEventListener("click", closeQuickNoteModal);
     ["quickNoteStudentSelect", "quickNoteDateInput"].forEach(id => {
