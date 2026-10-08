@@ -2047,6 +2047,34 @@
       font-size: 12px;
       font-weight: 700;
     }
+    .schedule-course-edit {
+      position: relative;
+      cursor: pointer;
+    }
+    .schedule-course-edit::after {
+      content: "✎";
+      position: absolute;
+      top: 3px;
+      right: 5px;
+      color: currentColor;
+      font-size: 11px;
+      line-height: 1;
+      opacity: .38;
+      pointer-events: none;
+    }
+    .schedule-course-edit:hover::after,
+    .schedule-course-edit:focus-visible::after { opacity: .9; }
+    .schedule-matrix td.schedule-course-edit:hover,
+    .schedule-matrix td.schedule-course-edit:focus-visible {
+      position: relative;
+      z-index: 1;
+      outline: 3px solid rgba(47, 111, 236, .38);
+      outline-offset: -3px;
+    }
+    .schedule-mobile-course.schedule-course-edit:focus-visible {
+      outline: 3px solid rgba(47, 111, 236, .38);
+      outline-offset: 2px;
+    }
     .schedule-matrix-select {
       width: 100%;
       min-width: 54px;
@@ -2066,22 +2094,25 @@
     .schedule-swap-button {
       position: absolute;
       z-index: 2;
-      top: -11px;
+      top: -12px;
       left: 50%;
-      width: 22px;
-      min-width: 22px;
-      height: 22px;
+      display: grid;
+      place-items: center;
+      width: 26px;
+      min-width: 26px;
+      height: 24px;
+      min-height: 24px;
       padding: 0;
       transform: translateX(-50%);
       border: 1px solid #84adff;
-      border-radius: 50%;
+      border-radius: 999px;
       color: #175cd3;
       background: #fff;
-      box-shadow: 0 1px 3px rgba(16, 24, 40, .16);
-      font-size: 13px;
-      line-height: 20px;
+      box-shadow: 0 2px 5px rgba(37, 99, 235, .14);
+      font-size: 12px;
+      line-height: 1;
     }
-    .schedule-swap-button:hover { color: #fff; border-color: var(--blue); background: var(--blue); }
+    .schedule-swap-button:hover { color: #fff; border-color: var(--blue); background: var(--blue); transform: translateX(-50%); }
     .schedule-matrix .past-date {
       color: #667085 !important;
       background: #f2f4f7 !important;
@@ -3687,7 +3718,7 @@
       <div class="management-page-head">
         <div>
           <h2>课程与排班</h2>
-          <div class="sub">课程表与老师值班合并为横向日期表；点击日期可调整课程，班次可在格内直接选择。</div>
+          <div class="sub">课程表与老师值班合并为横向日期表；点击日期或任意课程格即可修改，班次可在格内直接选择。</div>
         </div>
         <div class="management-page-actions">
           <button id="exportScheduleBtn" type="button">导出本月课程与排班</button>
@@ -3697,7 +3728,7 @@
       <div class="schedule-toolbar">
         <div>
           <strong>本期课程与老师排班总览</strong>
-          <div class="sub">日期为列，课程和老师为行；老师格子可直接选择早、晚、通或休。</div>
+          <div class="sub">日期为列，课程和老师为行；课程格点击编辑，老师格可直接选择早、晚、通或休。</div>
         </div>
         <div class="schedule-legend">
           <span class="schedule-shift early">早班</span>
@@ -11902,7 +11933,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       });
     }
 
-    function openTeacherSchedule(date) {
+    function openTeacherSchedule(date, courseField = "") {
       const schedule = state.teacherSchedules?.[date] || {};
       $("teacherScheduleTitle").textContent = `${date} 课程与排班`;
       $("teacherScheduleDateInput").value = date;
@@ -11918,7 +11949,22 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("teacherCustomNameInput").value = "";
       renderTeacherQuickAssign(date);
       $("teacherScheduleModal").classList.remove("hidden");
-      $("courseMorningInput").focus();
+      const focusId = ({ morning: "courseMorningInput", afternoon: "courseAfternoonInput", courseEvening: "courseEveningInput" })[courseField] || "courseMorningInput";
+      const focusInput = $(focusId);
+      focusInput.focus();
+      focusInput.select();
+    }
+
+    function bindScheduleCourseEditors() {
+      document.querySelectorAll("#scheduleCombinedBlocks .schedule-course-edit").forEach(cell => {
+        const openEditor = () => openTeacherSchedule(cell.dataset.date, cell.dataset.courseField || "");
+        cell.addEventListener("click", openEditor);
+        cell.addEventListener("keydown", event => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          openEditor();
+        });
+      });
     }
 
     function closeTeacherSchedule() {
@@ -12218,8 +12264,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const parsed = new Date(`${date}T12:00:00`);
       const weekday = ["日", "一", "二", "三", "四", "五", "六"][parsed.getDay()];
       const courseRows = [["上午", item.morning], ["下午", item.afternoon], ["晚上", item.courseEvening]];
-      const courses = courseRows.map(([label, value]) => `
-        <div class="schedule-mobile-course ${value ? courseColorClass(value) : "course-default"}">
+      const courses = courseRows.map(([label, value], index) => `
+        <div class="schedule-mobile-course schedule-course-edit ${value ? courseColorClass(value) : "course-default"}" data-date="${date}" data-course-field="${["morning", "afternoon", "courseEvening"][index]}" role="button" tabindex="0" title="点击编辑 ${date} ${label}课程">
           <small>${label}</small><b>${escapeHtml(value || "—")}</b>
         </div>
       `).join("");
@@ -12283,6 +12329,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (isMobile) {
         renderMobileTeacherSchedule(visibleDates, teachers);
         document.querySelectorAll("#scheduleCombinedBlocks .schedule-date-head").forEach(button => button.addEventListener("click", () => openTeacherSchedule(button.dataset.date)));
+        bindScheduleCourseEditors();
         document.querySelectorAll("#scheduleCombinedBlocks .schedule-matrix-select").forEach(select => select.addEventListener("change", () => setTeacherMatrixShift(select.dataset.date, select.dataset.teacher, select.value)));
         return;
       }
@@ -12297,17 +12344,18 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         }).join("");
         const courseHtml = courseRows.map(([label, field]) => `<tr><th class="schedule-row-label">${label}</th>${dates.map(date => {
           const value = state.teacherSchedules?.[date]?.[field] || "";
-          return `<td class="course-cell ${value ? courseColorClass(value) : ""} ${date < today() ? "past-date" : ""}">${escapeHtml(value || "—")}</td>`;
+          return `<td class="course-cell schedule-course-edit ${value ? courseColorClass(value) : ""} ${date < today() ? "past-date" : ""}" data-date="${date}" data-course-field="${field}" role="button" tabindex="0" title="点击编辑 ${date} ${label}课程">${escapeHtml(value || "—")}</td>`;
         }).join("")}</tr>`).join("");
         const teacherHtml = teachers.map((teacher, teacherIndex) => `<tr><th class="schedule-row-label teacher-row-label">${escapeHtml(teacherShortLabel(teacher))}</th>${dates.map(date => {
           const shift = state.teacherSchedules?.[date]?.teacherShifts?.[teacher] || "";
-          const firstTeacherShift = state.teacherSchedules?.[date]?.teacherShifts?.[teachers[0]] || "";
-          const swapButton = teachers.length === 2 && teacherIndex === 1 && (firstTeacherShift || shift) ? `<button type="button" class="schedule-swap-button" data-date="${date}" data-first-teacher="${escapeHtml(teachers[0])}" data-second-teacher="${escapeHtml(teachers[1])}" title="交换${escapeHtml(teacherShortLabel(teachers[0]))}与${escapeHtml(teacherShortLabel(teachers[1]))}当天班次" aria-label="交换两位老师当天班次">⇅</button>` : "";
+          const firstShift = state.teacherSchedules?.[date]?.teacherShifts?.[teachers[0]] || "";
+          const swapButton = teachers.length === 2 && teacherIndex === 1 && (firstShift || shift) ? `<button type="button" class="schedule-swap-button" data-date="${date}" data-first-teacher="${escapeHtml(teachers[0])}" data-second-teacher="${escapeHtml(teachers[1])}" title="交换${escapeHtml(teacherShortLabel(teachers[0]))}与${escapeHtml(teacherShortLabel(teachers[1]))}当天班次" aria-label="交换两位老师当天班次">⇅</button>` : "";
           return `<td class="${swapButton ? "schedule-swap-cell" : ""} ${date < today() ? "past-date" : ""}">${swapButton}<select class="schedule-matrix-select ${shiftSelectClass(shift)}" data-date="${date}" data-teacher="${escapeHtml(teacher)}" aria-label="${escapeHtml(teacherShortLabel(teacher))} ${date} 班次"><option value="" ${!shift ? "selected" : ""}>—</option><option value="early" ${shift === "early" ? "selected" : ""}>早</option><option value="evening" ${shift === "evening" ? "selected" : ""}>晚</option><option value="full" ${shift === "full" ? "selected" : ""}>通</option><option value="rest" ${shift === "rest" ? "selected" : ""}>休</option></select></td>`;
         }).join("")}</tr>`).join("");
         return `<div><div class="schedule-block-label">第 ${blockIndex + 1} 段 · ${Number(dates[0].slice(5, 7))}月${Number(dates[0].slice(8, 10))}日—${Number(dates[dates.length - 1].slice(5, 7))}月${Number(dates[dates.length - 1].slice(8, 10))}日</div><div class="schedule-matrix-wrap"><table class="schedule-matrix"><thead><tr><th class="schedule-row-label">日期</th>${dateHeaders}</tr></thead><tbody>${courseHtml}${teacherHtml}</tbody></table></div></div>`;
       }).join("");
       document.querySelectorAll("#scheduleCombinedBlocks .schedule-date-head").forEach(button => button.addEventListener("click", () => openTeacherSchedule(button.dataset.date)));
+      bindScheduleCourseEditors();
       document.querySelectorAll("#scheduleCombinedBlocks .schedule-matrix-select").forEach(select => select.addEventListener("change", () => setTeacherMatrixShift(select.dataset.date, select.dataset.teacher, select.value)));
       document.querySelectorAll("#scheduleCombinedBlocks .schedule-swap-button").forEach(button => button.addEventListener("click", () => swapTeacherMatrixShifts(button.dataset.date, button.dataset.firstTeacher, button.dataset.secondTeacher)));
     }
