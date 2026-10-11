@@ -706,6 +706,7 @@
       gap: 6px;
     }
     .subject-exam-edit,
+    .subject-exam-score-edit,
     .subject-exam-delete {
       display: inline-flex;
       height: 24px;
@@ -719,7 +720,13 @@
       background: #eff6ff;
       color: var(--blue);
     }
-    .subject-exam-edit:hover { background: #dbeafe; }
+    .subject-exam-edit:hover,
+    .subject-exam-score-edit:hover { background: #dbeafe; }
+    .subject-exam-score-edit {
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+      color: var(--blue);
+    }
     .subject-exam-delete {
       border: 1px solid #fecaca;
       background: #fff7f7;
@@ -3427,6 +3434,7 @@
               <div class="sub" id="subjectDetailSub">选择左侧考试后显示全班成绩。</div>
             </div>
             <div class="toolbar">
+              <button id="editSubjectScoresBtn">修改成绩</button>
               <button id="copySubjectRankBtn" class="primary">复制排名</button>
             </div>
           </div>
@@ -3452,8 +3460,8 @@
       <div class="panel subject-entry-panel hidden" id="subjectEntryPanel">
         <div class="panel-head">
           <div>
-            <h2 class="panel-title">录入考试</h2>
-            <div class="sub">先填日期、科目和满分，再按名单依次录入；分数框按 Enter 跳到下一位。</div>
+            <h2 class="panel-title" id="subjectEntryTitle">录入考试</h2>
+            <div class="sub" id="subjectEntryHint">先填日期、科目和满分，再按名单依次录入；分数框按 Enter 跳到下一位。</div>
           </div>
           <div class="toolbar">
             <label>日期 <input id="subjectDateInput" class="compact-date" type="date"></label>
@@ -8465,6 +8473,12 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (subjectEntryOpen) {
         const date = $("subjectDateInput").value || today();
         const subject = $("entrySubjectSelect").value || "电路";
+        const editingExisting = groups.some(group => group.key === subjectExamKeyFor(date, subject));
+        $("subjectEntryTitle").textContent = editingExisting ? `修改成绩 · ${subject}` : "录入考试";
+        $("subjectEntryHint").textContent = editingExisting
+          ? `${formatShortDate(date)} ${subject}，修改后自动保存并重新计算排名。`
+          : "先填日期、科目和满分，再按名单依次录入；分数框按 Enter 跳到下一位。";
+        $("cancelSubjectEntryBtn").textContent = editingExisting ? "完成修改" : "收起录入";
         renderSubjectEntryTable(date, subject);
       }
     }
@@ -8479,6 +8493,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <span class="exam-card-actions">
             <span class="exam-card-score">最高 ${escapeHtml(group.highest)}<br>85%+ ${group.excellentCount}</span>
             <span class="exam-card-buttons">
+              <span class="small subject-exam-score-edit" data-date="${escapeHtml(group.date)}" data-subject="${escapeHtml(group.subject)}">改成绩</span>
               <span class="small subject-exam-edit" data-date="${escapeHtml(group.date)}" data-subject="${escapeHtml(group.subject)}">改日期</span>
               <span class="small danger subject-exam-delete" data-date="${escapeHtml(group.date)}" data-subject="${escapeHtml(group.subject)}">删除</span>
             </span>
@@ -8499,12 +8514,43 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           deleteSubjectExam(btn.dataset.date, btn.dataset.subject);
         });
       });
+      document.querySelectorAll(".subject-exam-score-edit").forEach(btn => {
+        btn.addEventListener("click", event => {
+          event.stopPropagation();
+          openSubjectExamForEditing(btn.dataset.date, btn.dataset.subject);
+        });
+      });
       document.querySelectorAll(".subject-exam-edit").forEach(btn => {
         btn.addEventListener("click", event => {
           event.stopPropagation();
           changeSubjectExamDate(btn.dataset.date, btn.dataset.subject);
         });
       });
+    }
+
+    function openSubjectExamForEditing(date, subject) {
+      const cleanDate = normalizeDateKey(date);
+      const cleanSubject = String(subject || "").trim();
+      const group = subjectExamGroups().find(item => item.key === subjectExamKeyFor(cleanDate, cleanSubject));
+      if (!group) {
+        showToast("没有找到这场考试");
+        return;
+      }
+      const subjectSelect = $("entrySubjectSelect");
+      if (![...subjectSelect.options].some(option => option.value === cleanSubject)) {
+        subjectSelect.add(new Option(cleanSubject, cleanSubject));
+      }
+      $("subjectDateInput").value = cleanDate;
+      subjectSelect.value = cleanSubject;
+      $("subjectSearch").value = "";
+      selectedSubjectExamKey = group.key;
+      subjectEntryOpen = true;
+      renderSubjectTests();
+      requestAnimationFrame(() => {
+        $("subjectEntryPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        $("subjectBody")?.querySelector(".subject-score-input")?.focus();
+      });
+      showToast("已进入修改模式，成绩会自动保存");
     }
 
     function changeSubjectExamDate(date, subject) {
@@ -8591,6 +8637,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function renderSubjectExamDetail(group) {
       if (!group) {
+        $("editSubjectScoresBtn").disabled = true;
         $("subjectDetailTitle").textContent = "考试成绩";
         $("subjectDetailSub").textContent = "选择左侧考试后显示全班成绩。";
         $("subjectDetailBody").innerHTML = `<tr><td colspan="7" class="empty">还没有已录入的考试</td></tr>`;
@@ -8598,6 +8645,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }
 
       calculateSubjectRanks(group.date, group.subject);
+      $("editSubjectScoresBtn").disabled = false;
       $("subjectDetailTitle").textContent = `${group.subject} · ${formatShortDate(group.date)}`;
       $("subjectDetailSub").textContent = `全班 ${activeStudents().length} 人，已录 ${group.scoredCount} 人，均分 ${group.average}，最高 ${group.highest}。`;
       $("subjectDetailBody").innerHTML = activeStudents().map((student, idx) => {
@@ -13537,6 +13585,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("entrySearch").addEventListener("input", render);
     $("subjectSearch").addEventListener("input", renderSubjectTests);
     $("renameSubjectBtn").addEventListener("click", changeCurrentSubjectName);
+    bindClick("editSubjectScoresBtn", () => {
+      const group = selectedSubjectExamGroup();
+      if (group) openSubjectExamForEditing(group.date, group.subject);
+    });
     bindClick("openSubjectEntryBtn", () => {
       subjectEntryOpen = true;
       renderSubjectTests();
@@ -13545,6 +13597,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     bindClick("cancelSubjectEntryBtn", () => {
       subjectEntryOpen = false;
       renderSubjectTests();
+      requestAnimationFrame(() => $("subjectDetailTitle")?.scrollIntoView({ behavior: "smooth", block: "center" }));
     });
     $("eventDateInput").addEventListener("change", () => setQuickNoteDay($("eventDateInput").value));
     $("eventSearch").addEventListener("input", renderEvents);
