@@ -3109,7 +3109,7 @@
           <option value="scheduleView">课程与排班</option>
           <option value="entryView">每日录入</option>
           <option value="summaryView">今日需关注</option>
-          <option value="subjectView">单科成绩</option>
+          <option value="subjectView">考试录入</option>
           <option value="eventView">随手记</option>
           <option value="settingsView">系统设置</option>
         </select>
@@ -3122,7 +3122,7 @@
         <button class="tab nav-item nav-child-item" data-view="scheduleView"><span class="nav-mark">·</span>课程与排班</button>
         <div class="nav-group-title"><span class="nav-mark">▲</span>考试管理</div>
         <button class="tab nav-item nav-child-item" data-view="entryView"><span class="nav-mark">·</span>每日录入</button>
-        <button class="tab nav-item nav-child-item" data-view="subjectView"><span class="nav-mark">·</span>单科</button>
+        <button class="tab nav-item nav-child-item" data-view="subjectView"><span class="nav-mark">·</span>考试录入</button>
         <div class="nav-group-title"><span class="nav-mark">◆</span>日常记录</div>
         <button class="tab nav-item nav-child-item" data-view="eventView"><span class="nav-mark">·</span>随手记</button>
         <div class="nav-group-title"><span class="nav-mark">⚙</span>系统</div>
@@ -3412,8 +3412,8 @@
         <div class="panel">
           <div class="panel-head">
             <div>
-              <h2 class="panel-title">已测试单科</h2>
-              <div class="sub">点一场考试查看全班成绩；需要录入时再展开录入表。</div>
+              <h2 class="panel-title">已录入考试</h2>
+              <div class="sub">支持单科和综合考试；点一场考试查看全班成绩。</div>
             </div>
             <button id="openSubjectEntryBtn" class="primary">录入新测试</button>
           </div>
@@ -3423,7 +3423,7 @@
         <div class="panel">
           <div class="panel-head">
             <div>
-              <h2 class="panel-title" id="subjectDetailTitle">单科成绩</h2>
+              <h2 class="panel-title" id="subjectDetailTitle">考试成绩</h2>
               <div class="sub" id="subjectDetailSub">选择左侧考试后显示全班成绩。</div>
             </div>
             <div class="toolbar">
@@ -3452,7 +3452,7 @@
       <div class="panel subject-entry-panel hidden" id="subjectEntryPanel">
         <div class="panel-head">
           <div>
-            <h2 class="panel-title">录入单科测试</h2>
+            <h2 class="panel-title">录入考试</h2>
             <div class="sub">先填日期、科目和满分，再按名单依次录入；分数框按 Enter 跳到下一位。</div>
           </div>
           <div class="toolbar">
@@ -3468,6 +3468,7 @@
                 <option value="高电压">高电压</option>
                 <option value="发电厂">发电厂</option>
                 <option value="行测">行测</option>
+                <option value="综合考试">综合考试</option>
                 <option value="其他">其他</option>
               </select>
             </label>
@@ -3788,7 +3789,7 @@
               <input id="settingsSeatColsInput" type="number" min="1" max="30" inputmode="numeric">
             </label>
           </div>
-          <label class="settings-wide-field">单科科目
+          <label class="settings-wide-field">考试科目
             <textarea id="settingsSubjectsInput" rows="3" placeholder="多个科目可用顿号、逗号或换行分隔"></textarea>
           </label>
           <div class="settings-help">科目设置只影响今后的下拉选项。已经保存的旧科目和成绩不会删除；座位行列与讲台显示也只保存配置，不会清空现有座位数据。</div>
@@ -4293,7 +4294,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     const KNOWLEDGE_QUESTION_OPTIONS = ["", "A", "B", "C"];
     const ENTRY_COLUMN_KEYS = ["score", "dailyWrong", "knowledge", "correction", "question", "homework0", "homework1", "custom"];
     const DEFAULT_CLASS_NAME = "VIP2 班";
-    const SUBJECTS = ["电路", "电机", "电力电子", "稳态", "暂态", "继保", "高电压", "发电厂", "行测", "其他"];
+    const SUBJECTS = ["电路", "电机", "电力电子", "稳态", "暂态", "继保", "高电压", "发电厂", "行测", "综合考试", "其他"];
     const DEFAULT_SYSTEM_SETTINGS = {
       organizationName: "陕西天行",
       teachers: "",
@@ -4421,7 +4422,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     let lastRosterImportReport = "";
     const VIEW_META = {
       entryView: { module: "考试管理", page: "每日录入", searchId: "entrySearch" },
-      subjectView: { module: "考试管理", page: "单科", searchId: "subjectSearch" },
+      subjectView: { module: "考试管理", page: "考试录入", searchId: "subjectSearch" },
       eventView: { module: "考试管理", page: "随手记", searchId: "eventSearch" },
       summaryView: { module: "考试管理", page: "今日需关注", searchId: "" },
       profileView: { module: "学生管理", page: "学生档案", searchId: "" },
@@ -4753,6 +4754,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const subjects = (Array.isArray(source.subjects) ? source.subjects : DEFAULT_SYSTEM_SETTINGS.subjects)
         .map(item => String(item || "").trim())
         .filter((item, index, list) => item && list.indexOf(item) === index);
+      if (!subjects.includes("综合考试")) {
+        const otherIndex = subjects.indexOf("其他");
+        subjects.splice(otherIndex >= 0 ? otherIndex : subjects.length, 0, "综合考试");
+      }
       target.systemSettings = {
         organizationName: String(source.organizationName ?? DEFAULT_SYSTEM_SETTINGS.organizationName).trim(),
         teachers: String(source.teachers || "").trim(),
@@ -5001,7 +5006,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         .map(item => item.trim())
         .filter((item, index, list) => item && list.indexOf(item) === index);
       if (!className) return showToast("当前默认班级不能为空");
-      if (!subjects.length) return showToast("请至少保留一个单科科目");
+      if (!subjects.length) return showToast("请至少保留一个考试科目");
       state.className = className;
       state.systemSettings = {
         organizationName: $("settingsOrganizationInput").value.trim(),
@@ -8479,7 +8484,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
             </span>
           </span>
         </button>
-      `).join("") || `<div class="empty">暂无单科测试。点“录入新测试”开始登记。</div>`;
+      `).join("") || `<div class="empty">暂无考试记录。点“录入新测试”开始登记。</div>`;
 
       document.querySelectorAll(".exam-card").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -8570,7 +8575,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         renderSubjectTests();
         return;
       }
-      const ok = confirm(`确定删除 ${cleanDate} ${cleanSubject} 这场单科测试吗？\\n会删除这场考试下所有学生的分数、排名、纠错和备注。`);
+      const ok = confirm(`确定删除 ${cleanDate} ${cleanSubject} 这场考试吗？\\n会删除这场考试下所有学生的分数、排名、纠错和备注。`);
       if (!ok) return;
       Object.keys(state.subjectTests || {}).forEach(key => {
         const test = state.subjectTests[key];
@@ -8581,14 +8586,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (selectedSubjectExamKey === subjectExamKeyFor(cleanDate, cleanSubject)) selectedSubjectExamKey = "";
       saveState();
       renderSubjectTests();
-      showToast("单科测试已删除");
+      showToast("考试记录已删除");
     }
 
     function renderSubjectExamDetail(group) {
       if (!group) {
-        $("subjectDetailTitle").textContent = "单科成绩";
+        $("subjectDetailTitle").textContent = "考试成绩";
         $("subjectDetailSub").textContent = "选择左侧考试后显示全班成绩。";
-        $("subjectDetailBody").innerHTML = `<tr><td colspan="7" class="empty">还没有已录入的单科测试</td></tr>`;
+        $("subjectDetailBody").innerHTML = `<tr><td colspan="7" class="empty">还没有已录入的考试</td></tr>`;
         return;
       }
 
@@ -9317,7 +9322,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const tests = getSubjectTests(date, subject)
         .filter(test => parseScore(test.score) !== null)
         .sort((a, b) => Number(a.rank) - Number(b.rank) || parseScore(b.score) - parseScore(a.score));
-      const lines = [`${date} ${compactClassName()}${subject}单科测试排名`];
+      const lines = [`${date} ${compactClassName()}${subject}考试排名`];
       tests.forEach(test => lines.push(`${test.rank}. ${test.name}：${test.score}分`));
       return lines.join("\n");
     }
@@ -13621,7 +13626,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const text = subjectRankText(date, subject);
       try {
         await navigator.clipboard.writeText(text);
-        showToast("单科排名已复制");
+        showToast("考试排名已复制");
       } catch {
         prompt("复制以下排名：", text);
       }
