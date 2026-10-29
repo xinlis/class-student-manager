@@ -4524,6 +4524,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     let state = loadState();
+    if (state.__sessionCleanupApplied) {
+      const cleanedPayload = JSON.stringify(state);
+      safeSetMainState(cleanedPayload);
+      mirrorStateToIndexedDb(cleanedPayload);
+    }
     let activeView = state.students.length ? "entryView" : "rosterView";
     let entryInitialFilter = "";
     let selectedStudent = state.students[0]?.name || "";
@@ -4689,6 +4694,75 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       };
     }
 
+    function isDateInsideClassSession(target, value) {
+      const date = normalizeDateKey(value || "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return true;
+      if (target.courseStartDate && date < target.courseStartDate) return false;
+      if (target.courseEndDate && date > target.courseEndDate) return false;
+      return true;
+    }
+
+    function currentClassSessionDate(value = today()) {
+      const date = normalizeDateKey(value || today());
+      if (state.courseStartDate && date < state.courseStartDate) return state.courseStartDate;
+      if (state.courseEndDate && date > state.courseEndDate) return state.courseEndDate;
+      return date;
+    }
+
+    function syncCurrentSessionDateInputs() {
+      const dateInputIds = [
+        "dateInput", "subjectDateInput", "eventDateInput", "quickNoteDateInput", "seatDateInput",
+        "quickFilterStart", "quickFilterEnd", "dormInspectionDate", "scheduleMobileDateInput",
+        "scheduleRangeStartInput", "scheduleRangeEndInput"
+      ];
+      dateInputIds.forEach(id => {
+        const input = $(id);
+        if (!input) return;
+        input.min = state.courseStartDate || "";
+        input.max = state.courseEndDate || "";
+        if (input.value && !isDateInsideClassSession(state, input.value)) input.value = currentClassSessionDate(input.value);
+      });
+    }
+
+    function keepSessionObjectEntries(source, target, dateForEntry) {
+      const result = {};
+      Object.entries(source && typeof source === "object" ? source : {}).forEach(([key, value]) => {
+        if (isDateInsideClassSession(target, dateForEntry(key, value))) result[key] = value;
+      });
+      return result;
+    }
+
+    function removeRecordsOutsideCurrentSession(target) {
+      if (!target.previousSessionId || !target.courseStartDate) return;
+      let removed = 0;
+      const filterArray = (source, dateForItem) => (Array.isArray(source) ? source : []).filter(item => {
+        const keep = isDateInsideClassSession(target, dateForItem(item));
+        if (!keep) removed += 1;
+        return keep;
+      });
+      const filterObject = (source, dateForEntry) => {
+        const before = Object.keys(source && typeof source === "object" ? source : {}).length;
+        const result = keepSessionObjectEntries(source, target, dateForEntry);
+        removed += before - Object.keys(result).length;
+        return result;
+      };
+
+      target.records = filterObject(target.records, (key, record) => record?.date || key.split("__")[0]);
+      target.subjectTests = filterObject(target.subjectTests, (key, test) => test?.date || key.split("__")[0]);
+      target.attendanceRecords = filterObject(target.attendanceRecords, (key, record) => record?.date || key.split("__")[0]);
+      target.teacherSchedules = filterObject(target.teacherSchedules, key => key);
+      target.dailyTestDates = filterObject(target.dailyTestDates, key => key);
+      target.knowledgeDates = filterObject(target.knowledgeDates, key => key);
+      target.entryColumnDates = filterObject(target.entryColumnDates, key => key);
+      target.dormInspections = filterArray(target.dormInspections, record => record?.date);
+      target.events = filterArray(target.events, event => event?.date);
+      target.quickNotes = filterArray(target.quickNotes, note => note?.date);
+
+      if (removed > 0) {
+        Object.defineProperty(target, "__sessionCleanupApplied", { value: true, configurable: true });
+      }
+    }
+
     function normalizeState(target) {
       target.className = String(target.className || DEFAULT_CLASS_NAME).trim() || DEFAULT_CLASS_NAME;
       target.courseStartDate = normalizeDateKey(target.courseStartDate || "");
@@ -4697,6 +4771,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       target.sessionStartedAt = target.sessionStartedAt || target.createdAt || new Date().toISOString();
       target.previousSessionId = target.previousSessionId || "";
       target.updatedAt = target.updatedAt || new Date().toISOString();
+      removeRecordsOutsideCurrentSession(target);
       target.students = Array.isArray(target.students) ? target.students : [];
       target.students.forEach((student, index) => normalizeStudent(student, index));
       target.seatAssignments = target.seatAssignments && typeof target.seatAssignments === "object" ? target.seatAssignments : {};
@@ -5461,7 +5536,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function renderSeats() {
-      const attendanceDate = $("seatDateInput").value || today();
+      let attendanceDate = $("seatDateInput").value || today();
+      if (!isDateInsideClassSession(state, attendanceDate)) {
+        attendanceDate = state.courseStartDate || state.courseEndDate || today();
+        $("seatDateInput").value = attendanceDate;
+      }
       ensureAttendanceDefaultsForDate(attendanceDate);
       const settings = seatSettings();
       const { rows, cols, podiumVisible, aisles } = settings;
@@ -6158,7 +6237,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function renderSeats() {
-      const attendanceDate = $("seatDateInput").value || today();
+      let attendanceDate = $("seatDateInput").value || currentClassSessionDate();
+      if (!isDateInsideClassSession(state, attendanceDate)) {
+        attendanceDate = currentClassSessionDate(attendanceDate);
+        $("seatDateInput").value = attendanceDate;
+      }
       ensureAttendanceDefaultsForDate(attendanceDate);
       const plan = viewedSeatingPlan();
       const classroom = planClassroom(plan);
@@ -7159,7 +7242,26 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return saved;
     }
 
+    function wouldOverwriteNewerClassSession(target) {
+      const savedPayload = safeLocalGet(STORE_KEY);
+      if (!savedPayload) return false;
+      try {
+        const saved = JSON.parse(savedPayload);
+        if (!saved.sessionId || !target.sessionId || saved.sessionId === target.sessionId) return false;
+        if (saved.previousSessionId === target.sessionId) return true;
+        const savedStartedAt = new Date(saved.sessionStartedAt || saved.createdAt || 0).getTime();
+        const targetStartedAt = new Date(target.sessionStartedAt || target.createdAt || 0).getTime();
+        return Number.isFinite(savedStartedAt) && Number.isFinite(targetStartedAt) && savedStartedAt > targetStartedAt;
+      } catch {
+        return false;
+      }
+    }
+
     function persistState(target) {
+      if (wouldOverwriteNewerClassSession(target)) {
+        showToast("检测到其他标签页已经开了新课，本旧标签已停止保存；请关闭旧课程标签页后刷新");
+        return false;
+      }
       normalizeState(target);
       target.updatedAt = new Date().toISOString();
       const payload = JSON.stringify(target);
@@ -7167,6 +7269,26 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (!safeSetMainState(payload)) return false;
       return true;
     }
+
+    window.addEventListener("storage", event => {
+      if (event.key !== STORE_KEY || !event.newValue) return;
+      try {
+        const incoming = JSON.parse(event.newValue);
+        if (!incoming.sessionId || incoming.sessionId === state.sessionId) return;
+        const incomingStartedAt = new Date(incoming.sessionStartedAt || incoming.createdAt || 0).getTime();
+        const currentStartedAt = new Date(state.sessionStartedAt || state.createdAt || 0).getTime();
+        const oldCourseWroteBack = state.previousSessionId === incoming.sessionId
+          || (Number.isFinite(currentStartedAt) && Number.isFinite(incomingStartedAt) && currentStartedAt > incomingStartedAt);
+        if (oldCourseWroteBack) {
+          persistState(state);
+          showToast("已拦截旧课程标签页写回的数据；建议关闭其他旧课程标签页");
+          return;
+        }
+        showToast("其他标签页已切换到更新的课程，本标签已停止保存；请刷新页面");
+      } catch {
+        // 忽略其他页面写入的非标准本地数据。
+      }
+    });
 
     function openStateDb() {
       if (!("indexedDB" in window)) return Promise.resolve(null);
@@ -7211,6 +7333,27 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         return await new Promise(resolve => {
           const tx = db.transaction(IDB_STORE, "readwrite");
           tx.objectStore(IDB_STORE).put(value, key);
+          tx.oncomplete = () => {
+            db.close();
+            resolve(true);
+          };
+          tx.onerror = () => {
+            db.close();
+            resolve(false);
+          };
+        });
+      } catch {
+        return false;
+      }
+    }
+
+    async function deleteIndexedDbValue(key) {
+      try {
+        const db = await openStateDb();
+        if (!db) return false;
+        return await new Promise(resolve => {
+          const tx = db.transaction(IDB_STORE, "readwrite");
+          tx.objectStore(IDB_STORE).delete(key);
           tx.oncomplete = () => {
             db.close();
             resolve(true);
@@ -8162,8 +8305,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function render() {
+      syncCurrentSessionDateInputs();
       syncActiveView();
-      const date = $("dateInput").value || today();
+      const date = $("dateInput").value || currentClassSessionDate();
+      $("dateInput").value = date;
       ensureDate(date);
       renderHeader();
       syncSubjectSelectOptions();
@@ -9347,7 +9492,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function setQuickNoteDay(dateText) {
-      const date = normalizeDateKey(dateText) || today();
+      const date = currentClassSessionDate(normalizeDateKey(dateText) || today());
       $("eventDateInput").value = date;
       $("quickFilterStart").value = date;
       $("quickFilterEnd").value = date;
@@ -11401,6 +11546,30 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       }
     }
 
+    async function deleteArchivedSession(id) {
+      if (!id || id === state.sessionId) return showToast("当前正在使用的课程不能删除");
+      const index = await readSessionIndex();
+      const item = index.find(entry => entry.id === id);
+      if (!item) return showToast("没有找到这条封存课程");
+      const archived = await readArchivedSession(id);
+      const className = String(archived?.className || item.className || "历史课程").trim() || "历史课程";
+      const range = sessionRangeText(archived || item);
+      const firstConfirmed = confirm(`第一次确认：确定删除封存课程“${className}”吗？\n\n课程日期：${range}\n删除后，该课程的学生档案、成绩、考勤、查宿和随手记归档都无法恢复。建议先导出 Excel 或 JSON 备份。`);
+      if (!firstConfirmed) return;
+      const typedName = prompt(`第二次确认：请输入完整课程名称“${className}”后才能永久删除：`, "");
+      if (typedName === null) return;
+      if (typedName.trim() !== className) return showToast("课程名称不一致，已取消删除");
+
+      const nextIndex = index.filter(entry => entry.id !== id);
+      if (!(await persistSessionIndex(nextIndex))) return alert("删除失败：归档目录没有成功更新，请稍后重试。");
+      const storageKey = `${SESSION_PAYLOAD_PREFIX}${id}`;
+      safeLocalRemove(storageKey);
+      await deleteIndexedDbValue(storageKey);
+      await renderClassSessionModal();
+      await renderSystemArchiveSettings();
+      showToast(`已永久删除封存课程：${className}`);
+    }
+
     function sessionRangeText(target) {
       const start = target.courseStartDate || target.startDate || "未设置开课日期";
       const end = target.courseEndDate || target.endDate || "未设置结课日期";
@@ -11418,6 +11587,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <div class="actions">
             <button type="button" class="small view-session-archive-btn" data-session-id="${escapeHtml(item.id)}">只读查看</button>
             <button type="button" class="small primary export-session-archive-btn" data-session-id="${escapeHtml(item.id)}">导出 Excel</button>
+            <button type="button" class="small danger delete-session-archive-btn" data-session-id="${escapeHtml(item.id)}">删除</button>
           </div>
         </div>
       `).join("") : `<div class="empty">还没有封存课程</div>`;
@@ -11426,6 +11596,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       });
       document.querySelectorAll(".export-session-archive-btn").forEach(button => {
         button.addEventListener("click", () => exportArchivedSessionById(button.dataset.sessionId));
+      });
+      document.querySelectorAll(".delete-session-archive-btn").forEach(button => {
+        button.addEventListener("click", () => deleteArchivedSession(button.dataset.sessionId));
       });
     }
 
@@ -11442,11 +11615,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
           <div class="actions">
             <button type="button" class="small settings-view-archive-btn" data-session-id="${escapeHtml(item.id)}">查看学生档案</button>
             <button type="button" class="small primary settings-export-archive-btn" data-session-id="${escapeHtml(item.id)}">导出 Excel</button>
+            <button type="button" class="small danger settings-delete-archive-btn" data-session-id="${escapeHtml(item.id)}">删除</button>
           </div>
         </div>
       `).join("") : `<div class="empty">还没有历史课程归档。开新课时，当前课程会自动完整归档到这里。</div>`;
       archiveList.querySelectorAll(".settings-view-archive-btn").forEach(button => button.addEventListener("click", () => openArchiveViewer(button.dataset.sessionId)));
       archiveList.querySelectorAll(".settings-export-archive-btn").forEach(button => button.addEventListener("click", () => exportArchivedSessionById(button.dataset.sessionId)));
+      archiveList.querySelectorAll(".settings-delete-archive-btn").forEach(button => button.addEventListener("click", () => deleteArchivedSession(button.dataset.sessionId)));
     }
 
     async function openClassSessionModal() {
@@ -12120,7 +12295,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function clearDormInspectionForm(keepDate = true) {
-      $("dormInspectionDate").value = keepDate ? ($("dormInspectionDate").value || today()) : today();
+      $("dormInspectionDate").value = keepDate
+        ? currentClassSessionDate($("dormInspectionDate").value || today())
+        : currentClassSessionDate();
       $("dormInspectionRoom").value = "";
       $("dormInspectionHygiene").value = "良好";
       $("dormInspectionAbnormal").value = "";
@@ -12143,7 +12320,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function saveDormInspection() {
-      const date = normalizeDateKey($("dormInspectionDate").value) || today();
+      const requestedDate = normalizeDateKey($("dormInspectionDate").value) || currentClassSessionDate();
+      if (!isDateInsideClassSession(state, requestedDate)) return showToast(`当前课程记录从 ${state.courseStartDate || "开课日"} 开始`);
+      const date = requestedDate;
       const room = $("dormInspectionRoom").value.trim();
       const hygiene = $("dormInspectionHygiene").value;
       const abnormal = $("dormInspectionAbnormal").value.trim();
@@ -12209,7 +12388,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 
     function renderDormManagement() {
       syncDormRoomOptions();
-      if (!$("dormInspectionDate").value) $("dormInspectionDate").value = today();
+      if (!$("dormInspectionDate").value) $("dormInspectionDate").value = currentClassSessionDate();
       if (!$("dormInspectionTeacher").value && !$("saveDormInspectionBtn").dataset.editId) $("dormInspectionTeacher").value = currentTeacherName();
       $("dormTeacherSuggestions").innerHTML = configuredTeacherNames().map(name => `<option value="${escapeHtml(name)}"></option>`).join("");
       const filtered = filteredDormStudents();
@@ -14072,15 +14251,17 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => handleNavClick(btn)));
-    $("dateInput").value = today();
-    $("subjectDateInput").value = today();
-    $("eventDateInput").value = today();
-    $("quickFilterStart").value = today();
-    $("quickFilterEnd").value = today();
-    $("quickNoteDateInput").value = today();
+    const initialSessionDate = currentClassSessionDate();
+    $("dateInput").value = initialSessionDate;
+    $("subjectDateInput").value = initialSessionDate;
+    $("eventDateInput").value = initialSessionDate;
+    $("quickFilterStart").value = "";
+    $("quickFilterEnd").value = "";
+    $("quickNoteDateInput").value = initialSessionDate;
     $("quickNoteTimeInput").value = currentTimeText();
     $("inlineQuickTimeInput").value = currentTimeText();
-    $("seatDateInput").value = today();
+    $("seatDateInput").value = initialSessionDate;
+    syncCurrentSessionDateInputs();
     $("startDate").value = "";
     $("endDate").value = "";
     $("dateInput").addEventListener("change", render);
@@ -14163,7 +14344,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     bindClick("quickApplyRangeBtn", () => {
       const start = $("quickFilterStart").value;
       const end = $("quickFilterEnd").value;
-      if (!start || !end || start > end) return showToast("请设置正确的日期范围");
+      if (start && end && start > end) return showToast("开始日期不能晚于结束日期");
       renderEvents();
     });
     bindClick("quickClearFilterBtn", () => {
@@ -14171,7 +14352,10 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("quickFilterStudent").value = "";
       $("quickFilterTeacher").value = "";
       $("quickFilterPinned").value = "";
-      setQuickNoteDay(today());
+      $("quickFilterStart").value = "";
+      $("quickFilterEnd").value = "";
+      $("eventDateInput").value = currentClassSessionDate();
+      renderEvents();
     });
     bindClick("exportQuickNotesBtn", exportQuickNotes);
     $("inlineQuickTeacherSelect").addEventListener("change", () => chooseCustomQuickNoteTeacher("inlineQuickTeacherSelect"));
