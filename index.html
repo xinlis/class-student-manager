@@ -3362,7 +3362,8 @@
             <button id="seatLayoutBtn" type="button">教室管理 / 编辑布局</button>
             <button id="seatFillBtn" class="primary" type="button">自动排座</button>
             <button id="exportAttendanceBtn" type="button">导出考勤总表</button>
-            <button id="seatExportBtn" type="button">导出座位表</button>
+            <button id="seatExportBtn" type="button">导出座位图</button>
+            <button id="seatDataExportBtn" type="button">导出座位数据</button>
           </div>
         </div>
         <div class="detail-panel">
@@ -3867,8 +3868,30 @@
       <div class="panel" style="margin-top:14px">
         <div class="panel-head">
           <div>
-            <h2 class="panel-title">临时封存学生</h2>
-            <div class="sub">适合转线上课、暂缓到班等情况。封存只让学生退出当前班级操作，全部历史资料永久保留，下一阶段可随时恢复。</div>
+            <h2 class="panel-title">课程与历史归档</h2>
+            <div class="sub">当前课程、往期整班档案和新课入口集中在这里。历史归档可以查看学生资料，也可以直接导出 Excel。</div>
+          </div>
+          <button id="settingsOpenSessionManagerBtn" class="primary" type="button">归档管理 / 开新课</button>
+        </div>
+        <div class="detail-panel">
+          <div class="session-card current">
+            <h4>当前课程</h4>
+            <div id="settingsCurrentSessionSummary" class="sub"></div>
+            <div class="actions" style="margin-top:10px">
+              <button id="settingsEditCurrentSessionBtn" type="button">修改课程信息</button>
+              <button id="settingsExportCurrentWorkbookBtn" type="button">导出当前班级 Excel</button>
+            </div>
+          </div>
+          <h4 style="margin:16px 0 8px">历史课程归档</h4>
+          <div id="settingsSessionArchiveList" class="session-archive-list"><div class="empty">正在读取归档…</div></div>
+          <div class="settings-help">历史归档只读保存，不会混入当前课程。Excel 导出包含家长群发送版、学生名单、每日记录、单科成绩、随手记、沟通、考勤、查宿记录和课程排班。</div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:14px">
+        <div class="panel-head">
+          <div>
+            <h2 class="panel-title">当前班学生状态</h2>
+            <div class="sub">查看当前课程中临时离班的学生。封存只让学生退出当前班级操作，全部历史资料仍会保留，之后可以随时恢复。</div>
           </div>
         </div>
         <div class="detail-panel">
@@ -3934,9 +3957,14 @@
       <div class="sub" id="archiveViewerSummary"></div>
       <div class="actions" style="margin-top:12px">
         <label>查看学生 <select id="archiveStudentSelect"></select></label>
-        <button id="exportArchiveJsonBtn" type="button">导出这个归档</button>
+        <button id="exportArchiveExcelBtn" class="primary" type="button">导出归档 Excel</button>
+        <button id="exportArchiveJsonBtn" type="button">导出备份 JSON</button>
         <button id="closeArchiveViewerBtn" type="button">关闭</button>
       </div>
+      <details style="margin-top:12px">
+        <summary id="archiveRosterSummary" style="cursor:pointer;font-weight:700">查看归档学生名单</summary>
+        <div id="archiveRosterContent" class="table-wrap" style="margin-top:8px"></div>
+      </details>
       <div id="archiveStudentContent" style="margin-top:12px"></div>
     </div>
   </div>
@@ -5027,6 +5055,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       $("settingsSeatColsInput").value = settings.seatCols || DEFAULT_SYSTEM_SETTINGS.seatCols;
       $("settingsSubjectsInput").value = (settings.subjects || SUBJECTS).join("、");
       renderStudentArchiveSettings();
+      renderSystemArchiveSettings();
     }
 
     function renderStudentArchiveSettings() {
@@ -6393,7 +6422,154 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       renderSeats();
     }
 
-    function exportSeatWorkbook() {
+    function classroomExportRoundRect(ctx, x, y, width, height, radius = 8) {
+      const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + width, y, x + width, y + height, r);
+      ctx.arcTo(x + width, y + height, x, y + height, r);
+      ctx.arcTo(x, y + height, x, y, r);
+      ctx.arcTo(x, y, x + width, y, r);
+      ctx.closePath();
+    }
+
+    function drawClassroomExportText(ctx, text, centerX, centerY, maxWidth, fontSize, color, maxLines = 2) {
+      const chars = Array.from(String(text || ""));
+      ctx.font = `800 ${fontSize}px "Microsoft YaHei", "PingFang SC", sans-serif`;
+      ctx.fillStyle = color;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const lines = [];
+      let line = "";
+      chars.forEach(char => {
+        const next = `${line}${char}`;
+        if (line && ctx.measureText(next).width > maxWidth && lines.length < maxLines - 1) {
+          lines.push(line);
+          line = char;
+        } else line = next;
+      });
+      if (line) lines.push(line);
+      const lineHeight = fontSize * 1.15;
+      const firstY = centerY - ((lines.length - 1) * lineHeight) / 2;
+      lines.slice(0, maxLines).forEach((item, index) => ctx.fillText(item, centerX, firstY + index * lineHeight, maxWidth));
+    }
+
+    function drawClassroomExportFacility(ctx, element) {
+      const { x, y, width, height } = element;
+      const styles = {
+        podium: { fill: "#dbeafe", stroke: "#60a5fa", text: "#1d4ed8", lineWidth: 1.5, dash: [] },
+        door: { fill: "#fffbeb", stroke: "#f59e0b", text: "#b45309", lineWidth: 2, dash: [] },
+        aisle: { fill: "#f1f5f9", stroke: "#94a3b8", text: "#64748b", lineWidth: 1, dash: [5, 4] },
+        unavailable: { fill: "#fff1f2", stroke: "#ef4444", text: "#be123c", lineWidth: 1, dash: [5, 4] }
+      };
+      const style = styles[element.type] || styles.aisle;
+      ctx.save();
+      ctx.fillStyle = style.fill;
+      ctx.strokeStyle = style.stroke;
+      ctx.lineWidth = style.lineWidth;
+      ctx.setLineDash(style.dash);
+      classroomExportRoundRect(ctx, x, y, width, height, element.type === "door" ? 3 : 8);
+      ctx.fill();
+      ctx.stroke();
+      if (element.type === "unavailable") {
+        ctx.save();
+        classroomExportRoundRect(ctx, x, y, width, height, 8);
+        ctx.clip();
+        ctx.strokeStyle = "#fecdd3";
+        ctx.lineWidth = 5;
+        ctx.setLineDash([]);
+        for (let offset = -height; offset < width + height; offset += 18) {
+          ctx.beginPath();
+          ctx.moveTo(x + offset, y + height);
+          ctx.lineTo(x + offset + height, y);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      ctx.setLineDash([]);
+      drawClassroomExportText(ctx, element.name || classroomElementLabel(element.type), x + width / 2, y + height / 2, Math.max(20, width - 10), Math.min(16, Math.max(11, height * .28)), style.text, 2);
+      ctx.restore();
+    }
+
+    function exportSeatImage() {
+      const plan = viewedSeatingPlan();
+      const classroom = planClassroom(plan);
+      if (!plan || !classroom) return showToast("当前没有可导出的座位方案");
+      const assignments = seatingAssignmentsForRender(plan);
+      const pixelRatio = 2;
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(classroom.width * pixelRatio));
+      canvas.height = Math.max(1, Math.round(classroom.height * pixelRatio));
+      const ctx = canvas.getContext("2d");
+      ctx.scale(pixelRatio, pixelRatio);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, classroom.width, classroom.height);
+      ctx.save();
+      classroomExportRoundRect(ctx, 1, 1, classroom.width - 2, classroom.height - 2, 12);
+      ctx.clip();
+      ctx.strokeStyle = "#eef2f7";
+      ctx.lineWidth = 1;
+      for (let x = 20; x < classroom.width; x += 20) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, classroom.height); ctx.stroke();
+      }
+      for (let y = 20; y < classroom.height; y += 20) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(classroom.width, y); ctx.stroke();
+      }
+      classroom.elements.filter(element => element.type !== "seat").forEach(element => drawClassroomExportFacility(ctx, element));
+      classroom.elements.filter(element => element.type === "seat" && element.enabled !== false).forEach(element => {
+        const studentUid = Object.keys(assignments).find(uid => assignments[uid] === element.id);
+        const student = state.students.find(item => item.uid === studentUid);
+        const zone = element.zoneId === "A" ? "A" : element.zoneId === "B" ? "B" : "";
+        const palette = zone === "A"
+          ? { fill: student ? "#ccfbf1" : "#f0fdfa", stroke: student ? "#36b69f" : "#5fcdb8", text: "#134e4a" }
+          : zone === "B"
+            ? { fill: student ? "#f3e8ff" : "#faf5ff", stroke: student ? "#a875df" : "#c4a2eb", text: "#581c87" }
+            : { fill: student ? "#ecfdf7" : "#ffffff", stroke: student ? "#6fc8b5" : "#9fb3c8", text: "#26364a" };
+        ctx.save();
+        ctx.fillStyle = palette.fill;
+        ctx.strokeStyle = palette.stroke;
+        ctx.lineWidth = 1.5;
+        classroomExportRoundRect(ctx, element.x, element.y, element.width, element.height, 8);
+        ctx.fill();
+        ctx.stroke();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = palette.text;
+        ctx.globalAlpha = .72;
+        ctx.font = `700 10px "Microsoft YaHei", "PingFang SC", sans-serif`;
+        ctx.fillText(`${element.seatName}${zone ? ` · ${zone}区` : ""}`, element.x + element.width / 2, element.y + 13, Math.max(20, element.width - 8));
+        ctx.globalAlpha = 1;
+        if (student) drawClassroomExportText(ctx, student.name, element.x + element.width / 2, element.y + element.height * .62, Math.max(20, element.width - 8), 14, palette.text, 2);
+        else drawClassroomExportText(ctx, "空位", element.x + element.width / 2, element.y + element.height * .62, Math.max(20, element.width - 8), 11, "#64748b", 1);
+        if (student && plan.lockedStudentUids.includes(student.uid)) {
+          ctx.font = `10px sans-serif`;
+          ctx.textAlign = "right";
+          ctx.textBaseline = "top";
+          ctx.fillText("🔒", element.x + element.width - 3, element.y + 2);
+        }
+        ctx.restore();
+      });
+      const drawZoneLabel = (text, x, fill, color) => {
+        ctx.fillStyle = fill;
+        classroomExportRoundRect(ctx, x, 8, 52, 26, 13);
+        ctx.fill();
+        drawClassroomExportText(ctx, text, x + 26, 21, 46, 12, color, 1);
+      };
+      drawZoneLabel("A 区", 10, "#dbeafe", "#1d4ed8");
+      drawZoneLabel("B 区", classroom.width - 62, "#f3e8ff", "#7e22ce");
+      ctx.restore();
+      ctx.strokeStyle = "#cbd5e1";
+      ctx.lineWidth = 1.5;
+      classroomExportRoundRect(ctx, 1, 1, classroom.width - 2, classroom.height - 2, 12);
+      ctx.stroke();
+      canvas.toBlob(blob => {
+        if (!blob) return showToast("座位图生成失败，请重试");
+        download(`${safeFileClassName()}-${plan.name}-座位图-${today()}.png`, blob, "image/png");
+        showToast("座位图已按当前布局导出");
+      }, "image/png");
+    }
+
+    function exportSeatDataWorkbook() {
       const plan = viewedSeatingPlan();
       const classroom = planClassroom(plan);
       const rows = [["方案", "教室", "座位", "区域", "X", "Y", "状态", "学生", "学校层次", "锁定", "位置偏好", "区域偏好", "特殊备注"]];
@@ -6405,7 +6581,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       const unassigned = seatUnassignedStudents(plan);
       const workbook = buildXlsxWorkbook([["座位方案", rows], ["教室设施", facilities], ["未安排学生", [["序号", "姓名", "学校", "层次"], ...unassigned.map((student, index) => [index + 1, student.name, student.school || "", student.school_level || ""])]]]);
       download(`${safeFileClassName()}-${plan.name}-座位表-${today()}.xlsx`, workbook, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      showToast("自由布局座位表已导出");
+      showToast("座位数据 Excel 已导出");
     }
 
     function createSeatPlan(name, classroomId, assignments = {}, lockedStudentUids = []) {
@@ -11155,9 +11331,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         ...Object.values(target.records || {}).map(record => record.date),
         ...Object.values(target.subjectTests || {}).map(test => test.date),
         ...(target.events || []).map(event => event.date),
-        ...(target.quickNotes || []).map(note => note.date)
+        ...(target.quickNotes || []).map(note => note.date),
+        ...Object.values(target.attendanceRecords || {}).map(record => record.date),
+        ...Object.keys(target.teacherSchedules || {})
       ].map(normalizeDateKey).filter(value => /^\d{4}-\d{2}-\d{2}$/.test(value)).sort();
-      return target.courseStartDate || dates[0] || normalizeDateKey(String(target.createdAt || "").slice(0, 10));
+      const configured = normalizeDateKey(target.courseStartDate || target.startDate || "");
+      return [configured, dates[0]].filter(value => /^\d{4}-\d{2}-\d{2}$/.test(value)).sort()[0]
+        || normalizeDateKey(String(target.createdAt || "").slice(0, 10));
     }
 
     function readSessionIndexLocal() {
@@ -11213,6 +11393,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       try {
         const archived = JSON.parse(payload);
         normalizeState(archived);
+        const inferredStart = inferSessionStartDate(archived);
+        if (inferredStart && (!archived.courseEndDate || inferredStart <= archived.courseEndDate)) archived.courseStartDate = inferredStart;
         return archived;
       } catch {
         return null;
@@ -11220,23 +11402,51 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function sessionRangeText(target) {
-      const start = target.courseStartDate || "未设置开课日期";
-      const end = target.courseEndDate || "未设置结课日期";
-      return `${start} 至 ${end}`;
+      const start = target.courseStartDate || target.startDate || "未设置开课日期";
+      const end = target.courseEndDate || target.endDate || "未设置结课日期";
+      const needsReview = /^\d{4}-\d{2}-\d{2}$/.test(start) && /^\d{4}-\d{2}-\d{2}$/.test(end) && start > end;
+      return `${start} 至 ${end}${needsReview ? "（日期需核对）" : ""}`;
     }
 
     async function renderClassSessionModal() {
       $("currentSessionSummary").innerHTML = `<span class="badge ok">进行中</span> <strong>${escapeHtml(classNameText())}</strong><br>${escapeHtml(sessionRangeText(state))}<br>${activeStudents().length} 名当前在班${archivedStudents().length ? ` · ${archivedStudents().length} 名临时封存` : ""}`;
       const index = await readSessionIndex();
-      $("sessionArchiveList").innerHTML = index.length ? index.map(item => `
+      const archiveItems = await Promise.all(index.map(async item => ({ item, archived: await readArchivedSession(item.id) })));
+      $("sessionArchiveList").innerHTML = archiveItems.length ? archiveItems.map(({ item, archived }) => `
         <div class="session-archive-item">
-          <div><span class="badge">已封存</span> <strong>${escapeHtml(item.className || "历史课程")}</strong><br><span class="sub">${escapeHtml(item.startDate || "未设置")} 至 ${escapeHtml(item.endDate || "未设置")} · ${Number(item.studentCount || 0)} 人</span></div>
-          <button type="button" class="small view-session-archive-btn" data-session-id="${escapeHtml(item.id)}">只读查看</button>
+          <div><span class="badge">已封存</span> <strong>${escapeHtml(item.className || "历史课程")}</strong><br><span class="sub">${escapeHtml(sessionRangeText(archived || item))} · ${Number(item.studentCount || 0)} 人</span></div>
+          <div class="actions">
+            <button type="button" class="small view-session-archive-btn" data-session-id="${escapeHtml(item.id)}">只读查看</button>
+            <button type="button" class="small primary export-session-archive-btn" data-session-id="${escapeHtml(item.id)}">导出 Excel</button>
+          </div>
         </div>
       `).join("") : `<div class="empty">还没有封存课程</div>`;
       document.querySelectorAll(".view-session-archive-btn").forEach(button => {
         button.addEventListener("click", () => openArchiveViewer(button.dataset.sessionId));
       });
+      document.querySelectorAll(".export-session-archive-btn").forEach(button => {
+        button.addEventListener("click", () => exportArchivedSessionById(button.dataset.sessionId));
+      });
+    }
+
+    async function renderSystemArchiveSettings() {
+      const currentSummary = $("settingsCurrentSessionSummary");
+      const archiveList = $("settingsSessionArchiveList");
+      if (!currentSummary || !archiveList) return;
+      currentSummary.innerHTML = `<span class="badge ok">进行中</span> <strong>${escapeHtml(classNameText())}</strong><br>${escapeHtml(sessionRangeText(state))}<br>${activeStudents().length} 名当前在班${archivedStudents().length ? ` · ${archivedStudents().length} 名临时封存` : ""}`;
+      const index = await readSessionIndex();
+      const archiveItems = await Promise.all(index.map(async item => ({ item, archived: await readArchivedSession(item.id) })));
+      archiveList.innerHTML = archiveItems.length ? archiveItems.map(({ item, archived }) => `
+        <div class="session-archive-item">
+          <div><span class="badge">已封存</span> <strong>${escapeHtml(item.className || "历史课程")}</strong><br><span class="sub">${escapeHtml(sessionRangeText(archived || item))} · ${Number(item.studentCount || 0)} 名学生</span></div>
+          <div class="actions">
+            <button type="button" class="small settings-view-archive-btn" data-session-id="${escapeHtml(item.id)}">查看学生档案</button>
+            <button type="button" class="small primary settings-export-archive-btn" data-session-id="${escapeHtml(item.id)}">导出 Excel</button>
+          </div>
+        </div>
+      `).join("") : `<div class="empty">还没有历史课程归档。开新课时，当前课程会自动完整归档到这里。</div>`;
+      archiveList.querySelectorAll(".settings-view-archive-btn").forEach(button => button.addEventListener("click", () => openArchiveViewer(button.dataset.sessionId)));
+      archiveList.querySelectorAll(".settings-export-archive-btn").forEach(button => button.addEventListener("click", () => exportArchivedSessionById(button.dataset.sessionId)));
     }
 
     async function openClassSessionModal() {
@@ -11294,6 +11504,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (!className) return showToast("请填写新班级或课程名称");
       if (!startDate || !endDate) return showToast("请填写开课和结课日期");
       if (endDate < startDate) return showToast("结课日期不能早于开课日期");
+      const currentStartDate = inferSessionStartDate(state);
+      if (currentStartDate && startDate <= currentStartDate) return showToast(`新课开课日期需要晚于当前课程开课日期 ${currentStartDate}`);
       if (!students.length) return showToast(rosterSource === "current" ? "当前名单为空" : "请先选择并识别新班名单");
       const message = `确定开新课“${className}”吗？\n\n当前“${classNameText()}”会完整封存为只读档案；新课将导入 ${students.length} 名学生，成绩、随手记等记录从空白开始。`;
       if (!confirm(message)) return;
@@ -11359,7 +11571,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       activeArchivePayload = archived;
       $("archiveViewerTitle").textContent = `${archived.className || "未命名课程"}（只读）`;
       $("archiveViewerSummary").textContent = `${sessionRangeText(archived)} · ${archived.students.length} 名学生 · 已封存，不能修改`;
-      $("archiveStudentSelect").innerHTML = archived.students.map(student => `<option value="${escapeHtml(student.name)}">${escapeHtml(student.name)}</option>`).join("");
+      $("archiveStudentSelect").innerHTML = archived.students.map((student, index) => `<option value="${index}">${escapeHtml(student.student_id ? `${student.student_id} · ` : "")}${escapeHtml(student.name)}</option>`).join("");
+      $("archiveRosterSummary").textContent = `查看归档学生名单（${archived.students.length}人）`;
+      $("archiveRosterContent").innerHTML = `<table class="archive-view-table"><thead><tr><th>编号</th><th>姓名</th><th>性别</th><th>原学校</th><th>层次</th><th>状态</th><th>联系方式</th></tr></thead><tbody>${archived.students.map((student, index) => `<tr><td>${escapeHtml(student.student_id || String(index + 1).padStart(3, "0"))}</td><td>${escapeHtml(student.name)}</td><td>${escapeHtml(student.gender || "")}</td><td>${escapeHtml(student.school || "")}</td><td>${escapeHtml(student.school_level || "")}</td><td>${escapeHtml(student.archived ? "临时封存" : (student.status || "在班"))}</td><td>${escapeHtml(student.phone || "")}</td></tr>`).join("") || `<tr><td colspan="7" class="empty">归档中没有学生</td></tr>`}</tbody></table>`;
       renderArchiveStudent();
       $("archiveViewerModal").classList.remove("hidden");
     }
@@ -11371,12 +11585,13 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     function renderArchiveStudent() {
       const archived = activeArchivePayload;
       if (!archived) return;
-      const name = $("archiveStudentSelect").value || archived.students[0]?.name || "";
-      const student = archived.students.find(item => item.name === name);
+      const selectedIndex = Math.max(0, Number($("archiveStudentSelect").value) || 0);
+      const student = archived.students[selectedIndex];
       if (!student) {
         $("archiveStudentContent").innerHTML = `<div class="empty">归档中没有学生</div>`;
         return;
       }
+      const name = student.name;
       const records = Object.values(archived.records || {}).filter(record => record.name === name && archiveRecordMeaningful(record)).sort((a, b) => String(b.date).localeCompare(String(a.date)));
       const tests = Object.values(archived.subjectTests || {}).filter(test => test.name === name && (parseScore(test.score) !== null || test.note)).sort((a, b) => String(b.date).localeCompare(String(a.date)));
       const notes = [...(archived.quickNotes || []), ...(archived.events || [])].filter(note => note.name === name).sort((a, b) => String(b.date).localeCompare(String(a.date)));
@@ -11394,6 +11609,80 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       if (!activeArchivePayload) return;
       const fileName = String(activeArchivePayload.className || "班级归档").replace(/[\\/:*?"<>|]/g, "-");
       download(`${fileName}-只读归档.json`, JSON.stringify(activeArchivePayload, null, 2), "application/json");
+    }
+
+    function archivedParentShareRowsForExport(archived) {
+      const currentState = state;
+      try {
+        state = archived;
+        return parentShareRowsForExport();
+      } finally {
+        state = currentState;
+      }
+    }
+
+    function archivedDormInspectionRowsForExport(archived) {
+      const inspections = [...(archived.dormInspections || [])].sort((a, b) =>
+        String(b.date || "").localeCompare(String(a.date || ""))
+        || String(a.room || "").localeCompare(String(b.room || ""), "zh-CN", { numeric: true })
+        || String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""))
+      );
+      return [["日期", "宿舍", "卫生情况", "异常情况", "检查老师"], ...inspections.map(record => [
+        record.date || "", record.room || "", record.hygiene || "", record.abnormal || "无", record.teacher || ""
+      ])];
+    }
+
+    function archivedSessionWorkbookSheets(archived) {
+      const students = Array.isArray(archived.students) ? archived.students : [];
+      const records = Object.values(archived.records || {}).sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.name || "").localeCompare(String(b.name || ""), "zh-CN"));
+      const tests = Object.values(archived.subjectTests || {}).sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.name || "").localeCompare(String(b.name || ""), "zh-CN"));
+      const notes = [...(archived.quickNotes || [])].sort((a, b) => `${a.date || ""}${a.time || a.createdAt || ""}`.localeCompare(`${b.date || ""}${b.time || b.createdAt || ""}`));
+      const events = [...(archived.events || [])].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+      const attendance = Object.values(archived.attendanceRecords || {}).sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.name || "").localeCompare(String(b.name || ""), "zh-CN"));
+      const dormInspections = [...(archived.dormInspections || [])];
+      const schedules = Object.entries(archived.teacherSchedules || {}).sort(([a], [b]) => a.localeCompare(b));
+      return [
+        ["归档概览", [
+          ["项目", "内容"],
+          ["班级 / 课程", archived.className || ""],
+          ["开课日期", archived.courseStartDate || ""],
+          ["结课日期", archived.courseEndDate || ""],
+          ["归档时间", archived.sessionEndedAt || ""],
+          ["学生人数", students.length],
+          ["每日记录", records.length],
+          ["单科成绩", tests.length],
+          ["随手记", notes.length],
+          ["沟通记录", events.length],
+          ["考勤记录", attendance.length],
+          ["查宿记录", dormInspections.length]
+        ]],
+        ["家长群发送版", archivedParentShareRowsForExport(archived)],
+        ["学生名单", [["编号", "姓名", "性别", "班级", "原学校", "学校层次", "状态", "报名日期", "手机号", "家长联系方式", "宿舍", "来源班级", "备注"], ...students.map((student, index) => [student.student_id || String(index + 1).padStart(3, "0"), student.name || "", student.gender || "", student.class_name || archived.className || "", student.school || "", student.school_level || "", student.archived ? "临时封存" : (student.status || "在班"), student.enrollment_date || "", student.phone || "", student.parent_phone || "", student.dormitory || "", student.source_class || "", student.remark || ""])]],
+        ["每日记录", [["日期", "学生", "分数", "理解题", "知识点", "知识点复查", "纠错情况", "知识点提问", "自定义项", "备注"], ...records.map(record => [record.date || "", record.name || "", record.score ?? "", record.daily_wrong || "", record.knowledge_point || "", record.knowledge_review || "", record.correction || record.daily_correction || "", record.knowledge_question || "", record.custom_entry || "", record.note || ""])]],
+        ["单科成绩", [["日期", "学生", "科目", "分数", "排名", "纠错情况", "备注"], ...tests.map(test => [test.date || "", test.name || "", test.subject || "", test.score ?? "", test.rank || "", test.correction || "", test.note || ""])]],
+        ["随手记", [["日期", "时间", "学生", "记录老师", "类型", "内容", "是否置顶"], ...notes.map(note => [note.date || "", note.time || "", note.name || note.studentName || "", note.teacherName || "", note.type || "", note.content || note.note || "", note.isPinned ? "是" : "否"])]],
+        ["沟通与事件", [["日期", "学生", "类型", "内容", "后续动作", "状态"], ...events.map(event => [event.date || "", event.name || "", event.type || "", event.content || event.note || "", event.followUp || "", event.status || ""])]],
+        ["考勤记录", [["日期", "学生", "上午", "上午备注", "下午", "下午备注", "晚自习", "晚自习备注", "到校时间", "离校时间", "其他备注"], ...attendance.map(record => [record.date || "", record.name || "", ATTENDANCE_LABELS[record.am] || record.am || "", record.amRemark || "", ATTENDANCE_LABELS[record.pm] || record.pm || "", record.pmRemark || "", ATTENDANCE_LABELS[record.night] || record.night || "", record.nightRemark || "", record.arriveAt || "", record.leaveAt || "", record.remark || ""])]],
+        ["查宿记录", archivedDormInspectionRowsForExport(archived)],
+        ["课程与排班", [["日期", "上午课程", "下午课程", "晚上课程", "早班老师", "晚班老师", "通班老师", "其他班次", "备注"], ...schedules.map(([date, item]) => [date, item.morning || "", item.afternoon || "", item.courseEvening || "", item.early || "", item.evening || "", item.full || "", Object.entries(item.teacherShifts || {}).map(([teacher, shift]) => `${teacher}:${shift}`).join("；"), item.note || ""])] ]
+      ];
+    }
+
+    function exportArchivedSessionWorkbook(archived) {
+      if (!archived) return showToast("没有读取到归档数据");
+      const fileName = String(archived.className || "历史课程归档").replace(/[\\/:*?"<>|]/g, "-");
+      const workbook = buildXlsxWorkbook(archivedSessionWorkbookSheets(archived), {
+        title: archived.className || "历史课程",
+        summary: `归档学生：${archived.students?.length || 0} 人　课程日期：${archived.courseStartDate || "未设置"} 至 ${archived.courseEndDate || "未设置"}`
+      });
+      download(`${fileName}-${archived.courseStartDate || "未设置"}至${archived.courseEndDate || "未设置"}-归档.xlsx`, workbook, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      showToast(`${archived.className || "历史课程"}归档 Excel 已导出`);
+    }
+
+    async function exportArchivedSessionById(id) {
+      const archived = await readArchivedSession(id);
+      if (!archived) return showToast("没有读取到这个归档，请检查本机备份");
+      exportArchivedSessionWorkbook(archived);
     }
 
     async function collectSessionBundle() {
@@ -13416,7 +13705,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       return (statuses || []).map(status => STATUS_LABELS[status] || status).join("、");
     }
 
-    function buildXlsxWorkbook(sheets) {
+    function buildXlsxWorkbook(sheets, workbookContext = {}) {
       const safeSheets = uniqueSheetNames(sheets);
       const files = {
         "[Content_Types].xml": xlsxContentTypesXml(safeSheets),
@@ -13426,7 +13715,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         "xl/styles.xml": xlsxStylesXml()
       };
       safeSheets.forEach((sheet, index) => {
-        files[`xl/worksheets/sheet${index + 1}.xml`] = xlsxWorksheetXml(sheet.name, sheet.rows);
+        files[`xl/worksheets/sheet${index + 1}.xml`] = xlsxWorksheetXml(sheet.name, sheet.rows, workbookContext);
       });
       return zipFiles(files);
     }
@@ -13526,14 +13815,16 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
 </styleSheet>`;
     }
 
-    function xlsxWorksheetXml(name, rows) {
+    function xlsxWorksheetXml(name, rows, workbookContext = {}) {
       const exportedAt = formatDateTime(new Date().toISOString());
+      const workbookTitle = workbookContext.title || classNameText();
+      const workbookSummary = workbookContext.summary || `当前班级：${activeStudents().length} 人${archivedStudents().length ? `　临时封存：${archivedStudents().length} 人` : ""}`;
       const header = rows[0] || [];
       const dataRows = rows.slice(1);
       const columnCount = Math.max(1, header.length);
       const allRows = [
-        [{ value: `${classNameText()}${name}`, style: 1 }],
-        [{ value: `导出时间：${exportedAt}　当前班级：${activeStudents().length} 人${archivedStudents().length ? `　临时封存：${archivedStudents().length} 人` : ""}`, style: 2 }],
+        [{ value: `${workbookTitle}${name}`, style: 1 }],
+        [{ value: `导出时间：${exportedAt}　${workbookSummary}`, style: 2 }],
         [],
         header.map(value => ({ value, style: 3 })),
         ...dataRows.map(row => row.map((value, index) => ({ value, style: xlsxStyleForColumn(header[index]) })))
@@ -14019,7 +14310,8 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     });
     bindClick("seatLayoutBtn", openSeatLayout);
     bindClick("seatFillBtn", fillUnassignedSeats);
-    bindClick("seatExportBtn", exportSeatWorkbook);
+    bindClick("seatExportBtn", exportSeatImage);
+    bindClick("seatDataExportBtn", exportSeatDataWorkbook);
     bindClick("seatClearAllBtn", clearAllSeats);
     bindClick("exportAttendanceBtn", exportAttendanceDay);
     bindClick("saveSeatEditBtn", saveSeatEdit);
@@ -14077,6 +14369,9 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("seatPairStudentB").addEventListener("change", updateSeatPairPreview);
     bindClick("classSessionBtn", openClassSessionModal);
     bindClick("headerCourseSwitcher", openClassSessionModal);
+    bindClick("settingsOpenSessionManagerBtn", openClassSessionModal);
+    bindClick("settingsEditCurrentSessionBtn", openEditCurrentSessionModal);
+    bindClick("settingsExportCurrentWorkbookBtn", exportWorkbook);
     bindClick("cloudSyncBtn", openCloudSyncModal);
     bindClick("exportJsonBtn", exportJson);
     bindClick("exportWorkbookBtn", exportWorkbook);
@@ -14087,6 +14382,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     bindClick("useCurrentRosterSessionBtn", () => createNewClassSession("current"));
     bindClick("createSessionBtn", () => createNewClassSession("file"));
     bindClick("closeArchiveViewerBtn", () => $("archiveViewerModal").classList.add("hidden"));
+    bindClick("exportArchiveExcelBtn", () => exportArchivedSessionWorkbook(activeArchivePayload));
     bindClick("exportArchiveJsonBtn", exportActiveArchive);
     $("archiveStudentSelect").addEventListener("change", renderArchiveStudent);
     $("newSessionRosterFile").addEventListener("change", event => {
