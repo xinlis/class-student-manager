@@ -3222,11 +3222,9 @@
             <details class="data-tools">
               <summary>数据工具</summary>
               <div class="data-tool-menu">
-                <button id="classNameBtn">班级名称</button>
-                <button id="classSessionBtn">班级归档 / 开新课</button>
                 <button id="cloudSyncBtn">云同步</button>
                 <button id="exportJsonBtn">保存到电脑</button>
-                <button id="exportWorkbookBtn">导出Excel</button>
+                <button id="exportWorkbookBtn">导出完整 Excel</button>
                 <button id="importBtn">从电脑恢复</button>
                 <input class="file-input" id="importFile" type="file" accept=".json,application/json">
               </div>
@@ -3691,7 +3689,7 @@
             <button type="button" data-profile-tab="subject">单科成绩</button>
             <button type="button" data-profile-tab="performance">每日表现</button>
             <button type="button" data-profile-tab="entry">每日录入</button>
-            <button type="button" data-profile-tab="communication">沟通记录</button>
+            <button type="button" data-profile-tab="communication">全部沟通</button>
             <button type="button" data-profile-tab="leave">请假记录</button>
             <button type="button" data-profile-tab="departure">离班记录</button>
             <button type="button" data-profile-tab="quicknote">随手记</button>
@@ -4546,9 +4544,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     let lastLayoutWidth = window.innerWidth;
     let selectedSubjectExamKey = "";
     let subjectEntryOpen = false;
-    let editingSeatNumber = 0;
-    let seatLayoutDraft = null;
-    let seatDragName = "";
     let editingSeatId = "";
     let editingSeatStudentUid = "";
     let seatViewingPlanId = "";
@@ -5243,26 +5238,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       showToast("系统设置已保存，原有数据未更改");
     }
 
-    function seatSettings() {
-      const settings = state.systemSettings || DEFAULT_SYSTEM_SETTINGS;
-      return {
-        rows: Math.min(20, Math.max(1, Number(settings.seatRows) || 6)),
-        cols: Math.min(30, Math.max(1, Number(settings.seatCols) || 14)),
-        podiumVisible: settings.podiumVisible !== false,
-        aisles: [...new Set((settings.seatAisles || []).map(Number).filter(number => Number.isInteger(number) && number > 0))],
-        wallSeats: [...new Set((settings.wallSeats || []).map(Number).filter(number => Number.isInteger(number) && number > 0))]
-      };
-    }
-
-    function usableSeatNumbers(settings = seatSettings()) {
-      const walls = new Set(settings.wallSeats);
-      return Array.from({ length: settings.rows * settings.cols }, (_, index) => index + 1).filter(seat => !walls.has(seat));
-    }
-
-    function isWallSeat(number, settings = seatSettings()) {
-      return settings.wallSeats.includes(Number(number));
-    }
-
     function attendanceKey(date, name) {
       return `${normalizeDateKey(date)}__${name}`;
     }
@@ -5475,148 +5450,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       record.nightPresent = $("seatQuickNightPresent").checked;
     }
 
-    function moveStudentToSeat(name, targetSeat) {
-      if (!name || !targetSeat || isWallSeat(targetSeat)) return;
-      const oldSeat = seatNumberOf(name);
-      if (!oldSeat || oldSeat === targetSeat) return;
-      const targetName = seatNameAt(targetSeat);
-      state.seatAssignments[name] = targetSeat;
-      if (targetName && targetName !== name) state.seatAssignments[targetName] = oldSeat;
-      saveState();
-      renderSeats();
-      showToast(targetName ? `${name} 与 ${targetName} 已调换座位` : `${name} 的座位已调整`);
-    }
-
-    function bindSeatDragEvents() {
-      document.querySelectorAll("#seatGrid [data-drag-name]").forEach(card => {
-        card.addEventListener("dragstart", event => {
-          seatDragName = card.dataset.dragName;
-          card.classList.add("dragging");
-          event.dataTransfer?.setData("text/plain", seatDragName);
-        });
-        card.addEventListener("dragend", () => {
-          seatDragName = "";
-          document.querySelectorAll("#seatGrid .seat-card").forEach(item => item.classList.remove("dragging", "drop-hint"));
-        });
-      });
-      document.querySelectorAll("#seatGrid [data-seat-number]").forEach(card => {
-        card.addEventListener("dragover", event => {
-          if (!seatDragName) return;
-          event.preventDefault();
-          card.classList.add("drop-hint");
-        });
-        card.addEventListener("dragleave", () => card.classList.remove("drop-hint"));
-        card.addEventListener("drop", event => {
-          event.preventDefault();
-          const name = seatDragName || event.dataTransfer?.getData("text/plain");
-          seatDragName = "";
-          moveStudentToSeat(name, Number(card.dataset.seatNumber));
-        });
-      });
-    }
-
-    function seatNameAt(number) {
-      const seat = Number(number);
-      return activeStudents().find(student => Number(state.seatAssignments?.[student.name]) === seat)?.name || "";
-    }
-
-    function seatNumberOf(name) {
-      const value = Number(state.seatAssignments?.[name]);
-      return Number.isFinite(value) && value > 0 ? value : 0;
-    }
-
-    function seatUnassignedStudents() {
-      const settings = seatSettings();
-      const { rows, cols } = settings;
-      const capacity = rows * cols;
-      return activeStudents().filter(student => {
-        const seat = seatNumberOf(student.name);
-        return !seat || seat > capacity || isWallSeat(seat, settings) || seatNameAt(seat) !== student.name;
-      });
-    }
-
-    function renderSeats() {
-      let attendanceDate = $("seatDateInput").value || today();
-      if (!isDateInsideClassSession(state, attendanceDate)) {
-        attendanceDate = state.courseStartDate || state.courseEndDate || today();
-        $("seatDateInput").value = attendanceDate;
-      }
-      ensureAttendanceDefaultsForDate(attendanceDate);
-      const settings = seatSettings();
-      const { rows, cols, podiumVisible, aisles } = settings;
-      const capacity = rows * cols;
-      const usableSeats = usableSeatNumbers(settings);
-      const students = activeStudents();
-      const assigned = students.length - seatUnassignedStudents().length;
-      const attendanceCounts = attendanceStudentCounts(attendanceDate);
-      $("seatStats").innerHTML = [
-        statHtml("学生人数", students.length),
-        statHtml("已安排", assigned),
-        statHtml("未安排", students.length - assigned),
-        statHtml("空座位", Math.max(0, usableSeats.length - assigned)),
-        statHtml("今日出勤率", `${attendanceCounts.rate}%`),
-        statHtml("考勤异常", attendanceCounts.abnormal)
-      ].join("");
-      $("seatPodium").classList.toggle("hidden", !podiumVisible);
-      const activeAisles = aisles.filter(col => col < cols);
-      const gridColumns = [];
-      for (let col = 1; col <= cols; col += 1) {
-        gridColumns.push("minmax(72px, 1fr)");
-        if (activeAisles.includes(col)) gridColumns.push("24px");
-      }
-      $("seatGrid").style.gridTemplateColumns = gridColumns.join(" ");
-      $("seatGrid").style.minWidth = `${Math.max(760, cols * 80 + activeAisles.length * 24)}px`;
-      const cards = [];
-      for (let seat = 1; seat <= capacity; seat += 1) {
-        const name = seatNameAt(seat);
-        const row = Math.floor((seat - 1) / cols) + 1;
-        const col = ((seat - 1) % cols) + 1;
-        const wall = isWallSeat(seat, settings);
-        const attendanceStatus = name ? worstAttendance(attendanceRecord(attendanceDate, name)) : "";
-        const attendanceClass = name ? ` att-${attendanceStatus}` : "";
-        const gridCol = col + activeAisles.filter(aisle => aisle < col).length;
-        cards.push(`<button class="seat-card ${wall ? "wall" : (name ? `occupied${attendanceClass}` : "")}" type="button" ${wall ? "disabled" : `data-seat-number="${seat}"`} ${name && !wall ? `draggable="true" data-drag-name="${escapeHtml(name)}"` : ""} style="grid-row:${row};grid-column:${gridCol}" title="第${row}排第${col}列${wall ? "，墙位 / 不可用" : "，点击编辑；可拖动调换"}">
-          <span class="seat-no">${seat}号 · ${row}排${col}列</span>
-          <span class="seat-name">${wall ? "墙位" : escapeHtml(name || "空位")}</span>${name && !wall ? `<span class="seat-attendance-status">${escapeHtml(ATTENDANCE_LABELS[attendanceStatus] || "正常")}</span>` : ""}
-        </button>`);
-      }
-      $("seatGrid").innerHTML = cards.join("");
-      const unassigned = seatUnassignedStudents();
-      $("seatUnassigned").innerHTML = unassigned.length
-        ? unassigned.map(student => `<button class="seat-student-chip" type="button" data-seat-student="${escapeHtml(student.name)}">${escapeHtml(student.name)} · 安排到首个空位</button>`).join("")
-        : `<div class="seat-empty-note">全部学生都已安排座位</div>`;
-      document.querySelectorAll("[data-seat-number]").forEach(button => {
-        button.addEventListener("click", () => openSeatEditor(Number(button.dataset.seatNumber)));
-      });
-      document.querySelectorAll("[data-seat-student]").forEach(button => {
-        button.addEventListener("click", () => assignStudentToFirstEmpty(button.dataset.seatStudent));
-      });
-      bindSeatDragEvents();
-    }
-
-    function openSeatEditor(seatNumber, preferredName = "") {
-      editingSeatNumber = Number(seatNumber) || 0;
-      if (!editingSeatNumber) return;
-      if (isWallSeat(editingSeatNumber)) return showToast("这是墙位，请先在座位布局设置中恢复为普通座位");
-      const currentName = seatNameAt(editingSeatNumber);
-      $("seatEditTitle").textContent = `编辑 ${editingSeatNumber} 号座位`;
-      $("seatEditHint").textContent = currentName
-        ? `当前学生：${currentName}。选择另一名学生时，系统会自动调换座位。`
-        : "当前为空位。选择学生后保存即可安排。";
-      $("seatStudentSelect").innerHTML = `<option value="">保持为空位</option>` + activeStudents().map(student => {
-        const seat = seatNumberOf(student.name);
-        return `<option value="${escapeHtml(student.name)}">${escapeHtml(student.name)}${seat ? `（${seat}号）` : "（未安排）"}</option>`;
-      }).join("");
-      $("seatStudentSelect").value = preferredName || currentName || "";
-      renderSeatQuickAttendance($("seatStudentSelect").value);
-      $("seatEditModal").classList.remove("hidden");
-    }
-
-    function closeSeatEditor() {
-      editingSeatNumber = 0;
-      $("seatEditModal").classList.add("hidden");
-    }
-
     function openSeatStudentProfile() {
       const student = state.students.find(item => item.uid === $("seatStudentSelect").value);
       if (!student) return showToast("当前座位没有学生");
@@ -5625,169 +5458,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       setView("profileView");
     }
 
-    function saveSeatEdit() {
-      if (!editingSeatNumber) return closeSeatEditor();
-      const selectedName = $("seatStudentSelect").value;
-      const currentName = seatNameAt(editingSeatNumber);
-      state.seatAssignments = state.seatAssignments || {};
-      if (!selectedName) {
-        if (currentName) delete state.seatAssignments[currentName];
-      } else if (selectedName !== currentName) {
-        const oldSeat = seatNumberOf(selectedName);
-        if (currentName) {
-          if (oldSeat) state.seatAssignments[currentName] = oldSeat;
-          else delete state.seatAssignments[currentName];
-        }
-        state.seatAssignments[selectedName] = editingSeatNumber;
-      }
-      if (selectedName) saveSeatQuickAttendance(selectedName);
-      saveState();
-      closeSeatEditor();
-      renderSeats();
-      showToast("座位和考勤已保存");
-    }
-
-    function clearCurrentSeat() {
-      const currentName = seatNameAt(editingSeatNumber);
-      if (currentName) delete state.seatAssignments[currentName];
-      saveState();
-      closeSeatEditor();
-      renderSeats();
-      showToast("该座位已清空，学生数据未受影响");
-    }
-
-    function assignStudentToFirstEmpty(name) {
-      let emptySeat = 0;
-      for (const seat of usableSeatNumbers()) {
-        if (!seatNameAt(seat)) { emptySeat = seat; break; }
-      }
-      if (!emptySeat) return showToast("当前没有空座位，请先增加座位或调换");
-      state.seatAssignments[name] = emptySeat;
-      saveState();
-      renderSeats();
-      showToast(`${name} 已安排到 ${emptySeat} 号座位`);
-    }
-
-    function fillUnassignedSeats() {
-      const students = seatUnassignedStudents();
-      if (!students.length) return showToast("全部学生都已安排座位");
-      const emptySeats = [];
-      for (const seat of usableSeatNumbers()) if (!seatNameAt(seat)) emptySeats.push(seat);
-      const count = Math.min(students.length, emptySeats.length);
-      for (let index = 0; index < count; index += 1) state.seatAssignments[students[index].name] = emptySeats[index];
-      saveState();
-      renderSeats();
-      showToast(`已快速安排 ${count} 名学生${students.length > count ? "，仍有学生未安排" : ""}`);
-    }
-
-    function clearAllSeats() {
-      if (!Object.keys(state.seatAssignments || {}).length) return showToast("座位表已经是空的");
-      if (!confirm("确定清空全部座位安排吗？只清空座位，不会删除学生或其他记录。")) return;
-      state.seatAssignments = {};
-      saveState();
-      renderSeats();
-      showToast("座位表已清空，学生数据未受影响");
-    }
-
-    function exportSeatWorkbook() {
-      const settings = seatSettings();
-      const { rows, cols } = settings;
-      const table = [["排 / 列", ...Array.from({ length: cols }, (_, index) => `第${index + 1}列`)]];
-      for (let row = 1; row <= rows; row += 1) {
-        table.push([`第${row}排`, ...Array.from({ length: cols }, (_, index) => {
-          const seat = (row - 1) * cols + index + 1;
-          return isWallSeat(seat, settings) ? "墙位" : (seatNameAt(seat) || "空位");
-        })]);
-      }
-      const unassigned = seatUnassignedStudents();
-      const workbook = buildXlsxWorkbook([
-        ["座位表", table],
-        ["未安排学生", [["序号", "姓名", "学校", "来源班级"], ...unassigned.map((student, index) => [index + 1, student.name, student.school || "", student.source_class || ""])]]
-      ]);
-      download(`${safeFileClassName()}座位表-${today()}.xlsx`, workbook, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      showToast("座位表已导出");
-    }
-
-    function openSeatLayout() {
-      const settings = seatSettings();
-      seatLayoutDraft = {
-        rows: settings.rows,
-        cols: settings.cols,
-        podiumVisible: settings.podiumVisible,
-        aisles: new Set(settings.aisles),
-        wallSeats: new Set(settings.wallSeats)
-      };
-      $("seatLayoutRowsInput").value = settings.rows;
-      $("seatLayoutColsInput").value = settings.cols;
-      $("seatLayoutPodiumInput").value = settings.podiumVisible ? "show" : "hide";
-      renderSeatLayoutOptions();
-      $("seatLayoutModal").classList.remove("hidden");
-    }
-
-    function closeSeatLayout() {
-      seatLayoutDraft = null;
-      $("seatLayoutModal").classList.add("hidden");
-    }
-
-    function updateSeatLayoutDimensions() {
-      if (!seatLayoutDraft) return;
-      seatLayoutDraft.rows = Math.min(20, Math.max(1, Math.trunc(Number($("seatLayoutRowsInput").value) || 1)));
-      seatLayoutDraft.cols = Math.min(30, Math.max(1, Math.trunc(Number($("seatLayoutColsInput").value) || 1)));
-      $("seatLayoutRowsInput").value = seatLayoutDraft.rows;
-      $("seatLayoutColsInput").value = seatLayoutDraft.cols;
-      renderSeatLayoutOptions();
-    }
-
-    function renderSeatLayoutOptions() {
-      if (!seatLayoutDraft) return;
-      const { rows, cols, aisles, wallSeats } = seatLayoutDraft;
-      $("seatAisleOptions").innerHTML = Array.from({ length: cols }, (_, index) => index + 1).map(col => `
-        <label class="seat-layout-check"><input type="checkbox" data-aisle-col="${col}" ${aisles.has(col) ? "checked" : ""}>第 ${col} 列后</label>
-      `).join("");
-      $("seatAisleOptions").querySelectorAll("[data-aisle-col]").forEach(input => {
-        input.addEventListener("change", () => {
-          const col = Number(input.dataset.aisleCol);
-          if (input.checked) aisles.add(col);
-          else aisles.delete(col);
-        });
-      });
-      $("seatWallGrid").style.gridTemplateColumns = `repeat(${cols}, minmax(44px, 1fr))`;
-      $("seatWallGrid").style.minWidth = `${Math.max(620, cols * 50)}px`;
-      $("seatWallGrid").innerHTML = Array.from({ length: rows * cols }, (_, index) => index + 1).map(seat => {
-        const row = Math.floor((seat - 1) / cols) + 1;
-        const col = ((seat - 1) % cols) + 1;
-        return `<button class="seat-wall-option ${wallSeats.has(seat) ? "active" : ""}" type="button" data-wall-seat="${seat}" title="第${row}排第${col}列">${wallSeats.has(seat) ? "墙" : seat}</button>`;
-      }).join("");
-      $("seatWallGrid").querySelectorAll("[data-wall-seat]").forEach(button => {
-        button.addEventListener("click", () => {
-          const seat = Number(button.dataset.wallSeat);
-          if (wallSeats.has(seat)) wallSeats.delete(seat);
-          else wallSeats.add(seat);
-          button.classList.toggle("active", wallSeats.has(seat));
-          button.textContent = wallSeats.has(seat) ? "墙" : String(seat);
-        });
-      });
-    }
-
-    function saveSeatLayout() {
-      if (!seatLayoutDraft) return;
-      updateSeatLayoutDimensions();
-      const settings = state.systemSettings || { ...DEFAULT_SYSTEM_SETTINGS };
-      state.systemSettings = {
-        ...settings,
-        seatRows: seatLayoutDraft.rows,
-        seatCols: seatLayoutDraft.cols,
-        podiumVisible: $("seatLayoutPodiumInput").value !== "hide",
-        seatAisles: [...seatLayoutDraft.aisles].sort((a, b) => a - b),
-        wallSeats: [...seatLayoutDraft.wallSeats].sort((a, b) => a - b)
-      };
-      saveState();
-      closeSeatLayout();
-      render();
-      showToast("座位布局已保存，原座位数据未删除");
-    }
-
-    // 自由教室布局与座位方案（兼容旧数字座位表）
     function seatingId(prefix) {
       return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     }
@@ -7181,20 +6851,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       autoSeatPreview = null;
       $("autoSeatModal").classList.add("hidden");
       renderSeats();
-    }
-
-    function editClassName() {
-      const nextName = prompt("请输入班级名称：", classNameText());
-      if (nextName === null) return;
-      const trimmed = nextName.trim();
-      if (!trimmed) {
-        showToast("班级名称不能为空");
-        return;
-      }
-      state.className = trimmed;
-      saveState();
-      renderHeader();
-      showToast("班级名称已更新");
     }
 
     function normalizeRecordHomework(record, names = homeworkNames()) {
@@ -14398,11 +14054,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
       button.addEventListener("click", () => handleProfileTab(button.dataset.profileTab));
     });
     $("exportStudentArchiveBtn").addEventListener("click", exportCurrentStudentArchive);
-    bindClick("resetDefaultsBtn", () => {
-      ensureDate($("dateInput").value || today());
-      render();
-      showToast("当天默认记录已补齐");
-    });
     $("copySummaryBtn").addEventListener("click", async () => {
       const text = summaryText($("dateInput").value || today());
       try {
@@ -14424,7 +14075,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         prompt("复制以下排名：", text);
       }
     });
-    bindClick("classNameBtn", editClassName);
     bindClick("saveSystemSettingsBtn", saveSystemSettings);
     bindClick("archiveSelectedStudentsBtn", archiveSelectedStudents);
     bindClick("restoreSelectedStudentsBtn", restoreSelectedStudents);
@@ -14442,10 +14092,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     });
     $("dormSearchInput").addEventListener("input", renderDormManagement);
     $("dormRoomFilter").addEventListener("change", renderDormManagement);
-    bindClick("schedulePrevMonthBtn", () => shiftScheduleMonth(-1));
-    bindClick("scheduleNextMonthBtn", () => shiftScheduleMonth(1));
-    bindClick("scheduleTermViewBtn", () => { scheduleViewMode = "term"; renderTeacherSchedule(); });
-    bindClick("scheduleCurrentMonthBtn", () => { scheduleMonth = today().slice(0, 7); scheduleViewMode = "month"; renderTeacherSchedule(); });
     if ($("scheduleMonthInput")) $("scheduleMonthInput").addEventListener("change", event => {
       if (/^\d{4}-\d{2}$/.test(event.target.value)) scheduleMonth = event.target.value;
       scheduleViewMode = "month";
@@ -14496,7 +14142,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     bindClick("seatFillBtn", fillUnassignedSeats);
     bindClick("seatExportBtn", exportSeatImage);
     bindClick("seatDataExportBtn", exportSeatDataWorkbook);
-    bindClick("seatClearAllBtn", clearAllSeats);
     bindClick("exportAttendanceBtn", exportAttendanceDay);
     bindClick("saveSeatEditBtn", saveSeatEdit);
     bindClick("openSeatStudentProfileBtn", openSeatStudentProfile);
@@ -14551,7 +14196,6 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     $("seatStudentSelect").addEventListener("change", updateSeatEditorStudentFields);
     $("seatPairStudentA").addEventListener("change", updateSeatPairPreview);
     $("seatPairStudentB").addEventListener("change", updateSeatPairPreview);
-    bindClick("classSessionBtn", openClassSessionModal);
     bindClick("headerCourseSwitcher", openClassSessionModal);
     bindClick("settingsOpenSessionManagerBtn", openClassSessionModal);
     bindClick("settingsEditCurrentSessionBtn", openEditCurrentSessionModal);
