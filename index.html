@@ -4170,8 +4170,8 @@
         <label>Supabase 项目 URL
           <input id="supabaseUrlInput" type="url" placeholder="https://xxxx.supabase.co">
         </label>
-        <label>Supabase anon public key
-          <input id="supabaseKeyInput" type="password" placeholder="eyJhbGciOi...">
+        <label>Supabase publishable / anon public key
+          <input id="supabaseKeyInput" type="password" placeholder="sb_publishable_... 或 eyJhbGciOi...">
         </label>
         <label>同步码
           <input id="syncIdInput" type="text" placeholder="例如 vip2-2026-private">
@@ -4258,10 +4258,11 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         <div class="schedule-form-section">
           <h4>当天课程</h4>
           <div class="schedule-form-row">
-            <label>上午 <input id="courseMorningInput" type="text" list="courseNameSuggestions" placeholder="例如：电机"></label>
-            <label>下午 <input id="courseAfternoonInput" type="text" list="courseNameSuggestions" placeholder="例如：电机"></label>
-            <label>晚上 <input id="courseEveningInput" type="text" list="courseNameSuggestions" placeholder="例如：老师答疑"></label>
+            <label>上午 <input id="courseMorningInput" type="text" autocomplete="off" placeholder="直接输入课程名称"></label>
+            <label>下午 <input id="courseAfternoonInput" type="text" autocomplete="off" placeholder="直接输入课程名称"></label>
+            <label>晚上 <input id="courseEveningInput" type="text" autocomplete="off" placeholder="直接输入课程名称或留空"></label>
           </div>
+          <div class="sub" style="margin-top:7px">课程名称可直接修改；改完后点击底部“保存课程与排班”。</div>
         </div>
         <div class="schedule-form-section">
           <h4>老师值班</h4>
@@ -7829,13 +7830,14 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
     }
 
     function cloudHeaders(config, extra = {}) {
-      return {
+      const headers = {
         apikey: config.supabaseKey,
-        Authorization: `Bearer ${config.supabaseKey}`,
         "x-sync-id": config.syncId,
         "Content-Type": "application/json",
         ...extra
       };
+      if (!config.supabaseKey.startsWith("sb_publishable_")) headers.Authorization = `Bearer ${config.supabaseKey}`;
+      return headers;
     }
 
     async function cloudRequest(config, path, options = {}) {
@@ -12650,7 +12652,7 @@ with check (id = current_setting('request.headers', true)::json ->> 'x-sync-id')
         return;
       }
       const chunks = [];
-      for (let index = 0; index < visibleDates.length; index += 8) chunks.push(visibleDates.slice(index, index + 8));
+      for (let index = 0; index < visibleDates.length; index += 7) chunks.push(visibleDates.slice(index, index + 7));
       const courseRows = [["上午", "morning"], ["下午", "afternoon"], ["晚上", "courseEvening"]];
       $("scheduleCombinedBlocks").innerHTML = chunks.map((dates, blockIndex) => {
         const dateHeaders = dates.map(date => {
